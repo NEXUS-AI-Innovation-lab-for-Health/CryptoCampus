@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoCampus - Boutique</title>
+    <link rel="stylesheet" href="../styles/shop.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">CryptoCampus</h1>
+            <div class="nav-links">
+                <a href="home.html" class="nav-link">Requêtes</a>
+                <a href="balance.html" class="nav-link">Mon solde</a>
+                <a href="shop.html" class="nav-link active">Boutique</a>
+                <a href="create_request.html" class="nav-link btn-create">Créer une requête</a>
+                <button id="logoutBtn" class="btn-logout">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="page-header">
+            <div>
+                <h2>Boutique de récompenses</h2>
+                <p class="balance-display">Votre solde: <span id="userBalance">0</span> 💰</p>
+            </div>
+            <div class="filters">
+                <select id="categoryFilter">
+                    <option value="">Toutes les catégories</option>
+                    <option value="giftcard">Cartes cadeaux</option>
+                    <option value="discount">Réductions</option>
+                    <option value="premium">Avantages premium</option>
+                    <option value="merchandise">Goodies</option>
+                </select>
+            </div>
+        </header>
+
+        <div id="productsList" class="products-list">
+            <!-- Les produits seront chargés dynamiquement -->
+        </div>
+    </div>
+
+    <!-- Modal de confirmation -->
+    <div id="purchaseModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Confirmer l'achat</h3>
+            <div id="modalProductInfo"></div>
+            <div class="modal-actions">
+                <button id="confirmPurchase" class="btn-confirm">Confirmer</button>
+                <button id="cancelPurchase" class="btn-cancel">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="shop.js"></script>
+</body>
+</html>

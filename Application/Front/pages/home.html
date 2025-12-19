@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoCampus - Requêtes d'aide</title>
+    <link rel="stylesheet" href="../styles/home.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">CryptoCampus</h1>
+            <div class="nav-links">
+                <a href="../pages/home.html" class="nav-link active">Requêtes</a>
+                <a href="balance.html" class="nav-link">Mon solde</a>
+                <a href="shop.html" class="nav-link">Boutique</a>
+                <a href="create_request.html" class="nav-link btn-create">Créer une requête</a>
+                <button id="logoutBtn" class="btn-logout">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="page-header">
+            <h2>Requêtes d'aide disponibles</h2>
+            <div class="filters">
+                <select id="subjectFilter">
+                    <option value="">Toutes les matières</option>
+                    <option value="math">Mathématiques</option>
+                    <option value="physics">Physique</option>
+                    <option value="chemistry">Chimie</option>
+                    <option value="programming">Programmation</option>
+                    <option value="french">Français</option>
+                    <option value="english">Anglais</option>
+                </select>
+                <select id="sortFilter">
+                    <option value="recent">Plus récentes</option>
+                    <option value="reward">Récompense</option>
+                </select>
+            </div>
+        </header>
+
+        <div id="requestsList" class="requests-list">
+            <!-- Les requêtes seront chargées dynamiquement par JS -->
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <p>Aucune requête disponible pour le moment</p>
+        </div>
+    </div>
+
+    <script src="home.js"></script>
+</body>
+</html>

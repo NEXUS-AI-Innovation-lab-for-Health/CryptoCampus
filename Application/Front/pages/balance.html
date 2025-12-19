@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoCampus - Mon solde</title>
+    <link rel="stylesheet" href="../styles/balance.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">CryptoCampus</h1>
+            <div class="nav-links">
+                <a href="home.html" class="nav-link">Requêtes</a>
+                <a href="balance.html" class="nav-link active">Mon solde</a>
+                <a href="shop.html" class="nav-link">Boutique</a>
+                <a href="create_request.html" class="nav-link btn-create">Créer une requête</a>
+                <button id="logoutBtn" class="btn-logout">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="balance-card">
+            <div class="balance-header">
+                <h2>Mon solde StudyCoins</h2>
+                <div class="balance-amount">
+                    <span class="coin-icon">💰</span>
+                    <span id="balanceValue" class="balance-value">0</span>
+                    <span class="coin-label">coins</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📚</div>
+                <div class="stat-info">
+                    <h3 id="helpedCount">0</h3>
+                    <p>Étudiants aidés</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-info">
+                    <h3 id="totalEarned">0</h3>
+                    <p>Coins gagnés au total</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-info">
+                    <h3 id="requestsCreated">0</h3>
+                    <p>Requêtes créées</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h2>Historique des transactions</h2>
+            <div id="transactionsList" class="transactions-list">
+                <!-- Les transactions seront chargées dynamiquement -->
+            </div>
+            <div id="emptyTransactions" class="empty-state" style="display: none;">
+                <p>Aucune transaction pour le moment</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="balance.js"></script>
+</body>
+</html>
