@@ -8,6 +8,7 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f5f7fa;
     min-height: 100vh;
+    overflow-y: scroll;
 }
 
 /* Navigation */
@@ -41,7 +42,7 @@ body {
 
 .nav-link {
     text-decoration: none;
-    color: #666;
+    color: #667;
     padding: 8px 16px;
     border-radius: 6px;
     transition: all 0.3s;
@@ -164,7 +165,7 @@ body {
 }
 
 .request-description {
-    color: #666;
+    color: #667;
     line-height: 1.6;
     margin-bottom: 15px;
 }

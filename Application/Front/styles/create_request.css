@@ -41,7 +41,7 @@ body {
 
 .nav-link {
     text-decoration: none;
-    color: #666;
+    color: #667;
     padding: 8px 16px;
     border-radius: 6px;
     transition: all 0.3s;
@@ -77,7 +77,7 @@ body {
 
 /* Container */
 .container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 30px 20px;
     display: grid;
@@ -99,7 +99,7 @@ body {
 }
 
 .subtitle {
-    color: #666;
+    color: #667;
     margin-bottom: 30px;
 }
 
@@ -194,7 +194,7 @@ small {
 
 .btn-secondary {
     background: #e0e0e0;
-    color: #666;
+    color: #667;
 }
 
 .btn-secondary:hover {

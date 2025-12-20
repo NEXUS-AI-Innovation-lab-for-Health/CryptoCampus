@@ -41,7 +41,7 @@ body {
 
 .nav-link {
     text-decoration: none;
-    color: #666;
+    color: #667;
     padding: 8px 16px;
     border-radius: 6px;
     transition: all 0.3s;
@@ -167,7 +167,7 @@ body {
 }
 
 .product-description {
-    color: #666;
+    color: #667;
     line-height: 1.6;
     margin-bottom: 15px;
 }
@@ -280,7 +280,7 @@ body {
 
 .btn-cancel {
     background: #e0e0e0;
-    color: #666;
+    color: #667;
 }
 
 .btn-cancel:hover {

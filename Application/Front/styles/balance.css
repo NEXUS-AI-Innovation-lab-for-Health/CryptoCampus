@@ -41,7 +41,7 @@ body {
 
 .nav-link {
     text-decoration: none;
-    color: #666;
+    color: #667;
     padding: 8px 16px;
     border-radius: 6px;
     transition: all 0.3s;
@@ -153,7 +153,7 @@ body {
 }
 
 .stat-info p {
-    color: #666;
+    color: #667;
     font-size: 1rem;
 }
 
