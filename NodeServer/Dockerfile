@@ -9,7 +9,7 @@ COPY package.json .
 
 RUN npm install
 
-COPY ./Application .
+COPY ./Application ./Application
 
 EXPOSE 3000
 
