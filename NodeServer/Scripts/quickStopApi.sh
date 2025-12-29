@@ -9,5 +9,6 @@ COMPOSE_DIR="$SCRIPT_DIR/../"
 
 cd "$COMPOSE_DIR"
 
-echo "Arrêt de l'ensemble de l'application"
+echo "Arrêt rapide de l'ensemble de l'application."
 docker compose down
+echo "Application stoppée."

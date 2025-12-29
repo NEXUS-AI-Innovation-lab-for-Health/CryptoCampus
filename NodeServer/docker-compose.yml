@@ -2,7 +2,6 @@ services:
   api:
     container_name: node_server
     build: .
-    working_dir: /app
     volumes:
       - ./Application:/app/Application
       - node_modules:/app/node_modules

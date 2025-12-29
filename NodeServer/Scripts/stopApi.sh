@@ -9,5 +9,6 @@ COMPOSE_DIR="$SCRIPT_DIR/../"
 
 cd "$COMPOSE_DIR"
 
-echo "Arrêt et nettoyage de l'ensemble de l'application"
+echo "Arrêt et nettoyage de l'ensemble de l'application."
 docker compose down -v
+echo "Application stoppée."
