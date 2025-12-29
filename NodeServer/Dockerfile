@@ -2,10 +2,14 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Force-clean npm state
+RUN npm cache clean --force
+
+COPY package.json .
+
 RUN npm install
 
-COPY . .
+COPY ./Application .
 
 EXPOSE 3000
 
