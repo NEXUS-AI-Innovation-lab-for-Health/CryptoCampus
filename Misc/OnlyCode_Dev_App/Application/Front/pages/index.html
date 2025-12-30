@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="fr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CryptoCampus — Front (Prototype)</title>
+  <style>
+    :root {
+      --bg: #0f1724;
+      --card: #0b1220;
+      --accent: #6ee7b7;
+      --muted: #9aa7b3;
+      --glass: rgba(255, 255, 255, 0.03);
+      --glass-2: rgba(255, 255, 255, 0.02);
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #071325 0%, #07192a 100%);
+      color: #e6eef6;
+      min-height: 100vh
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 24px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03)
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: contain;
+      background: none;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 18px
+    }
+
+    .title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 20px auto
+    }
+
+    nav {
+      background: var(--card);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 6px 30px rgba(2, 6, 23, 0.6)
+    }
+
+    nav h3 {
+      margin: 0 0 12px 0;
+      font-size: 14px
+    }
+
+    .nav-btn {
+      display: block;
+      padding: 10px;
+      border-radius: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 8px;
+      background: var(--glass);
+      border: 1px solid rgba(255, 255, 255, 0.02);
+      font-size: 13px
+    }
+
+    .nav-btn.active {
+      background: linear-gradient(90deg, rgba(110, 231, 183, 0.08), rgba(255, 255, 255, 0.01));
+      color: var(--accent);
+      box-shadow: 0 4px 14px rgba(110, 231, 183, 0.06)
+    }
+
+    section.content {
+      background: var(--card);
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      min-height: 60vh;
+      overflow: auto
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 18px
+    }
+
+    .card {
+      background: var(--glass);
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.02)
+    }
+
+    h2 {
+      margin: 0 0 12px 0
+    }
+
+    p.lead {
+      color: var(--muted);
+      margin-top: 0
+    }
+
+    /* Wallet panel */
+    .wallet {
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .addr {
+      font-family: monospace;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), transparent);
+      padding: 10px;
+      border-radius: 8px
+    }
+
+    .balance {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent)
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: transparent;
+      color: inherit
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--accent), #34d399);
+      color: #022;
+      border: none;
+      font-weight: 600
+    }
+
+    .mutebtn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      color: var(--muted)
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px
+    }
+
+    th,
+    td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.02)
+    }
+
+    .tiny {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .chip {
+      display: inline-block;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.02);
+      font-size: 12px
+    }
+
+    .footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center
+    }
+
+    /* Responsive */
+    @media (max-width:980px) {
+      main {
+        grid-template-columns: 1fr;
+        padding: 12px
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* small helpers */
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .space {
+      height: 12px
+    }
+
+    .history {
+      max-height: 220px;
+      overflow: auto
+    }
+
+    .backlog table {
+      font-size: 13px
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px
+    }
+
+    .hero .intro {
+      flex: 1
+    }
+
+    .badge {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      padding: 8px;
+      border-radius: 10px
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <img src="../src/logo.png" class="logo" alt="Logo" />
+    <div class="title">
+      <h1>CryptoCampus — Prototype Frontend</h1>
+      <p>Prototype UI — présentation + simulation wallet (local)</p>
+    </div>
+  </header>
+
+  <main>
+    <nav>
+      <h3>Navigation</h3>
+      <a class="nav-btn active" data-target="presentation">Présentation</a>
+      <a class="nav-btn" data-target="architecture">Architecture</a>
+      <a class="nav-btn" data-target="backlog">Backlog & User Stories</a>
+      <a class="nav-btn" data-target="sprints">Planification & Sprints</a>
+      <a class="nav-btn" data-target="wallet">Prototype Wallet</a>
+      <a class="nav-btn" data-target="livrables">Livrables</a>
+      <div style="height:8px"></div>
+      <div class="chip">Version prototype</div>
+    </nav>
+
+    <section class="content">
+      <!-- Container for dynamic content -->
+      <div id="presentation" class="page">
+        <div class="hero card">
+          <div class="intro">
+            <h2>CryptoCampus — Création d’une Cryptomonnaie Universitaire</h2>
+            <p class="lead">Projet BUT Informatique — Présenté par Sevo Hakobyan & Thomas Feler. Monnaie d'engagement
+              pour récompenser l'entraide, tutorat et participation sur le campus.</p>
+            <p class="tiny">Objectif : prototype fonctionnel démontrant token (ERC-20 testnet), API backend, interface
+              de transfert et simulation d'économie.</p>
+          </div>
+          <div style="width:320px" class="badge">
+            <div style="font-weight:700">Sommaire</div>
+            <div class="tiny">Contexte • Architecture • Backlog • Sprints • Livrables</div>
+          </div>
+        </div>
+
+        <div class="space"></div>
+
+        <div class="card">
+          <h3>Contexte et objectifs</h3>
+          <ul class="tiny">
+            <li>Récompenser l'implication (tutorat, bénévolat).</li>
+            <li>Permettre échanges P2P et accès premium.</li>
+            <li>Utiliser token pour gouvernance (votes).</li>
+          </ul>
+        </div>
+
+        <div class="space"></div>
+
+        <div class="card">
+          <h3>Résumé technique rapide</h3>
+          <p class="tiny">Token ERC-20 (Sepolia testnet) — Backend (ASP.NET Core / Node.js) — DB (Postgres/Mongo) — Auth
+            (JWT + 2FA) — Dashboard admin pour supervision.</p>
+        </div>
+      </div>
+
+      <div id="architecture" class="page" style="display:none">
+        <div class="grid">
+          <div>
+            <div class="card">
+              <h3>Architecture fonctionnelle</h3>
+              <ol class="tiny">
+                <li>Frontend (Web) — UI pour transferts et historique</li>
+                <li>API Backend — logique métier, sécurité</li>
+                <li>Smart Contract — token ERC-20</li>
+                <li>Base de données — users, logs</li>
+                <li>Dashboard Admin — supervision & actions</li>
+              </ol>
+            </div>
+
+            <div class="space"></div>
+
+            <div class="card">
+              <h3>Schéma de flux (texte)</h3>
+              <p class="tiny">Utilisateur → Frontend → Backend API → Smart Contract (Sepolia) → Blockchain. Backend
+                enregistre logs et synchronise DB.</p>
+            </div>
+          </div>
+
+          <aside>
+            <div class="card">
+              <h4>Technos recommandées</h4>
+              <ul class="tiny">
+                <li>Backend : ASP.NET Core (C#) ou Node.js</li>
+                <li>Smart contract : Solidity (ERC-20) — Testnet Sepolia</li>
+                <li>DB : PostgreSQL / MongoDB</li>
+                <li>CI/CD : GitHub Actions</li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div id="backlog" class="page" style="display:none">
+        <div class="card backlog">
+          <h3>Backlog produit (extrait)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Épic</th>
+                <th>Priorité</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>EP1</td>
+                <td>Gestion des comptes</td>
+                <td>Haute</td>
+              </tr>
+              <tr>
+                <td>EP2</td>
+                <td>Portefeuille crypto</td>
+                <td>Haute</td>
+              </tr>
+              <tr>
+                <td>EP3</td>
+                <td>Transfert de tokens</td>
+                <td>Haute</td>
+              </tr>
+              <tr>
+                <td>EP6</td>
+                <td>Historique blockchain</td>
+                <td>Haute</td>
+              </tr>
+              <tr>
+                <td>EP4</td>
+                <td>Récompense automatique</td>
+                <td>Moyenne</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="space"></div>
+
+        <div class="card">
+          <h3>User Stories principales</h3>
+          <ul class="tiny">
+            <li>US1 : Créer un compte sécurisé</li>
+            <li>US2 : Génération d'un wallet</li>
+            <li>US3 : Envoyer des tokens</li>
+            <li>US4 : Voir solde & historique</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="sprints" class="page" style="display:none">
+        <div class="card">
+          <h3>Planification Agile </h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Objectif</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>API inscription & DB</td>
+              </tr>
+              <tr>
+                <td>Portefeuilles & transferts</td>
+              </tr>
+              <tr>
+                <td>Smart contract & intégration</td>
+              </tr>
+              <tr>
+                <td>Frontend complet</td>
+              </tr>
+              <tr>
+                <td>Tests & sécurité</td>
+              </tr>
+              <tr>
+                <td>Préparation soutenance</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="space"></div>
+
+        <div class="card">
+          <h3>Livrables par sprint</h3>
+          <p class="tiny">API, smart contract, interface, tests, documentation, vidéo de démonstration.</p>
+        </div>
+      </div>
+
+      <div id="wallet" class="page" style="display:none">
+        <div class="grid">
+          <div>
+            <div class="card wallet">
+              <h3>Prototype Wallet (simulation locale)</h3>
+              <div>
+                <label>Adresse (générée)</label>
+                <div class="addr" id="myAddress">-</div>
+                <div class="row">
+                  <div style="flex:1">
+                    <label>Solde (CC)</label>
+                    <div class="balance" id="myBalance">0</div>
+                  </div>
+                  <div style="width:120px">
+                    <label>Actions</label>
+                    <button id="regenBtn" class="mutebtn">Regénérer</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space"></div>
+
+              <div>
+                <h4>Transférer des tokens</h4>
+                <label>Adresse destinataire</label>
+                <input id="toAddr" placeholder="0x..." />
+                <label>Montant</label>
+                <input id="amount" type="number" min="0" step="1" value="10" />
+                <div style="height:8px"></div>
+                <button id="sendBtn">Envoyer</button>
+                <div style="height:8px"></div>
+                <button id="faucetBtn" class="mutebtn">Faucet +100 CC (simulateur)</button>
+              </div>
+
+              <div class="space"></div>
+
+              <div>
+                <h4>Historique local</h4>
+                <div class="history" id="historyList"></div>
+              </div>
+            </div>
+          </div>
+
+          <aside>
+            <div class="card">
+              <h4>Notes techniques</h4>
+              <ul class="tiny">
+                <li>Simulation locale — pas de blockchain réelle.</li>
+                <li>Remplacer la logique JS par appels API + web3 pour production.</li>
+                <li>Historiques persistés en <code>localStorage</code>.</li>
+              </ul>
+              <div class="space"></div>
+              <button id="resetBtn" class="mutebtn">Réinitialiser simulation</button>
+            </div>
+
+            <div class="space"></div>
+
+            <div class="card">
+              <h4>Astuce</h4>
+              <p class="tiny">Pour intégrer la vraie blockchain : utiliser web3.js / ethers.js et appeler le smart
+                contract ERC-20 déployé sur Sepolia. Le backend doit authentifier & signer les opérations sensibles côté
+                serveur si besoin.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div id="livrables" class="page" style="display:none">
+        <div class="card">
+          <h3>Livrables attendus</h3>
+          <ul class="tiny">
+            <li>Cahier des charges et diagramme d'architecture</li>
+            <li>Code source (GitHub)</li>
+            <li>Smart contract & scripts de déploiement</li>
+            <li>Documentation d'installation</li>
+            <li>Vidéo de démonstration + présentation orale</li>
+          </ul>
+        </div>
+        <div class="space"></div>
+        <div class="card">
+          <h3>Perspectives</h3>
+          <p class="tiny">NFTs pour certificats, migration vers blockchain privée, application mobile.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      // Navigation
+      const navBtns = document.querySelectorAll('.nav-btn');
+      const pages = document.querySelectorAll('.page');
+      navBtns.forEach(b => b.addEventListener('click', e => {
+        navBtns.forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        const t = b.dataset.target;
+        pages.forEach(p => p.style.display = (p.id === t ? '' : 'none'));
+      }));
+
+      // Wallet simulation
+      const STORAGE_KEY = 'cryptocampus_sim';
+      function saveState(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+      function loadState() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null } catch (e) { return null } }
+
+      function randomAddr() {
+        // pseudo-ethereum style
+        const hex = Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        return '0x' + hex;
+      }
+
+      function nowIso() { return new Date().toLocaleString(); }
+
+      // Initialize or migrate state
+      let state = loadState();
+      if (!state) {
+        state = {
+          address: randomAddr(),
+          balance: 1000,
+          history: []
+        };
+        saveState(state);
+      }
+
+      // DOM refs
+      const myAddress = document.getElementById('myAddress');
+      const myBalance = document.getElementById('myBalance');
+      const regenBtn = document.getElementById('regenBtn');
+      const faucetBtn = document.getElementById('faucetBtn');
+      const sendBtn = document.getElementById('sendBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const toAddr = document.getElementById('toAddr');
+      const amount = document.getElementById('amount');
+      const historyList = document.getElementById('historyList');
+
+      function render() {
+        myAddress.textContent = state.address;
+        myBalance.textContent = state.balance + ' CC';
+        // render history
+        if (state.history.length === 0) {
+          historyList.innerHTML = '<div class="tiny">Aucune transaction</div>';
+        } else {
+          historyList.innerHTML = '<table><thead><tr><th>Date</th><th>Type</th><th>Détails</th></tr></thead><tbody>' +
+            state.history.slice().reverse().map(h => `<tr>
+          <td class="tiny">${h.date}</td>
+          <td class="tiny">${h.type}</td>
+          <td class="tiny">${h.details}</td>
+        </tr>`).join('') + '</tbody></table>';
+        }
+      }
+
+      function pushHistory(type, details) {
+        state.history.push({ date: nowIso(), type, details });
+        saveState(state);
+        render();
+      }
+
+      regenBtn.addEventListener('click', () => {
+        state.address = randomAddr();
+        // give a small seed to new address
+        state.balance = Math.floor(Math.random() * 500) + 200;
+        state.history = [];
+        saveState(state);
+        render();
+        alert('Nouvelle adresse générée (simulation locale).');
+      });
+
+      faucetBtn.addEventListener('click', () => {
+        state.balance = (Number(state.balance) || 0) + 100;
+        pushHistory('Faucet', '+100 CC (simulateur)');
+      });
+
+      sendBtn.addEventListener('click', () => {
+        const to = (toAddr.value || '').trim();
+        const amt = Number(amount.value);
+        if (!to || !/^0x[0-9a-f]{40}$/i.test(to)) {
+          return alert('Adresse destinataire invalide. Exemple : 0x' + 'a'.repeat(40));
+        }
+        if (!amt || amt <= 0) { return alert('Montant invalide'); }
+        if (amt > state.balance) { return alert('Solde insuffisant'); }
+        // simulate transfer
+        state.balance = Number((state.balance - amt).toFixed(6));
+        pushHistory('Envoi', `- ${amt} CC → ${to}`);
+        alert('Transfert simulé enregistré localement.');
+        toAddr.value = '';
+      });
+
+      resetBtn.addEventListener('click', () => {
+        if (!confirm('Réinitialiser la simulation locale ?')) return;
+        localStorage.removeItem(STORAGE_KEY);
+        state = { address: randomAddr(), balance: 1000, history: [] };
+        saveState(state);
+        render();
+      });
+
+      // first render
+      render();
+
+      // Small UX: allow clicking address to copy
+      myAddress.addEventListener('click', () => {
+        navigator.clipboard?.writeText(state.address);
+        myAddress.style.opacity = 0.8;
+        setTimeout(() => myAddress.style.opacity = 1, 250);
+      });
+
+      // keyboard shortcut: press "W" to go to wallet
+      window.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'w') { document.querySelector('.nav-btn[data-target="wallet"]').click(); }
+      });
+
+      // Expose state for debugging (dev only)
+      window.__CryptoCampusState = state;
+
+    })();
+  </script>
+</body>
+
+</html>
