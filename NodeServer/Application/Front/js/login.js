@@ -36,7 +36,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         if (response.ok) {
             const data = await response.json();
             localStorage.setItem('token', data.token);
-            window.location.href = 'home.html';
+            window.location.href = 'home';
         } else {
             alert('Identifiants incorrects');
         }
@@ -47,7 +47,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     
     // Redirection temporaire pour test
     alert('Connexion simulée');
-    window.location.href = 'home.html';
+    window.location.href = 'home';
 });
 
 // Gestion du formulaire d'inscription
