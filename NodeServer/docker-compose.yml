@@ -1,7 +1,9 @@
 services:
-  api:
-    container_name: node_server
-    build: .
+  app:
+    container_name: node-app
+    build:
+      context: .
+      dockerfile: ./Docker/Node/Dockerfile
     volumes:
       - ./Application:/app/Application
       - node_modules:/app/node_modules
@@ -9,5 +11,37 @@ services:
       - "80:3000"
     restart: unless-stopped
 
+  db:
+    image: postgres:16
+    container_name: postgres-database
+    environment:
+      POSTGRES_USER: onlycode-admin
+      POSTGRES_PASSWORD: Zongo94
+      POSTGRES_DB: CryptoCampus
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: onlycode-admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: Zongo94
+    volumes:
+      - ./Docker/PgAdmin/servers.json:/pgadmin4/servers.json
+    ports:
+      - "5050:80"
+    depends_on: 
+      db:
+        condition: service_healthy
+      
 volumes:
   node_modules:
+  postgres_data:

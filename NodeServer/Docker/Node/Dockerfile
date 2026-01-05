@@ -5,7 +5,7 @@ WORKDIR /app
 # Force-clean npm state
 RUN npm cache clean --force
 
-COPY package.json .
+COPY ./Docker/Node/package.json .
 
 RUN npm install
 
