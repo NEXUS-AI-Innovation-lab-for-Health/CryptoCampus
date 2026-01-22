@@ -1,7 +1,6 @@
 import express from "express";
 import { fileURLToPath } from "url";
 import path from "path";
-import request from "request";
 
 const app = express();
 const PORT = 3000;
@@ -54,26 +53,32 @@ app.get("/login", (req, res) => {
   res.sendFile(getPage('login'))
 });
 
-app.get("/testApi", () => {
+app.get("/testApi", async (req, res) => {
+  try {
+    const response = await fetch("http://localhost:81/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: "Tiakola Melo",
+        email: "Lamelo@bdlm.com"
+      })
+    });
 
-  var headers = {
-    'Content-Type': 'application/json'
-  };
-
-  var dataString = '{"name": "Tiakola Melo", "email": "Lamelo@bdlm.com"}';
-
-  var options = {
-    url: 'http://localhost:81/users',
-    method: 'POST',
-    headers: headers,
-    body: dataString
-  };
-
-  function callback(error, response, body) {
-    if (!error && response.statusCode == 200) {
-      console.log(body);
+    if (!response.ok) {
+      return res
+        .status(response.status)
+        .send(`Request failed with status ${response.status}`);
     }
-  }
 
-  request(options, callback);
-})
+    const body = await response.json(); // or response.json()
+    console.log(body);
+
+    res.send(body);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
