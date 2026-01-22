@@ -1,11 +1,20 @@
 import express from "express";
 import { fileURLToPath } from "url";
 import path from "path";
+import request from "request";
+
+const app = express();
+const PORT = 3000;
+
+app.use(express.json());
+
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
 const pagesDirectory = path.join(__dirname, "../Front/pages");
 const stylesDirectory = path.join(__dirname, "../Front/styles");
 const jsDirectory = path.join(__dirname, "../Front/js");
@@ -22,7 +31,7 @@ function getPage(pageName) {
 
 // Setting up all pages routes
 app.get("/", (req, res) => {
-  res.redirect('home'); 
+  res.redirect('home');
 });
 
 app.get("/home", (req, res) => {
@@ -45,6 +54,26 @@ app.get("/login", (req, res) => {
   res.sendFile(getPage('login'))
 });
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
-});
+app.get("/testApi", () => {
+
+  var headers = {
+    'Content-Type': 'application/json'
+  };
+
+  var dataString = '{"name": "Tiakola Melo", "email": "Lamelo@bdlm.com"}';
+
+  var options = {
+    url: 'http://localhost:81/users',
+    method: 'POST',
+    headers: headers,
+    body: dataString
+  };
+
+  function callback(error, response, body) {
+    if (!error && response.statusCode == 200) {
+      console.log(body);
+    }
+  }
+
+  request(options, callback);
+})

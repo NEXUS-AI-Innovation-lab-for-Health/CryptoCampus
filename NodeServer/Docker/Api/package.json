@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "dev": "node ./Application/Back/server.js"
+    "dev": "node ./Api/server.js"
   },
   "dependencies": {
     "express": "^4.19.2",

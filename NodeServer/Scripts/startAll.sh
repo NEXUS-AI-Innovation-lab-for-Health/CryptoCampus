@@ -22,6 +22,7 @@ docker compose up -d
 
 echo "------------------------------------------------------"
 echo "Serveur Node disponible à l'url : http://127.0.0.1:80"
+echo "API CryptoCampus disponible à l'url : http://127.0.0.1:81"
 echo "Database PostgreSQL démarrée sur le port 5432"
 echo "PgAdmin disponible à l'url : http://127.0.0.1:5050"
 echo "------------------------------------------------------"
