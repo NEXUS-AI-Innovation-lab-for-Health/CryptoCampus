@@ -23,9 +23,12 @@ services:
       - DB_HOST=${DB_HOST}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+      - BLOCKCHAIN_RPC=http://ganache:8545
     depends_on:
       db:
         condition: service_healthy
+      ganache:
+        condition: service_started
 
   db:
     image: postgres:16
@@ -66,6 +69,19 @@ services:
       - "6334:6334"
     volumes:
       - ./qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  ganache:
+    image: trufflesuite/ganache:latest
+    container_name: ganache-blockchain
+    ports:
+      - "8545:8545"
+    command: 
+      - --deterministic
+      - --accounts=10
+      - --defaultBalanceEther=1000
+      - --networkId=1337
+      - --host=0.0.0.0
     restart: unless-stopped
       
 volumes:
