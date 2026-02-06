@@ -1,8 +1,21 @@
 import express, { json } from 'express';
 import {Pool} from 'pg';
 import 'dotenv/config';
+import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './blockchain-example.js';
+
 const app = express();
 const PORT = 3000;
+
+// Middleware CORS pour permettre les requêtes depuis n'importe quelle origine
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Middleware to parse JSON requests
 app.use(express.json());
@@ -90,3 +103,67 @@ app.delete('/users/:id', async (req, res) => {
   }
 });
 
+// ========== BLOCKCHAIN / GANACHE ENDPOINTS ==========
+
+// Récupérer tous les comptes Ganache avec leurs soldes
+app.get('/blockchain/accounts', async (req, res) => {
+  try {
+    const accounts = await getAllAccounts();
+    res.json({
+      success: true,
+      totalAccounts: accounts.length,
+      accounts
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Récupérer le solde d'un compte spécifique
+app.get('/blockchain/balance/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const balance = await getBalance(address);
+    res.json({
+      success: true,
+      ...balance
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Envoyer une transaction entre deux comptes
+app.post('/blockchain/transaction', async (req, res) => {
+  try {
+    const { fromAddress, toAddress, amount } = req.body;
+    
+    if (!fromAddress || !toAddress || !amount) {
+      return res.status(400).json({ 
+        error: 'fromAddress, toAddress et amount sont requis' 
+      });
+    }
+
+    const result = await sendTransaction(fromAddress, toAddress, amount);
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Récupérer les détails d'une transaction
+app.get('/blockchain/transaction/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    const details = await getTransactionDetails(hash);
+    res.json({
+      success: true,
+      transaction: details
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
