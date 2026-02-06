@@ -531,8 +531,7 @@ COPY public.transactions (transaction_id, tx_hash, from_wallet, to_wallet, amoun
 COPY public.users (user_id, email, password_hash, first_name, last_name, role, is_verified, created_at, last_login) FROM stdin;
 ce7b2d46-06c4-44c4-b03d-4543da466a1d	admin@test.com	hash_admin	Admin	Root	ADMIN	f	2026-01-14	\N
 992b73dd-8d15-4188-963a-fb706d4c1a90	sevo@test.com	hash_sevo	Sevo	Hakobyan	STUDENT	f	2026-01-14	\N
-5830914b-d857-49ec-975d-5068f8a5fdb0	thomas@test.com	hash_thomas	Thomas	Feleeeeeer	STUDENT	f	2026-01-14	\N
-445f1988-e70d-4679-a17c-109f7bf1b208	bouanoune@test.com	hash_bouaoune	Yasmina	Bouanoune	TUTOR	f	2026-01-14	\N
+5830914b-d857-49ec-975d-5068f8a5fdb0	thomas@test.com	hash_thomas	Thomas	Feler	STUDENT	f	2026-01-14	\N
 \.
 
 
