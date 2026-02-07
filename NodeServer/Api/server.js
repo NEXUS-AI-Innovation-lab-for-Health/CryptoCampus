@@ -1,7 +1,7 @@
 import express, { json } from 'express';
 import {Pool} from 'pg';
 import 'dotenv/config';
-import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './blockchain-example.js';
+import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './blockchain.js';
 import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './qdrant-service.js';
 
 const app = express();
