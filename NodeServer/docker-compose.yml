@@ -17,6 +17,8 @@ services:
       dockerfile: ./Docker/API/Dockerfile
     volumes:
       - ./Api:/app/Api
+      - ./test-listings.html:/app/test-listings.html
+      - ./blockchain-test.html:/app/blockchain-test.html
     ports:
       - "81:3000"
     environment:

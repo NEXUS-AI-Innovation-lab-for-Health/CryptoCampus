@@ -2,9 +2,13 @@ import express, { json } from 'express';
 import {Pool} from 'pg';
 import 'dotenv/config';
 import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './blockchain-example.js';
+import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './qdrant-service.js';
 
 const app = express();
 const PORT = 3000;
+
+// Initialiser Qdrant au démarrage
+initQdrantCollection().catch(console.error);
 
 // Middleware CORS pour permettre les requêtes depuis n'importe quelle origine
 app.use((req, res, next) => {
@@ -19,6 +23,16 @@ app.use((req, res, next) => {
 
 // Middleware to parse JSON requests
 app.use(express.json());
+
+// Servir les fichiers statiques depuis le dossier parent (où se trouve test-listings.html)
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Servir les fichiers depuis le dossier parent de Api (NodeServer)
+app.use(express.static(join(__dirname, '..')));
 
 // Start the server
 app.listen(PORT, () => {
@@ -162,6 +176,99 @@ app.get('/blockchain/transaction/:hash', async (req, res) => {
     res.json({
       success: true,
       transaction: details
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========== TUTORING LISTINGS / QDRANT ENDPOINTS ==========
+
+// Créer une nouvelle annonce et l'indexer dans Qdrant
+app.post('/listings', async (req, res) => {
+  try {
+    const { title, description, subject, level, price, tutor_name } = req.body;
+    
+    if (!title || !description || !subject || !level || !price || !tutor_name) {
+      return res.status(400).json({ 
+        error: 'Tous les champs sont requis (title, description, subject, level, price, tutor_name)' 
+      });
+    }
+
+    // Générer un ID unique (dans un vrai projet, utiliser UUID ou auto-increment DB)
+    const id = Date.now();
+    
+    const listing = {
+      id,
+      title,
+      description,
+      subject,
+      level,
+      price: parseFloat(price),
+      tutor_name,
+      created_at: new Date().toISOString()
+    };
+
+    await indexListing(listing);
+    
+    res.status(201).json({
+      success: true,
+      listing
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Rechercher des annonces par mots-clés (Qdrant search)
+app.get('/listings/search', async (req, res) => {
+  try {
+    const { q, limit } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({ 
+        error: 'Le paramètre "q" (query) est requis' 
+      });
+    }
+
+    const results = await searchListings(q, limit ? parseInt(limit) : 10);
+    
+    res.json({
+      success: true,
+      query: q,
+      count: results.length,
+      results
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Récupérer toutes les annonces
+app.get('/listings', async (req, res) => {
+  try {
+    const { limit } = req.query;
+    const results = await getAllListings(limit ? parseInt(limit) : 50);
+    
+    res.json({
+      success: true,
+      count: results.length,
+      listings: results
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Supprimer une annonce
+app.delete('/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await deleteListing(parseInt(id));
+    
+    res.json({
+      success: true,
+      message: `Annonce #${id} supprimée`
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
