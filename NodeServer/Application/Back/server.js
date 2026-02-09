@@ -61,6 +61,10 @@ app.get("/blockchain-test", (req, res) => {
   res.sendFile(getPage('blockchain-test'))
 });
 
+app.get("/create-listing-cv", (req, res) => {
+  res.sendFile(getPage('create-listing-cv'))
+});
+
 app.get("/testApi", async (req, res) => {
   try {
     const response = await fetch("http://localhost:81/users", {

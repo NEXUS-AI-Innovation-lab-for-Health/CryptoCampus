@@ -1,11 +1,27 @@
 import express, { json } from 'express';
 import {Pool} from 'pg';
 import 'dotenv/config';
+import multer from 'multer';
 import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './blockchain.js';
 import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './qdrant-service.js';
+import { analyzeCVAndGenerateSuggestions } from './cv-analyzer.js';
 
 const app = express();
 const PORT = 3000;
+
+// Configuration Multer pour l'upload de fichiers
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Seuls les fichiers PDF sont acceptés'));
+    }
+  }
+});
 
 // Initialiser Qdrant au démarrage
 initQdrantCollection().catch(console.error);
@@ -272,5 +288,30 @@ app.delete('/listings/:id', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Analyser un CV et générer des suggestions de cours
+app.post('/analyze-cv', upload.single('cv'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Aucun fichier CV fourni' 
+      });
+    }
+
+    console.log(`📄 Analyse du CV : ${req.file.originalname} (${req.file.size} bytes)`);
+
+    // Analyser le CV et générer les suggestions
+    const result = await analyzeCVAndGenerateSuggestions(req.file.buffer);
+    
+    res.json(result);
+  } catch (err) {
+    console.error('Erreur analyse CV:', err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 });

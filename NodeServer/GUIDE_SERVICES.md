@@ -3,6 +3,8 @@
 ## 🌐 URLs d'accès aux services
 Page de test des annonces (Qdrant) : http://localhost:80/test-listings
 Page de test blockchain (Ganache) : http://localhost:80/blockchain-test
+uploadant simplement un CV PDF : http://localhost/create-listing-cv
+
 
 | Service | URL | Description |
 |---------|-----|-------------|
