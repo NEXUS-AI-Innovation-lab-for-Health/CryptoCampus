@@ -1,8 +1,8 @@
 # 🚀 Guide d'utilisation de la Blockchain Ganache
 
 ## 🌐 URLs d'accès aux services
-Page de test des annonces (Qdrant) : http://localhost:81/test-listings.html
-Page de test blockchain (Ganache) : http://localhost:81/blockchain-test.html
+Page de test des annonces (Qdrant) : http://localhost:80/test-listings
+Page de test blockchain (Ganache) : http://localhost:80/blockchain-test
 
 | Service | URL | Description |
 |---------|-----|-------------|

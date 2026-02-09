@@ -53,6 +53,14 @@ app.get("/login", (req, res) => {
   res.sendFile(getPage('login'))
 });
 
+app.get("/test-listings", (req, res) => {
+  res.sendFile(getPage('test-listings'))
+});
+
+app.get("/blockchain-test", (req, res) => {
+  res.sendFile(getPage('blockchain-test'))
+});
+
 app.get("/testApi", async (req, res) => {
   try {
     const response = await fetch("http://localhost:81/users", {
