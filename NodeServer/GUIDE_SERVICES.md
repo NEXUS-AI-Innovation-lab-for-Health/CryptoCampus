@@ -12,7 +12,8 @@ uploadant simplement un CV PDF : http://localhost/create-listing-cv
 | **API CryptoCampus** | http://localhost:81 | API REST avec endpoints blockchain et database |
 | **PostgreSQL** | localhost:5432 | Base de données PostgreSQL (connexion directe) |
 | **PgAdmin** | http://localhost:5050 | Interface de gestion PostgreSQL <br>📧 Email: `onlycode-admin@gmail.com` <br>🔑 Password: `Zongo94` |
-| **Qdrant** | http://localhost:6333 | Base de données vectorielle pour IA |
+| **Qdrant** | http://localhost:6333/dashboard#/ | Base de données vectorielle pour IA |
+
 | **Ganache** | http://localhost:8545 | Blockchain locale Ethereum avec RPC |
 
 ---
