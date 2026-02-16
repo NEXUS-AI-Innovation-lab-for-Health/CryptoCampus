@@ -1,8 +1,8 @@
 # 🚀 Guide des Services - CryptoCampus
 
 ## 🌐 URLs d'accès aux services
-Page de test des annonces (Qdrant) : http://localhost:80/test-listings
-Page de test blockchain (Ganache) : http://localhost:80/blockchain-test
+Page démo des annonces (Qdrant) : http://localhost:80/listings-demo
+Page démo blockchain (Ganache) : http://localhost:80/blockchain-demo
 uploadant simplement un CV PDF : http://localhost/create-listing-cv
 
 
@@ -17,8 +17,8 @@ uploadant simplement un CV PDF : http://localhost/create-listing-cv
 
 ## 📄 Pages de démonstration
 
-- **Annonces (Qdrant)** : http://localhost:80/test-listings
-- **Blockchain (Ganache)** : http://localhost:80/blockchain-test
+- **Annonces (Qdrant)** : http://localhost:80/listings-demo
+- **Blockchain (Ganache)** : http://localhost:80/blockchain-demo
 - **Création annonce avec CV** : http://localhost:80/create-listing-cv
 
 ---

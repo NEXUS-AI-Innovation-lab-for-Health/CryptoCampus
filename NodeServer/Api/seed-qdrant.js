@@ -1,6 +1,6 @@
 import { initQdrantCollection, indexListing } from './qdrant-service.js';
 
-// Données de test : annonces d'aide aux devoirs
+// Données de démonstration : annonces d'aide aux devoirs
 const sampleListings = [
   {
     id: 1,
@@ -126,7 +126,7 @@ const sampleListings = [
 
 async function seedQdrant() {
   try {
-    console.log('🌱 Initialisation de Qdrant avec des données de test...\n');
+    console.log('🌱 Initialisation de Qdrant avec des données de démonstration...\n');
     
     // Initialiser la collection
     await initQdrantCollection();
@@ -139,7 +139,7 @@ async function seedQdrant() {
     }
     
     console.log(`\n✅ ${sampleListings.length} annonces indexées avec succès !`);
-    console.log('\n💡 Vous pouvez maintenant tester la recherche sur http://localhost:81/test-listings.html');
+    console.log('\n💡 Vous pouvez maintenant tester la recherche sur http://localhost:80/listings-demo');
     
   } catch (error) {
     console.error('❌ Erreur lors du seed:', error);

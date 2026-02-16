@@ -99,12 +99,12 @@ app.get("/create_request", (req, res) => {
   res.render('create_request', { isLogged: !!req.session.userId })
 });
 
-app.get("/blockchain-test", (req, res) => {
-  res.sendFile(path.join(pagesDirectory, 'blockchain-test.html'));
+app.get("/blockchain-demo", (req, res) => {
+  res.sendFile(path.join(pagesDirectory, 'blockchain-demo.html'));
 });
 
-app.get("/test-listings", (req, res) => {
-  res.sendFile(path.join(pagesDirectory, 'test-listings.html'));
+app.get("/listings-demo", (req, res) => {
+  res.sendFile(path.join(pagesDirectory, 'listings-demo.html'));
 });
 
 app.get("/create-listing-cv", (req, res) => {
@@ -177,14 +177,6 @@ app.post(loginRoute, authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), 
     console.error('Bcrypt error:', error.message);
     return res.status(500).json({ message: 'Server error' });
   }
-});
-
-app.get("/test-listings", (req, res) => {
-  res.sendFile(getPage('test-listings'))
-});
-
-app.get("/blockchain-test", (req, res) => {
-  res.sendFile(getPage('blockchain-test'))
 });
 
 app.get("/create-listing-cv", (req, res) => {

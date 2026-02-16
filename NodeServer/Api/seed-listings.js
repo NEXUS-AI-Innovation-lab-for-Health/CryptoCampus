@@ -1,7 +1,7 @@
-// Script pour ajouter des annonces de test dans Qdrant
+// Script pour ajouter des annonces de démonstration dans Qdrant
 import { indexListing } from './qdrant-service.js';
 
-const testListings = [
+const demoListings = [
   {
     id: 1,
     title: "Cours de Mathématiques - Terminale S",
@@ -105,9 +105,9 @@ const testListings = [
 ];
 
 async function seedDatabase() {
-  console.log('🌱 Début de l\'insertion des données de test...\n');
+  console.log('🌱 Début de l\'insertion des données de démonstration...\n');
   
-  for (const listing of testListings) {
+  for (const listing of demoListings) {
     try {
       await indexListing(listing);
       console.log(`✅ ${listing.title}`);

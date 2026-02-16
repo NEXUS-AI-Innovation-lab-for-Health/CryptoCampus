@@ -177,10 +177,10 @@ SAE5A01/
 
 - [Guide des services](NodeServer/GUIDE_SERVICES.md) - Documentation complète des endpoints
 
-## 🧪 Pages de test
+## 🎨 Pages de démonstration
 
-- **Blockchain** : http://localhost:80/blockchain-test
-- **Annonces Qdrant** : http://localhost:80/test-listings
+- **Blockchain** : http://localhost:80/blockchain-demo
+- **Annonces Qdrant** : http://localhost:80/listings-demo
 - **Création avec CV** : http://localhost:80/create-listing-cv
 
 ## 🔧 Commandes utiles
