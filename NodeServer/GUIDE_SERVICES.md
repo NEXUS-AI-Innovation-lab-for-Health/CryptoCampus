@@ -16,7 +16,65 @@ uploadant simplement un CV PDF : http://localhost/create-listing-cv
 
 | **Ganache** | http://localhost:8545 | Blockchain locale Ethereum avec RPC |
 
+```powershell
+# Tester l'endpoint d'analyse
+curl -X POST http://localhost:81/analyze-cv `
+  -F "cv=@C:\chemin\vers\votre\CV.pdf"
+```
 ---
+## 🔗 Liens utiles
+
+- **Page de création** : http://localhost/create-listing-cv
+- **Liste des annonces** : http://localhost/test-listings
+- **API Qdrant** : http://localhost:81/listings
+- **Dashboard Qdrant** : http://localhost:6333/dashboard
+## 🔗 URLs importantes
+
+- **Page de test** : http://localhost:81/test-listings.html
+- **API listings** : http://localhost:81/listings
+- **API recherche** : http://localhost:81/listings/search?q=<query>
+- **Qdrant Dashboard** : http://localhost:6333/dashboard
+- **pgAdmin** : http://localhost:5050
+
+
+### ✅ Test 1 : Récupération de toutes les annonces
+```
+GET http://localhost:81/listings
+→ 12 annonces récupérées
+```
+
+### ✅ Test 2 : Recherche "mathématiques lycée"
+```
+GET http://localhost:81/listings/search?q=mathematiques+lycee
+→ Résultats triés par pertinence :
+   1. Mathématiques avancées - Terminale S (score: 57.9%)
+   2. Cours de Mathématiques - Algèbre (score: 45.3%)
+   3. Informatique - Programmation Python (score: 37.6%)
+```
+
+
+
+
+### Collection Qdrant
+- **Nom** : `tutoring_listings`
+- **Dimension** : 384
+- **Distance** : Cosine
+- **Points indexés** : 12
+
+1. **Création d'embedding** : Chaque annonce est convertie en vecteur de 384 dimensions
+2. **Indexation** : Les vecteurs sont stockés dans Qdrant
+3. **Recherche** : 
+   - Le terme de recherche est converti en vecteur
+   - Qdrant trouve les vecteurs les plus similaires (cosine similarity)
+   - Les résultats sont triés par score de similarité
+
+### Pourquoi Qdrant ?
+
+- ✅ Recherche ultra-rapide (même avec millions de documents)
+- ✅ Recherche sémantique (comprend le sens, pas juste les mots)
+- ✅ Facile à déployer en Docker
+- ✅ API REST simple
+- ✅ Dashboard web intégré
 
 ## Configuration actuelle
 
