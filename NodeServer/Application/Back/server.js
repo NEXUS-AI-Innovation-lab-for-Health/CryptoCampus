@@ -116,10 +116,14 @@ app.get(loginRoute, authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), (
   res.render('login', { isLogged: false })
 });
 
+// API endpoint to check authentication status
+app.get('/api/check-auth', (req, res) => {
+  const isAuthenticated = !!req.session.userId;
+  res.json({ isAuthenticated, userId: req.session.userId });
+});
+
 app.post(loginRoute, authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), async (req, res) => {
   const { email, password } = req.body;
-
-  console.log('Login attempt:', { email, passwordLength: password?.length });
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password required' });
@@ -146,16 +150,9 @@ app.post(loginRoute, authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), 
     return res.status(401).json({ message: 'Invalid credentials' });
   }
 
-  console.log('Comparing passwords...');
-  console.log('Input password length:', password.length);
-  console.log('Stored password length:', user.password_hash.length);
-  console.log('Stored password starts with:', user.password_hash.substring(0, 10));
-
   try {
     const valid = await bcrypt.compare(password, user.password_hash) || password === user.password_hash;
-    
-    console.log('Bcrypt comparison result:', valid);
-    
+
     if (!valid) {
       console.log('Password does not match');
       return res.status(401).json({ message: 'Invalid credentials' });

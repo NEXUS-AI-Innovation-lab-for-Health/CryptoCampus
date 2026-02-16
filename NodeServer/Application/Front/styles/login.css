@@ -1,23 +1,11 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* ============================================
+   LOGIN PAGE SPECIFIC STYLES
+   ============================================ */
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
-}
-
-.navbar {
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
 }
 
 .container {
@@ -30,6 +18,10 @@ body {
     flex: 1;
     padding: 20px;
 }
+
+/* ============================================
+   CARD STYLES
+   ============================================ */
 
 .card {
     background: white;
@@ -51,6 +43,10 @@ h1 {
     margin-bottom: 30px;
     font-size: 1rem;
 }
+
+/* ============================================
+   FORM TABS
+   ============================================ */
 
 .tabs {
     display: flex;
@@ -79,6 +75,14 @@ h1 {
     background: #e0e0e0;
 }
 
+/* ============================================
+   LOGIN/REGISTER FORMS
+   ============================================ */
+
+.form-container {
+    margin: 0;
+}
+
 .form {
     display: none;
 }
@@ -91,137 +95,9 @@ h1 {
     margin-bottom: 20px;
 }
 
-label {
-    display: block;
-    margin-bottom: 8px;
-    color: #333;
-    font-weight: 500;
-}
-
-input {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.3s;
-}
-
-input:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.btn-primary {
-    width: 100%;
-    padding: 14px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.btn-primary:hover {
-    background: #5568d3;
-}
-
-/* Navigation */
-.navbar {
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 15px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    color: #667eea;
-    font-size: 1.5rem;
-    cursor: pointer;
-    text-decoration: none;
-}
-
-.nav-links {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: #667;
-    padding: 8px 16px;
-    border-radius: 6px;
-    transition: all 0.3s;
-}
-
-.nav-link:hover,
-.nav-link.active {
-    color: #667eea;
-    background: #f0f3ff;
-}
-
-.btn-create {
-    background: #667eea;
-    color: white !important;
-}
-
-.btn-create:hover {
-    background: #5568d3;
-}
-
-.btn-logout {
-    padding: 8px 16px;
-    background: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-logout:hover {
-    background: #c0392b;
-}
-
-.btn-login {
-    padding: 8px 16px;
-    background: #27ae60 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-login:hover {
-    background: #229954 !important;
-}
-
-/* Logout Page Styles */
-body.navbar .container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-}
+/* ============================================
+   LOGOUT PAGE
+   ============================================ */
 
 .logout-card {
     margin-top: 60px;
@@ -249,26 +125,4 @@ body.navbar .container {
 
 .btn-logout-confirm:hover {
     background: #c0392b;
-}
-
-.btn-cancel {
-    width: 100%;
-    padding: 14px;
-    background: #f5f5f5;
-    color: #333;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s;
-}
-
-.btn-cancel:hover {
-    background: #e0e0e0;
-    border-color: #c0c0c0;
 }

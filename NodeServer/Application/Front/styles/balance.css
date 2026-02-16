@@ -1,118 +1,15 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* ============================================
+   BALANCE PAGE SPECIFIC STYLES
+   ============================================ */
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f5f7fa;
-    min-height: 100vh;
 }
 
-/* Navigation (identique à home.css) */
-.navbar {
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
+/* ============================================
+   BALANCE CARD
+   ============================================ */
 
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 15px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    color: #667eea;
-    font-size: 1.5rem;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.nav-links {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: #667;
-    padding: 8px 16px;
-    border-radius: 6px;
-    transition: all 0.3s;
-}
-
-.nav-link:hover, .nav-link.active {
-    color: #667eea;
-    background: #f0f3ff;
-}
-
-.btn-create {
-    background: #667eea;
-    color: white !important;
-}
-
-.btn-create:hover {
-    background: #5568d3;
-}
-
-.btn-logout {
-    padding: 8px 16px;
-    background: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.btn-logout {
-    padding: 8px 16px;
-    background: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-logout:hover {
-    background: #c0392b;
-}
-
-.btn-login {
-    padding: 8px 16px;
-    background: #27ae60 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-login:hover {
-    background: #229954 !important;
-}
-
-/* Container principal */
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 30px 20px;
-}
-
-/* Carte de solde */
 .balance-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 20px;
@@ -148,7 +45,10 @@ body {
     opacity: 0.9;
 }
 
-/* Grille de statistiques */
+/* ============================================
+   STATISTICS GRID
+   ============================================ */
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -187,7 +87,10 @@ body {
     font-size: 1rem;
 }
 
-/* Section historique */
+/* ============================================
+   TRANSACTION HISTORY
+   ============================================ */
+
 .history-section {
     background: white;
     border-radius: 15px;

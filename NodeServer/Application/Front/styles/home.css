@@ -1,106 +1,10 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* ============================================
+   HOME PAGE SPECIFIC STYLES
+   ============================================ */
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f5f7fa;
-    min-height: 100vh;
     overflow-y: scroll;
-}
-
-/* Navigation */
-.navbar {
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 15px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    color: #667eea;
-    font-size: 1.5rem;
-    cursor: pointer;
-    text-decoration: none;
-}
-
-.nav-links {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: #667;
-    padding: 8px 16px;
-    border-radius: 6px;
-    transition: all 0.3s;
-}
-
-.nav-link:hover, .nav-link.active {
-    color: #667eea;
-    background: #f0f3ff;
-}
-
-.btn-create {
-    background: #667eea;
-    color: white !important;
-}
-
-.btn-create:hover {
-    background: #5568d3;
-}
-
-.btn-logout {
-    padding: 8px 16px;
-    background: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-logout:hover {
-    background: #c0392b;
-}
-
-.btn-login {
-    padding: 8px 16px;
-    background: #27ae60 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-login:hover {
-    background: #229954 !important;
-}
-
-/* Container principal */
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 30px 20px;
 }
 
 .page-header {
@@ -134,7 +38,10 @@ body {
     border-color: #667eea;
 }
 
-/* Liste des requêtes */
+/* ============================================
+   REQUEST CARDS
+   ============================================ */
+
 .requests-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -214,11 +121,4 @@ body {
 
 .btn-apply:hover {
     background: #229954;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #999;
-    font-size: 1.2rem;
 }
