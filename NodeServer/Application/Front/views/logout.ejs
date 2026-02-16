@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoCampus - Déconnexion</title>
+    <link rel="icon" type="image/x-icon" href="/src/favicon.ico">
+    <link rel="stylesheet" href="/styles/login.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/home" class="logo">CryptoCampus</a>
+            <div class="nav-links">
+                <a href="/home" class="nav-link active">Requêtes</a>
+                <a href="/balance" class="nav-link">Mon solde</a>
+                <a href="/shop" class="nav-link">Boutique</a>
+                <a href="/create_request" class="nav-link btn-create">Créer une requête</a>
+                <button id="loginBtn" class="btn-login">Connexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card logout-card">
+            <h1>Déconnexion</h1>
+            <p class="subtitle">Êtes-vous sûr de vouloir vous déconnecter ?</p>
+
+            <div class="logout-actions">
+                <button id="confirmLogout" class="btn-logout-confirm">Confirmer la déconnexion</button>
+                <a href="/home" class="btn-cancel">Annuler</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/logout.js"></script>
+</body>
+
+</html>

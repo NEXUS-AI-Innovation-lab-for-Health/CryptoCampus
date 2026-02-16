@@ -55,9 +55,8 @@ const products = [
 let selectedProduct = null;
 
 // Déconnexion
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = 'login';
+document.getElementById('loginBtn').addEventListener('click', () => {
+    window.location.href = '/login';
 });
 
 // Affichage du solde

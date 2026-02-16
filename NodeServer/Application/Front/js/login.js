@@ -18,71 +18,56 @@ tabs.forEach(tab => {
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const studentId = document.getElementById('loginStudentId').value;
+    const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
+    console.log(`Attempting login with email: ${email}`); // Debug log
+    console.log(`Is Password Empty? ${password === ''}`); // Debug log  
     
-    // TODO: Connexion avec le serveur Node.js
-    console.log('Connexion:', { studentId, password });
-    
-    // Exemple de requête (à adapter selon votre API)
-    /*
     try {
-        const response = await fetch('/api/login', {
+        const response = await fetch('/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentId, password })
+            body: JSON.stringify({ email, password })
         });
         
         if (response.ok) {
             const data = await response.json();
             localStorage.setItem('token', data.token);
-            window.location.href = 'home';
+            window.location.href = '/home';
         } else {
-            alert('Identifiants incorrects');
+            const errorData = await response.json();
+            alert(errorData.message || 'Identifiants incorrects');
         }
     } catch (error) {
         console.error('Erreur:', error);
+        alert('Erreur de connexion');
     }
-    */
-    
-    // Redirection temporaire pour test
-    alert('Connexion simulée');
-    window.location.href = 'home';
 });
 
 // Gestion du formulaire d'inscription
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const studentId = document.getElementById('registerStudentId').value;
     const name = document.getElementById('registerName').value;
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
     
-    // TODO: Inscription avec le serveur Node.js
-    console.log('Inscription:', { studentId, name, email, password });
-    
-    // Exemple de requête (à adapter selon votre API)
-    /*
     try {
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentId, name, email, password })
+            body: JSON.stringify({ name, email, password })
         });
         
         if (response.ok) {
             alert('Compte créé avec succès');
             tabs[0].click(); // Retour à l'onglet connexion
         } else {
-            alert('Erreur lors de la création du compte');
+            const errorData = await response.json();
+            alert(errorData.message || 'Erreur lors de la création du compte');
         }
     } catch (error) {
         console.error('Erreur:', error);
+        alert('Erreur lors de la création du compte');
     }
-    */
-    
-    // Message temporaire pour test
-    alert('Inscription simulée');
-    tabs[0].click();
 });

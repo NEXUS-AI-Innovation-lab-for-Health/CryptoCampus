@@ -1,7 +1,11 @@
-import express, { json } from 'express';
-import {Pool} from 'pg';
+import express from 'express';
+import { Pool } from 'pg';
 import 'dotenv/config';
 import multer from 'multer';
+import bcrypt from 'bcrypt';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
 import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './blockchain.js';
 import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './qdrant-service.js';
 import { analyzeCVAndGenerateSuggestions } from './cv-analyzer.js';
@@ -9,51 +13,29 @@ import { analyzeCVAndGenerateSuggestions } from './cv-analyzer.js';
 const app = express();
 const PORT = 3000;
 
-// Configuration Multer pour l'upload de fichiers
-const storage = multer.memoryStorage();
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('Seuls les fichiers PDF sont acceptés'));
-    }
-  }
-});
+/* =========================
+   CONFIGURATION GÉNÉRALE
+========================= */
 
-// Initialiser Qdrant au démarrage
-initQdrantCollection().catch(console.error);
+app.use(express.json());
 
-// Middleware CORS pour permettre les requêtes depuis n'importe quelle origine
+// CORS simple (à sécuriser en prod)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
-// Middleware to parse JSON requests
-app.use(express.json());
-
-// Servir les fichiers statiques depuis le dossier parent (où se trouve test-listings.html)
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
+// Gestion fichiers statiques
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Servir les fichiers depuis le dossier parent de Api (NodeServer)
 app.use(express.static(join(__dirname, '..')));
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+/* =========================
+   BASE DE DONNÉES
+========================= */
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -63,157 +45,220 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Create a user
-app.post('/users', async (req, res) => {
+/* =========================
+   USERS ROUTES
+========================= */
+
+// REGISTER
+app.post('/users/register', async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { email, password, first_name, last_name, role } = req.body;
+
+    if (!email || !password || !first_name || !last_name) {
+      return res.status(400).json({ error: 'Champs requis manquants' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
     const result = await pool.query(
-      'INSERT INTO users(name, email) VALUES($1, $2) RETURNING *',
-      [name, email]
+      `INSERT INTO users 
+      (email, password_hash, first_name, last_name, role, is_verified, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      RETURNING user_id, email, first_name, last_name, role, is_verified, created_at`,
+      [email, hashedPassword, first_name, last_name, role || 'user', false]
     );
+
     res.status(201).json(result.rows[0]);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get all users
+// GET ALL USERS (sans password)
 app.get('/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users');
+    const result = await pool.query(
+      `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login 
+       FROM users`
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get a user by ID
-app.get('/users/:id', async (req, res) => {
+// GET USER BY ID
+app.get('/users/:user_id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    const { user_id } = req.params;
 
-// Update a user
-app.put('/users/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, email } = req.body;
     const result = await pool.query(
-      'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *',
-      [name, email, id]
+      `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login
+       FROM users WHERE user_id = $1`,
+      [user_id]
     );
-    if (result.rows.length === 0) {
+
+    if (result.rows.length === 0)
       return res.status(404).json({ error: 'User not found' });
-    }
+
     res.json(result.rows[0]);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Delete a user
-app.delete('/users/:id', async (req, res) => {
+// GET USER BY EMAIL (utilisé par backend auth)
+app.post('/users/by-email', async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json({ message: 'User deleted successfully' });
+    const { email } = req.body;
+
+    const result = await pool.query(
+      `SELECT * FROM users WHERE email = $1`,
+      [email]
+    );
+
+    res.json(result.rows[0] || null);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ========== BLOCKCHAIN / GANACHE ENDPOINTS ==========
+// UPDATE USER
+app.put('/users/:user_id', async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { first_name, last_name, role } = req.body;
 
-// Récupérer tous les comptes Ganache avec leurs soldes
+    const result = await pool.query(
+      `UPDATE users
+       SET first_name = $1,
+           last_name = $2,
+           role = $3
+       WHERE user_id = $4
+       RETURNING user_id, email, first_name, last_name, role, is_verified`,
+      [first_name, last_name, role, user_id]
+    );
+
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'User not found' });
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE USER
+app.delete('/users/:user_id', async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM users WHERE user_id = $1 RETURNING user_id',
+      [user_id]
+    );
+
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'User not found' });
+
+    res.json({ message: 'User deleted successfully' });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// VERIFY USER
+app.patch('/users/:user_id/verify', async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    await pool.query(
+      `UPDATE users SET is_verified = true WHERE user_id = $1`,
+      [user_id]
+    );
+
+    res.json({ message: 'User verified' });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE LAST LOGIN
+app.patch('/users/:user_id/last-login', async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    await pool.query(
+      `UPDATE users SET last_login = NOW() WHERE user_id = $1`,
+      [user_id]
+    );
+
+    res.json({ message: 'Last login updated' });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* =========================
+   MULTER CONFIG
+========================= */
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Seuls les fichiers PDF sont acceptés'));
+  }
+});
+
+/* =========================
+   AUTRES ROUTES (Blockchain, Listings, CV)
+========================= */
+
+// Blockchain
 app.get('/blockchain/accounts', async (req, res) => {
   try {
     const accounts = await getAllAccounts();
-    res.json({
-      success: true,
-      totalAccounts: accounts.length,
-      accounts
-    });
+    res.json({ success: true, accounts });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Récupérer le solde d'un compte spécifique
 app.get('/blockchain/balance/:address', async (req, res) => {
   try {
-    const { address } = req.params;
-    const balance = await getBalance(address);
-    res.json({
-      success: true,
-      ...balance
-    });
+    const balance = await getBalance(req.params.address);
+    res.json({ success: true, ...balance });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Envoyer une transaction entre deux comptes
 app.post('/blockchain/transaction', async (req, res) => {
   try {
     const { fromAddress, toAddress, amount } = req.body;
-    
-    if (!fromAddress || !toAddress || !amount) {
-      return res.status(400).json({ 
-        error: 'fromAddress, toAddress et amount sont requis' 
-      });
-    }
-
     const result = await sendTransaction(fromAddress, toAddress, amount);
-    res.json({
-      success: true,
-      ...result
-    });
+    res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Récupérer les détails d'une transaction
-app.get('/blockchain/transaction/:hash', async (req, res) => {
-  try {
-    const { hash } = req.params;
-    const details = await getTransactionDetails(hash);
-    res.json({
-      success: true,
-      transaction: details
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ========== TUTORING LISTINGS / QDRANT ENDPOINTS ==========
-
-// Créer une nouvelle annonce et l'indexer dans Qdrant
+// Listings
 app.post('/listings', async (req, res) => {
   try {
     const { title, description, subject, level, price, tutor_name } = req.body;
-    
-    if (!title || !description || !subject || !level || !price || !tutor_name) {
-      return res.status(400).json({ 
-        error: 'Tous les champs sont requis (title, description, subject, level, price, tutor_name)' 
-      });
-    }
-
-    // Générer un ID unique (dans un vrai projet, utiliser UUID ou auto-increment DB)
     const id = Date.now();
-    
+
     const listing = {
       id,
       title,
@@ -226,92 +271,32 @@ app.post('/listings', async (req, res) => {
     };
 
     await indexListing(listing);
-    
-    res.status(201).json({
-      success: true,
-      listing
-    });
+
+    res.status(201).json({ success: true, listing });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Rechercher des annonces par mots-clés (Qdrant search)
-app.get('/listings/search', async (req, res) => {
-  try {
-    const { q, limit } = req.query;
-    
-    if (!q) {
-      return res.status(400).json({ 
-        error: 'Le paramètre "q" (query) est requis' 
-      });
-    }
-
-    const results = await searchListings(q, limit ? parseInt(limit) : 10);
-    
-    res.json({
-      success: true,
-      query: q,
-      count: results.length,
-      results
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Récupérer toutes les annonces
-app.get('/listings', async (req, res) => {
-  try {
-    const { limit } = req.query;
-    const results = await getAllListings(limit ? parseInt(limit) : 50);
-    
-    res.json({
-      success: true,
-      count: results.length,
-      listings: results
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Supprimer une annonce
-app.delete('/listings/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await deleteListing(parseInt(id));
-    
-    res.json({
-      success: true,
-      message: `Annonce #${id} supprimée`
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Analyser un CV et générer des suggestions de cours
+// Analyze CV
 app.post('/analyze-cv', upload.single('cv'), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Aucun fichier CV fourni' 
-      });
-    }
+    if (!req.file)
+      return res.status(400).json({ success: false, error: 'Aucun fichier fourni' });
 
-    console.log(`📄 Analyse du CV : ${req.file.originalname} (${req.file.size} bytes)`);
-
-    // Analyser le CV et générer les suggestions
     const result = await analyzeCVAndGenerateSuggestions(req.file.buffer);
-    
     res.json(result);
+
   } catch (err) {
-    console.error('Erreur analyse CV:', err);
-    res.status(500).json({ 
-      success: false,
-      error: err.message 
-    });
+    res.status(500).json({ success: false, error: err.message });
   }
+});
+
+/* =========================
+   START SERVER
+========================= */
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });

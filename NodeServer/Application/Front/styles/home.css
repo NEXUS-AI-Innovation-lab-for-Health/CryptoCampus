@@ -32,6 +32,8 @@ body {
 .logo {
     color: #667eea;
     font-size: 1.5rem;
+    cursor: pointer;
+    text-decoration: none;
 }
 
 .nav-links {
@@ -70,10 +72,28 @@ body {
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.3s;
+    font-size: 1rem;
+    font-weight: 500;
 }
 
 .btn-logout:hover {
     background: #c0392b;
+}
+
+.btn-login {
+    padding: 8px 16px;
+    background: #27ae60 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.btn-login:hover {
+    background: #229954 !important;
 }
 
 /* Container principal */

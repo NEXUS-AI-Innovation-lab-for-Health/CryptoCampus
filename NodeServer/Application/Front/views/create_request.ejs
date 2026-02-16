@@ -1,21 +1,23 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CryptoCampus - Créer une requête</title>
-    <link rel="icon" type="image/x-icon" href="../src/favicon.ico">
-    <link rel="stylesheet" href="../styles/create_request.css">
+    <link rel="icon" type="image/x-icon" href="/src/favicon.ico">
+    <link rel="stylesheet" href="/styles/create_request.css">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <h1 class="logo">CryptoCampus</h1>
+            <a href="/home" class="logo">CryptoCampus</a>
             <div class="nav-links">
-                <a href="home" class="nav-link">Requêtes</a>
-                <a href="balance" class="nav-link">Mon solde</a>
-                <a href="shop" class="nav-link">Boutique</a>
-                <a href="create_request" class="nav-link active btn-create">Créer une requête</a>
+                <a href="/home" class="nav-link">Requêtes</a>
+                <a href="/balance" class="nav-link">Mon solde</a>
+                <a href="/shop" class="nav-link">Boutique</a>
+                <a href="/create_request" class="nav-link active btn-create">Créer une requête</a>
                 <button id="loginBtn" class="btn-login">Connexion</button>
             </div>
         </div>
@@ -25,7 +27,7 @@
         <div class="form-card">
             <h2>Créer une nouvelle requête d'aide</h2>
             <p class="subtitle">Décrivez votre besoin et la récompense que vous offrez</p>
-            
+
             <form id="createRequestForm">
                 <div class="form-group">
                     <label for="subject">Matière *</label>
@@ -47,13 +49,15 @@
 
                 <div class="form-group">
                     <label for="title">Titre de la requête *</label>
-                    <input type="text" id="title" placeholder="Ex: Aide pour résoudre des équations du second degré" maxlength="100" required>
+                    <input type="text" id="title" placeholder="Ex: Aide pour résoudre des équations du second degré"
+                        maxlength="100" required>
                     <small class="char-count"><span id="titleCount">0</span>/100 caractères</small>
                 </div>
 
                 <div class="form-group">
                     <label for="description">Description détaillée *</label>
-                    <textarea id="description" rows="6" placeholder="Décrivez en détail votre besoin d'aide..." maxlength="500" required></textarea>
+                    <textarea id="description" rows="6" placeholder="Décrivez en détail votre besoin d'aide..."
+                        maxlength="500" required></textarea>
                     <small class="char-count"><span id="descCount">0</span>/500 caractères</small>
                 </div>
 
@@ -103,6 +107,8 @@
         </div>
     </div>
 
-    <script src="../js/create_request.js"></script>
+    <script src="/js/create_request.js"></script>
+    <script src="/js/logout.js"></script>
 </body>
+
 </html>

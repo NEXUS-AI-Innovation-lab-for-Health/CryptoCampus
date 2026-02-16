@@ -30,9 +30,8 @@ let requests = [
 ];
 
 // Déconnexion
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = 'login';
+document.getElementById('loginBtn').addEventListener('click', () => {
+    window.location.href = '/login';
 });
 
 // Chargement des requêtes

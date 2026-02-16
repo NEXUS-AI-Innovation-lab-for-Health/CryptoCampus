@@ -2,9 +2,8 @@
 let userBalance = 250;
 
 // Déconnexion
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = 'login';
+document.getElementById('loginBtn').addEventListener('click', () => {
+    window.location.href = '/login';
 });
 
 // Affichage du solde
@@ -89,7 +88,7 @@ document.getElementById('createRequestForm').addEventListener('submit', async (e
         if (response.ok) {
             const data = await response.json();
             alert('Requête créée avec succès !');
-            window.location.href = 'home';
+            window.location.href = '/home';
         } else {
             const error = await response.json();
             alert('Erreur: ' + error.message);
@@ -102,7 +101,7 @@ document.getElementById('createRequestForm').addEventListener('submit', async (e
     
     // Simulation
     alert('Requête créée avec succès !\n\nTitre: ' + formData.title + '\nRécompense: ' + formData.reward + ' coins\n\nVous serez notifié lorsqu\'un étudiant postulera.');
-    window.location.href = 'home';
+    window.location.href = '/home';
 });
 
 // TODO: Récupérer le solde depuis l'API

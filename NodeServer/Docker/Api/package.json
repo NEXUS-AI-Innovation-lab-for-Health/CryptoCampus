@@ -8,6 +8,7 @@
     "seed": "node ./Api/seed-qdrant.js"
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "express": "^4.19.2",
     "pg": "^8.11.3",
     "dotenv": "^16.3.1",
