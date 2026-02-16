@@ -5,10 +5,18 @@ Plateforme de tutorat décentralisée combinant recherche sémantique IA et tran
 ## 📋 Aperçu
 
 CryptoCampus est une application web complète qui permet :
-- 🔍 Recherche sémantique d'annonces de tutorat (Qdrant + IA)
-- 💰 Paiements sécurisés via blockchain Ethereum (Ganache)
-- 📄 Analyse automatique de CV pour création d'annonces
-- 🗄️ Gestion de données avec PostgreSQL
+
+### 🎯 Fonctionnalités principales
+- 🔍 **Recherche sémantique intelligente** d'annonces de tutorat (Qdrant)
+- 💰 **Paiements décentralisés** via blockchain Ethereum (Ganache) 
+- 📄 **Analyse automatique de CV** pour création d'annonces en un clic
+- 📊 **Dashboard de monitoring** Qdrant pour visualiser les données vectorielles
+- 🔐 **API REST sécurisée** avec endpoints blockchain et recherche sémantique
+- 💳 **Transactions crypto en temps réel** avec suivi des soldes et historique
+- 🤖 **Matching intelligent** entre tuteurs et étudiants par similarité de compétences
+- 📈 **Gestion complète de base de données** via PgAdmin (interface graphique)
+- 🔄 **Architecture microservices** containerisée avec Docker Compose
+- 🚀 **Déploiement automatisé** avec scripts de démarrage/arrêt simplifiés
 
 ## 🏗️ Architecture
 
@@ -27,8 +35,8 @@ CryptoCampus est une application web complète qui permet :
             │          │            │
     ┌───────▼─────┐ ┌──▼────────┐ ┌▼──────────┐
     │ PostgreSQL  │ │  Ganache  │ │  Qdrant   │
-    │  (Port      │ │  Blockchain│ │  Vector   │
-    │   5432)     │ │ (Port 8545)│ │  DB       │
+    │  (Port      │ │ Blockchain│ │  Vector   │
+    │   5432)     │ │(Port 8545)│ │  DB       │
     └─────────────┘ └───────────┘ └───────────┘
 ```
 
@@ -168,8 +176,6 @@ SAE5A01/
 ## 📚 Documentation
 
 - [Guide des services](NodeServer/GUIDE_SERVICES.md) - Documentation complète des endpoints
-- [Guide Blockchain](NodeServer/BLOCKCHAIN_GUIDE.md) - Utilisation de Ganache
-- [Résumé Setup](NodeServer/BLOCKCHAIN_SETUP_SUMMARY.md) - Configuration blockchain
 
 ## 🧪 Pages de test
 
