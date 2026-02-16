@@ -20,9 +20,11 @@ services:
     ports:
       - "81:3000"
     environment:
-      - DB_HOST=${DB_HOST}
+      - DB_HOST=db
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_PORT=5432 
       - BLOCKCHAIN_RPC=http://ganache:8545
     depends_on:
       db:
@@ -51,8 +53,8 @@ services:
     image: dpage/pgadmin4
     container_name: pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: onlycode-admin@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: Zongo94
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
       - ./Docker/PgAdmin/servers.json:/pgadmin4/servers.json
     ports:

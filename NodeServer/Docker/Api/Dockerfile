@@ -1,16 +1,13 @@
-FROM node:24-alpine
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Force-clean npm state
-RUN npm cache clean --force
+COPY ./Docker/Api/requirements.txt .
 
-COPY ./Docker/Api/package.json .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN npm install
-
-COPY ./Api ./Api
+COPY ./Api .
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
