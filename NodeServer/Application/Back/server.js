@@ -99,6 +99,18 @@ app.get("/create_request", (req, res) => {
   res.render('create_request', { isLogged: !!req.session.userId })
 });
 
+app.get("/blockchain-test", (req, res) => {
+  res.sendFile(path.join(pagesDirectory, 'blockchain-test.html'));
+});
+
+app.get("/test-listings", (req, res) => {
+  res.sendFile(path.join(pagesDirectory, 'test-listings.html'));
+});
+
+app.get("/create-listing-cv", (req, res) => {
+  res.sendFile(path.join(pagesDirectory, 'create-listing-cv.html'));
+});
+
 app.get(logoutRoute, authGuard({ mustBeLogged: true, redirectTo: '/home' }), (req, res) => {
   res.render('logout', { isLogged: true })
 })

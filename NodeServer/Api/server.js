@@ -253,7 +253,33 @@ app.post('/blockchain/transaction', async (req, res) => {
   }
 });
 
-// Listings
+// ========== QDRANT / LISTINGS ENDPOINTS ==========
+
+// Récupérer toutes les annonces
+app.get('/listings', async (req, res) => {
+  try {
+    const listings = await getAllListings();
+    res.json({ success: true, count: listings.length, listings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Rechercher des annonces
+app.get('/listings/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ error: 'Paramètre de recherche "q" requis' });
+    }
+    const results = await searchListings(q);
+    res.json({ success: true, query: q, count: results.length, results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Créer une nouvelle annonce
 app.post('/listings', async (req, res) => {
   try {
     const { title, description, subject, level, price, tutor_name } = req.body;
@@ -297,6 +323,13 @@ app.post('/analyze-cv', upload.single('cv'), async (req, res) => {
    START SERVER
 ========================= */
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  
+  // Initialiser Qdrant
+  try {
+    await initQdrantCollection();
+  } catch (error) {
+    console.error('⚠️  Qdrant initialization failed, but server is running');
+  }
 });
