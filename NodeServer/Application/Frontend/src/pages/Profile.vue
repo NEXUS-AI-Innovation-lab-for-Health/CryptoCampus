@@ -4,7 +4,7 @@
     <div class="profile-header">
       <img src="@/assets/utilisateur.png" alt="Profil" class="profile-avatar" />
       <div class="profile-info">
-        <h1>{{ userInfo.name }}</h1>
+        <h1>{{ userInfo.first_name }} {{ userInfo.last_name }}</h1>
         <p class="email">{{ userInfo.email }}</p>
         <p class="join-date">Membre depuis {{ formatDate(userInfo.joinDate) }}</p>
       </div>
@@ -140,6 +140,7 @@ import { useRouter } from 'vue-router'
 export default {
   name: 'Profile',
   setup() {
+    const userId = localStorage.getItem('token')
     const router = useRouter()
     const balance = ref(0)
     const stats = ref({
@@ -148,7 +149,8 @@ export default {
       requestsCreated: 0,
     })
     const userInfo = ref({
-      name: '',
+      first_name: '',
+      last_name: '',
       email: '',
       joinDate: new Date().toISOString(),
     })
@@ -178,8 +180,9 @@ export default {
         if (response.ok) {
           const data = await response.json()
           userInfo.value = {
-            name: data.name || 'Utilisateur',
-            email: data.email || '',
+            first_name: data.first_name || 'Utilisateur',
+            last_name: data.last_name || 'Inconnu',
+            email: data.email || 'Email non disponible',
             joinDate: data.joinDate || new Date().toISOString(),
           }
           balance.value = data.balance || 0
