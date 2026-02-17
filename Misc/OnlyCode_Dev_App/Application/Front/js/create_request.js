@@ -1,12 +1,6 @@
 // Solde utilisateur (à récupérer depuis l'API)
 let userBalance = 250;
 
-// Déconnexion
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = 'login.html';
-});
-
 // Affichage du solde
 document.getElementById('currentBalance').textContent = userBalance;
 

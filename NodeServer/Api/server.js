@@ -54,7 +54,7 @@ app.post('/users/register', async (req, res) => {
   try {
     const { email, password, first_name, last_name, role } = req.body;
 
-    if (!email || !password || !first_name || !last_name) {
+    if (!email || !password ) {
       return res.status(400).json({ error: 'Champs requis manquants' });
     }
 

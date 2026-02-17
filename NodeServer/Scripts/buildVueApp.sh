@@ -1,0 +1,1 @@
+cd ../Application/Frontend && npm install && npm run build

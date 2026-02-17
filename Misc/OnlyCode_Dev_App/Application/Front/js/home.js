@@ -29,12 +29,6 @@ let requests = [
     }
 ];
 
-// Déconnexion
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = 'login.html';
-});
-
 // Chargement des requêtes
 function loadRequests(filteredRequests = requests) {
     const container = document.getElementById('requestsList');

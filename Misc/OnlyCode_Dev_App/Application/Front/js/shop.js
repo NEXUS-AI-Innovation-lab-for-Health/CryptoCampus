@@ -54,12 +54,6 @@ const products = [
 
 let selectedProduct = null;
 
-// Déconnexion
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = 'login.html';
-});
-
 // Affichage du solde
 function updateBalance() {
     document.getElementById('userBalance').textContent = userBalance;

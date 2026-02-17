@@ -3,38 +3,30 @@ import { fileURLToPath } from "url";
 import path from "path";
 import session from 'express-session';
 import bcrypt from 'bcrypt';
+import cors from 'cors';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../Frontend/dist')));
+app.use(cors({
+  origin: '*',
+  credentials: true,
+}));
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const loginRoute = 'login';
+const logoutRoute = 'logout';
+const apiBaseUrl = 'http://api:3000';
 
-const pagesDirectory = path.join(__dirname, "../Front/pages");
-const stylesDirectory = path.join(__dirname, "../Front/styles");
-const jsDirectory = path.join(__dirname, "../Front/js");
-const srcDirectory = path.join(__dirname, "../Front/src");
-const viewsDirectory = path.join(__dirname, "../Front/views");
-
-const loginRoute = '/login';
-const logoutRoute = '/logout';
-const apiBaseUrl = 'http://api_crypto:3000';
-
-// View engine setup
-app.set('view engine', 'ejs');
-app.set('views', viewsDirectory);
-
-// Serve CSS files from the 'styles' directory
-app.use('/styles', express.static(stylesDirectory));
-app.use('/js', express.static(jsDirectory));
-app.use('/src', express.static(srcDirectory));
+// Removed EJS setup - now serving Vue SPA
 
 app.use(session({
   name: 'sessionId',
@@ -71,34 +63,32 @@ function authGuard(options) {
 }
 
 
-function getPage(pageName) {
-  let pagePath = path.join(pagesDirectory, `${pageName}.html`);
-  //console.log(pagePath);
-  return pagePath;
-}
-
 //---------//---------Routes---------//---------//
 
-app.get("/", (req, res) => {
-  res.redirect('home');
+// Serve Vue SPA for all client routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
 
-app.get("/home", (req, res) => {
-  res.render('home', { isLogged: !!req.session.userId })
+app.get('/home', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
 
-app.get("/balance", (req, res) => {
-  res.render('balance', { isLogged: !!req.session.userId })
+app.get(loginRoute, (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
 
-app.get("/shop", (req, res) => {
-  res.render('shop', { isLogged: !!req.session.userId })
+app.get('/balance', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
 
-app.get("/create_request", (req, res) => {
-  res.render('create_request', { isLogged: !!req.session.userId })
+app.get('/shop', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
 
+app.get('/create_request', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
+});
 app.get("/blockchain-demo", (req, res) => {
   res.sendFile(path.join(pagesDirectory, 'blockchain-demo.html'));
 });
@@ -124,17 +114,20 @@ app.post(logoutRoute, authGuard({ mustBeLogged: true, redirectTo: '/home' }), (r
   res.redirect('home');
 })
 
-app.get(loginRoute, authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), (req, res) => {
-  res.render('login', { isLogged: false })
+app.get(logoutRoute, (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
 
-// API endpoint to check authentication status
+// API Endpoints
+
+// Check authentication status
 app.get('/api/check-auth', (req, res) => {
   const isAuthenticated = !!req.session.userId;
   res.json({ isAuthenticated, userId: req.session.userId });
 });
 
-app.post(loginRoute, authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), async (req, res) => {
+// Login endpoint
+app.post('/api/login', authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -179,20 +172,163 @@ app.post(loginRoute, authGuard({ mustBeGuest: true, redirectTo: logoutRoute }), 
   }
 });
 
+// Logout endpoint
+app.post('/api/logout', authGuard({ mustBeLogged: true, redirectTo: loginRoute }), (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      return res.status(500).json({ message: 'Logout failed' });
+    }
+    res.json({ message: 'Logged out successfully' });
+  });
+});
+
+// Register endpoint
+app.post('/api/register', async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Name, email, and password required' });
+  }
+
+  try {
+    // Call your API to create user
+    const response = await fetch(`${apiBaseUrl}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+
+    if (response.ok) {
+      res.json({ message: 'User created successfully' });
+    } else {
+      res.status(400).json({ message: 'Failed to create user' });
+    }
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get balance endpoint
+app.get('/api/balance', authGuard({ mustBeLogged: true, redirectTo: loginRoute }), async (req, res) => {
+  try {
+    // This would call your blockchain/API to get balance
+    // For now, returning mock data
+    res.json({
+      balance: 150,
+      stats: {
+        helpedCount: 5,
+        totalEarned: 250,
+        requestsCreated: 3,
+      },
+      transactions: [
+        { id: 1, description: 'Earned from helping student', amount: 50, date: new Date() },
+        { id: 2, description: 'Spent on rewards', amount: -30, date: new Date() },
+      ]
+    });
+  } catch (error) {
+    console.error('Balance error:', error);
+    res.status(500).json({ message: 'Failed to get balance' });
+  }
+});
+
+// Get requests endpoint
+app.get('/api/requests', async (req, res) => {
+  try {
+    // This would call your API to get requests
+    res.json([]);
+  } catch (error) {
+    console.error('Requests error:', error);
+    res.status(500).json({ message: 'Failed to get requests' });
+  }
+});
+
+// Get shop endpoint
+app.get('/api/shop', authGuard({ mustBeLogged: true, redirectTo: loginRoute }), async (req, res) => {
+  try {
+    res.json({
+      balance: 150,
+      products: [
+        { id: 1, name: 'Amazon Voucher', description: '$20 Amazon Gift Card', price: 100, category: 'giftcard', emoji: '🎁' },
+        { id: 2, name: 'Netflix Pass', description: '1 Month Netflix Premium', price: 80, category: 'premium', emoji: '📺' },
+      ]
+    });
+  } catch (error) {
+    console.error('Shop error:', error);
+    res.status(500).json({ message: 'Failed to get shop' });
+  }
+});
+
+// Create request endpoint
+app.post('/api/create-request', authGuard({ mustBeLogged: true, redirectTo: loginRoute }), async (req, res) => {
+  const { subject, title, description, urgency, reward, deadline } = req.body;
+
+  if (!subject || !title || !description || !reward) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  try {
+    // Call your API to create request
+    const response = await fetch(`${apiBaseUrl}/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject, title, description, urgency, reward, deadline, userId: req.session.userId
+      })
+    });
+
+    if (response.ok) {
+      res.json({ message: 'Request created successfully' });
+    } else {
+      res.status(400).json({ message: 'Failed to create request' });
+    }
+  } catch (error) {
+    console.error('Create request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Purchase endpoint
+app.post('/api/purchase', authGuard({ mustBeLogged: true, redirectTo: loginRoute }), async (req, res) => {
+  const { productId, amount } = req.body;
+
+  if (!productId || !amount) {
+    return res.status(400).json({ message: 'Product ID and amount required' });
+  }
+
+  try {
+    // Call your API to process purchase
+    res.json({ message: 'Purchase successful' });
+  } catch (error) {
+    console.error('Purchase error:', error);
+    res.status(500).json({ message: 'Purchase failed' });
+  }
+});
+
+// Legacy test endpoints (optional)
+
+app.get("/blockchain-test", (req, res) => {
+  res.sendFile(getPage('blockchain-test'))
+});
+
 app.get("/create-listing-cv", (req, res) => {
   res.sendFile(getPage('create-listing-cv'))
 });
 
 app.get("/testApi", async (req, res) => {
   try {
-    const response = await fetch(`${apiBaseUrl}/users`, {
+    const response = await fetch(`${apiBaseUrl}/users/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        name: "Tiakola Melo",
-        email: "Lamelo@bdlm.com"
+        email: "Lamelo@bdlm.com",
+        password: "Lamelo@bdlm.com",
+        first_name: "Lamelo@bdlm.com",
+        last_name: "Lamelo@bdlm.com",
+        role: "user"
       })
     });
 
@@ -211,6 +347,10 @@ app.get("/testApi", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
+})
 
 
 

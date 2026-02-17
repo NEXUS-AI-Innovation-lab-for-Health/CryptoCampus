@@ -14,6 +14,11 @@ cd "$COMPOSE_DIR"
 echo "Arrêt et nettoyage de l'ensemble de l'application."
 docker compose down -v
 
+echo "Build de l'application Frontend..."
+cd ./Scripts
+./buildVueApp.sh
+cd "$COMPOSE_DIR"
+
 echo "Build de l'image sans cache..."
 docker compose build --no-cache
 

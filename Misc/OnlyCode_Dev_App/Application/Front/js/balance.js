@@ -41,12 +41,6 @@ const transactions = [
     }
 ];
 
-// Déconnexion
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('token');
-    window.location.href = 'login.html';
-});
-
 // Chargement des données utilisateur
 function loadUserData() {
     document.getElementById('balanceValue').textContent = userData.balance;
