@@ -6,7 +6,7 @@
       <div class="profile-info">
         <h1>{{ userInfo.first_name }} {{ userInfo.last_name }}</h1>
         <p class="email">{{ userInfo.email }}</p>
-        <p class="join-date">Membre depuis {{ formatDate(userInfo.joinDate) }}</p>
+        <p class="join-date">Membre depuis {{ formatDate(userInfo.created_at) }}</p>
       </div>
     </div>
 
@@ -152,7 +152,7 @@ export default {
       first_name: '',
       last_name: '',
       email: '',
-      joinDate: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     })
     const isResettingPassword = ref(false)
     const passwordError = ref('')
@@ -183,7 +183,7 @@ export default {
             first_name: data.first_name || 'Utilisateur',
             last_name: data.last_name || 'Inconnu',
             email: data.email || 'Email non disponible',
-            joinDate: data.joinDate || new Date().toISOString(),
+            created_at: data.created_at || new Date().toISOString(),
           }
           balance.value = data.balance || 0
           stats.value = data.stats || stats.value
