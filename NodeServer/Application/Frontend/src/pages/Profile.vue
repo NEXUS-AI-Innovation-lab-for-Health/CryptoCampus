@@ -143,6 +143,20 @@
               </button>
             </div>
           </div>
+
+          <!-- Delete Account Section -->
+          <div class="delete-account-card">
+            <div class="delete-account-content">
+              <div class="delete-account-info">
+                <h3 class="card-subtitle danger">Supprimer mon compte</h3>
+                <p class="delete-account-description">⚠️ Cette action est irréversible. Toutes vos données seront définitivement supprimées.</p>
+              </div>
+              <button @click="confirmDeleteAccount" class="btn-delete-account">
+                <span class="delete-icon">🗑️</span>
+                Supprimer le compte
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -297,6 +311,46 @@ export default {
       }
     }
 
+    const confirmDeleteAccount = async () => {
+      const confirmed = confirm(
+        '⚠️ ATTENTION ⚠️\n\n' +
+        'Êtes-vous absolument sûr de vouloir supprimer votre compte ?\n\n' +
+        'Cette action est IRRÉVERSIBLE et supprimera :\n' +
+        '• Votre profil et vos informations personnelles\n' +
+        '• Votre wallet et votre solde blockchain\n' +
+        '• Tous vos services créés\n' +
+        '• Toutes vos transactions\n' +
+        '• Toutes vos annonces et messages\n\n' +
+        'Tapez OK pour confirmer la suppression définitive.'
+      )
+
+      if (!confirmed) return
+
+      const doubleConfirm = confirm(
+        'Dernière confirmation : Voulez-vous vraiment supprimer votre compte de manière permanente ?'
+      )
+
+      if (!doubleConfirm) return
+
+      try {
+        const response = await fetch('/api/account', {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+
+        if (response.ok) {
+          alert('Votre compte a été supprimé avec succès.')
+          router.push('/home')
+        } else {
+          const data = await response.json()
+          alert('Erreur lors de la suppression du compte : ' + (data.error || 'Erreur inconnue'))
+        }
+      } catch (error) {
+        console.error('Delete account failed:', error)
+        alert('Erreur lors de la suppression du compte')
+      }
+    }
+
     onMounted(() => {
       loadProfileData()
     })
@@ -315,6 +369,7 @@ export default {
       getRoleClass,
       resetPassword,
       logout,
+      confirmDeleteAccount,
     }
   }
 }
@@ -711,6 +766,64 @@ export default {
 }
 
 .logout-icon {
+  font-size: 1.1rem;
+}
+
+/* Delete Account Card */
+.delete-account-card {
+  background: linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%);
+  padding: 1.75rem;
+  border-radius: 12px;
+  border: 2px solid #ff9999;
+  margin-top: 1.5rem;
+}
+
+.delete-account-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.delete-account-info {
+  flex: 1;
+}
+
+.card-subtitle.danger {
+  color: #c0392b;
+}
+
+.delete-account-description {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0 0;
+  line-height: 1.5;
+}
+
+.btn-delete-account {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #c0392b 0%, #8b0000 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(192, 57, 43, 0.4);
+  white-space: nowrap;
+}
+
+.btn-delete-account:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(192, 57, 43, 0.5);
+  background: linear-gradient(135deg, #a93226 0%, #6b0000 100%);
+}
+
+.delete-icon {
   font-size: 1.1rem;
 }
 

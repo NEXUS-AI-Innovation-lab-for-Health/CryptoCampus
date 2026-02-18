@@ -468,6 +468,165 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
   }
 });
 
+// DELETE account (suppression complète du compte)
+app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const userId = req.session.userId;
+    
+    console.log(`🗑️ Début de la suppression du compte: ${userId}`);
+    
+    await client.query('BEGIN');
+
+    // 1. Récupérer l'email de l'utilisateur pour Qdrant
+    const userResult = await client.query(
+      'SELECT email FROM users WHERE user_id = $1',
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const userEmail = userResult.rows[0].email;
+
+    // 2. Supprimer les données Qdrant associées à l'utilisateur
+    try {
+      // Rechercher tous les points Qdrant créés par cet utilisateur
+      const qdrantSearchResponse = await fetch(`${process.env.QDRANT_URL || 'http://qdrant:6333'}/collections/tutoring_listings/points/scroll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: {
+            must: [
+              {
+                key: "tutor_email",
+                match: { value: userEmail }
+              }
+            ]
+          },
+          limit: 100
+        })
+      });
+
+      if (qdrantSearchResponse.ok) {
+        const qdrantData = await qdrantSearchResponse.json();
+        const pointIds = qdrantData.result?.points?.map(p => p.id) || [];
+
+        // Supprimer tous les points trouvés
+        if (pointIds.length > 0) {
+          await fetch(`${process.env.QDRANT_URL || 'http://qdrant:6333'}/collections/tutoring_listings/points/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              points: pointIds
+            })
+          });
+          console.log(`✅ ${pointIds.length} annonces Qdrant supprimées`);
+        }
+      }
+    } catch (qdrantError) {
+      console.warn('⚠️ Erreur lors de la suppression Qdrant (non bloquant):', qdrantError.message);
+    }
+
+    // 3. Supprimer les données PostgreSQL dans l'ordre (respect des foreign keys)
+    
+    // Récupérer les wallet_id de l'utilisateur
+    const walletResult = await client.query(
+      'SELECT wallet_id FROM wallets WHERE user_id = $1',
+      [userId]
+    );
+    const walletIds = walletResult.rows.map(row => row.wallet_id);
+
+    // Supprimer les transactions liées aux wallets
+    if (walletIds.length > 0) {
+      await client.query(
+        'DELETE FROM transactions WHERE from_wallet = ANY($1) OR to_wallet = ANY($1)',
+        [walletIds]
+      );
+      console.log('✅ Transactions supprimées');
+    }
+
+    // Supprimer les messages où l'utilisateur est impliqué
+    await client.query(
+      'DELETE FROM messages WHERE sender_id = $1',
+      [userId]
+    );
+    console.log('✅ Messages supprimés');
+
+    // Supprimer les conversations où l'utilisateur est impliqué
+    await client.query(
+      'DELETE FROM conversations WHERE user1_id = $1 OR user2_id = $1',
+      [userId]
+    );
+    console.log('✅ Conversations supprimées');
+
+    // Supprimer les participations aux services
+    await client.query(
+      'DELETE FROM service_participations WHERE user_id = $1 OR validated_by = $1',
+      [userId]
+    );
+    console.log('✅ Participations aux services supprimées');
+
+    // Supprimer les services créés par l'utilisateur
+    await client.query(
+      'DELETE FROM services WHERE created_by = $1',
+      [userId]
+    );
+    console.log('✅ Services supprimés');
+
+    // Supprimer les wallets
+    await client.query(
+      'DELETE FROM wallets WHERE user_id = $1',
+      [userId]
+    );
+    console.log('✅ Wallets supprimés');
+
+    // Supprimer les actions admin
+    await client.query(
+      'DELETE FROM admin_actions WHERE admin_id = $1 OR target_user_id = $1',
+      [userId]
+    );
+    console.log('✅ Actions admin supprimées');
+
+    // Supprimer les API keys
+    await client.query(
+      'DELETE FROM api_keys WHERE user_id = $1',
+      [userId]
+    );
+    console.log('✅ API keys supprimées');
+
+    // Enfin, supprimer l'utilisateur
+    await client.query(
+      'DELETE FROM users WHERE user_id = $1',
+      [userId]
+    );
+    console.log('✅ Utilisateur supprimé');
+
+    await client.query('COMMIT');
+    
+    console.log(`✅ Compte ${userEmail} supprimé avec succès`);
+
+    // Détruire la session
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Erreur destruction session:', err);
+      }
+    });
+
+    res.json({ message: 'Compte supprimé avec succès' });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('❌ Erreur lors de la suppression du compte:', err);
+    res.status(500).json({ error: 'Erreur lors de la suppression du compte' });
+  } finally {
+    client.release();
+  }
+});
+
 /* ========================================
    ROUTES API - USERS (CRUD)
    ======================================== */
