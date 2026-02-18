@@ -290,7 +290,7 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:81';
+        const API_URL = 'http://localhost/api';
         let currentQuery = '';
 
         // Charger toutes les annonces au démarrage
@@ -420,7 +420,7 @@
                         <div class="listing-meta">
                             <span class="badge badge-subject">📚 ${escapeHtml(listing.subject)}</span>
                             <span class="badge badge-level">🎯 ${escapeHtml(listing.level)}</span>
-                            <span class="badge badge-price">💰 ${listing.price}€/h</span>
+                            <span class="badge badge-price">💰 ${listing.price} CCT/h</span>
                         </div>
                     </div>
                     <p class="listing-description">${escapeHtml(listing.description)}</p>

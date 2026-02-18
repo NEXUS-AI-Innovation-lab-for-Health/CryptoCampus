@@ -27,7 +27,7 @@
               <div class="balance-amount">
                 <span class="coin-icon">🪙</span>
                 <span id="balanceValue" class="balance-value">{{ balance }}</span>
-                <span class="coin-label">coins</span>
+                <span class="coin-label">CCT</span>
               </div>
             </div>
           </div>

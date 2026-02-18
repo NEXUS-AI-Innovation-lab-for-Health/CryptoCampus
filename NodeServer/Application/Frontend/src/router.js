@@ -7,6 +7,7 @@ import Shop from './pages/Shop.vue'
 import CreateRequest from './pages/CreateRequest.vue'
 import Profile from './pages/Profile.vue'
 import Logout from './pages/Logout.vue'
+import Agenda from './pages/Agenda.vue'
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -18,6 +19,7 @@ const routes = [
   { path: '/create_request', component: CreateRequest },
   { path: '/profile', component: Profile },
   { path: '/logout', component: Logout },
+  { path: '/agenda', component: Agenda },
 ]
 
 const router = createRouter({

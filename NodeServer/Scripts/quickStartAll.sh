@@ -16,5 +16,6 @@ echo "Lancement rapide de l'ensemble de l'application."
 docker compose up -d
 
 echo "------------------------------------------------------"
-echo "Serveur Node disponible à l'url : http://127.0.0.1:80"
+echo "✅ Application CryptoCampus démarrée !"
+echo "Frontend + API : http://127.0.0.1:80"
 echo "------------------------------------------------------"

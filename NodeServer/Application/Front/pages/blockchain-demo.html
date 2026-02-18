@@ -224,7 +224,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Montant (ETH):</label>
+                    <label>Montant (CCT):</label>
                     <input type="number" id="amount" placeholder="Ex: 50" step="0.01" min="0">
                 </div>
 
@@ -250,7 +250,7 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:81';
+        const API_URL = 'http://localhost/api';
         let accounts = [];
 
         // Charger tous les comptes
@@ -275,7 +275,7 @@
                         <div class="account-card">
                             <div class="account-index">Compte ${account.index}</div>
                             <div class="account-address">${account.address}</div>
-                            <div class="account-balance">${parseFloat(account.balanceEth).toFixed(4)} ETH</div>
+                            <div class="account-balance">${parseFloat(account.balanceEth).toFixed(4)} CCT</div>
                         </div>
                     `;
                 });
@@ -302,7 +302,7 @@
                 accounts.forEach(account => {
                     const option = document.createElement('option');
                     option.value = account.address;
-                    option.textContent = `Compte ${account.index} - ${parseFloat(account.balanceEth).toFixed(4)} ETH`;
+                    option.textContent = `Compte ${account.index} - ${parseFloat(account.balanceEth).toFixed(4)} CCT`;
                     select.appendChild(option);
                 });
             });
@@ -353,11 +353,11 @@
                         <strong>Block:</strong> ${data.blockNumber}<br>
                         <strong>Gas utilisé:</strong> ${data.gasUsed}<br><br>
                         <strong>Expéditeur:</strong><br>
-                        Avant: ${data.from.balanceBefore} ETH<br>
-                        Après: ${data.from.balanceAfter} ETH<br><br>
+                        Avant: ${data.from.balanceBefore} CCT<br>
+                        Après: ${data.from.balanceAfter} CCT<br><br>
                         <strong>Destinataire:</strong><br>
-                        Avant: ${data.to.balanceBefore} ETH<br>
-                        Après: ${data.to.balanceAfter} ETH
+                        Avant: ${data.to.balanceBefore} CCT<br>
+                        Après: ${data.to.balanceAfter} CCT
                     </div>
                 `;
 
@@ -393,7 +393,7 @@
                     <div class="result success">
                         <strong>💰 Solde du compte</strong><br><br>
                         <strong>Adresse:</strong> ${data.address}<br>
-                        <strong>Solde:</strong> ${parseFloat(data.balanceEth).toFixed(10)} ETH<br>
+                        <strong>Solde:</strong> ${parseFloat(data.balanceEth).toFixed(10)} CCT<br>
                         <strong>Solde (Wei):</strong> ${data.balanceWei} Wei
                     </div>
                 `;

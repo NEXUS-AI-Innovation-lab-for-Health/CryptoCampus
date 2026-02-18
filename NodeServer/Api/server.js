@@ -207,6 +207,180 @@ app.patch('/users/:user_id/last-login', async (req, res) => {
 });
 
 /* =========================
+   BOOKINGS ROUTES
+========================= */
+
+// GET ALL BOOKINGS (avec filtre optionnel par utilisateur)
+app.get('/bookings', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    
+    let query = `
+      SELECT booking_id, user_id, listing_id, title, description, subject,
+             start_time, end_time, status, tutor_name, price, notes,
+             created_at, updated_at
+      FROM bookings
+    `;
+    
+    let params = [];
+    if (user_id) {
+      query += ` WHERE user_id = $1`;
+      params.push(user_id);
+    }
+    
+    query += ` ORDER BY start_time ASC`;
+    
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET BOOKING BY ID
+app.get('/bookings/:booking_id', async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+    
+    const result = await pool.query(
+      `SELECT * FROM bookings WHERE booking_id = $1`,
+      [booking_id]
+    );
+    
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'Booking not found' });
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CREATE NEW BOOKING
+app.post('/bookings', async (req, res) => {
+  try {
+    const {
+      user_id,
+      listing_id,
+      title,
+      description,
+      subject,
+      start_time,
+      end_time,
+      tutor_name,
+      price,
+      notes
+    } = req.body;
+    
+    if (!user_id || !title || !start_time || !end_time) {
+      return res.status(400).json({ error: 'Champs requis manquants' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO bookings 
+      (user_id, listing_id, title, description, subject, start_time, end_time, 
+       status, tutor_name, price, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *`,
+      [user_id, listing_id, title, description, subject, start_time, end_time,
+       'pending', tutor_name, price, notes]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE BOOKING
+app.put('/bookings/:booking_id', async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+    const {
+      title,
+      description,
+      subject,
+      start_time,
+      end_time,
+      status,
+      tutor_name,
+      price,
+      notes
+    } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE bookings
+       SET title = COALESCE($1, title),
+           description = COALESCE($2, description),
+           subject = COALESCE($3, subject),
+           start_time = COALESCE($4, start_time),
+           end_time = COALESCE($5, end_time),
+           status = COALESCE($6, status),
+           tutor_name = COALESCE($7, tutor_name),
+           price = COALESCE($8, price),
+           notes = COALESCE($9, notes),
+           updated_at = NOW()
+       WHERE booking_id = $10
+       RETURNING *`,
+      [title, description, subject, start_time, end_time, status, tutor_name, price, notes, booking_id]
+    );
+    
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'Booking not found' });
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE BOOKING STATUS
+app.patch('/bookings/:booking_id/status', async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+    const { status } = req.body;
+    
+    if (!['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Statut invalide' });
+    }
+    
+    const result = await pool.query(
+      `UPDATE bookings 
+       SET status = $1, updated_at = NOW()
+       WHERE booking_id = $2
+       RETURNING *`,
+      [status, booking_id]
+    );
+    
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'Booking not found' });
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE BOOKING
+app.delete('/bookings/:booking_id', async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+    
+    const result = await pool.query(
+      'DELETE FROM bookings WHERE booking_id = $1 RETURNING booking_id',
+      [booking_id]
+    );
+    
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'Booking not found' });
+    
+    res.json({ message: 'Booking deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* =========================
    MULTER CONFIG
 ========================= */
 

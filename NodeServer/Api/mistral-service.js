@@ -36,7 +36,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans \`\`\`json) d
 
 Règles importantes :
 - Les compétences doivent être des matières enseignables (Mathématiques, Physique, Informatique, Langues, etc.)
-- Le prix doit être entre 15€ et 30€ selon la complexité (langues: 16-20€, sciences: 18-25€, informatique: 25-30€)
+- Le prix doit être entre 15 CCT et 30 CCT selon la complexité (langues: 16-20 CCT, sciences: 18-25 CCT, informatique: 25-30 CCT)
 - Les descriptions doivent être engageantes et professionnelles
 - Le niveau doit correspondre aux capacités du tuteur
 - Ne génère QUE des cours que la personne est réellement capable d'enseigner selon son CV`;

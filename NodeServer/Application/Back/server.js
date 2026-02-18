@@ -455,6 +455,89 @@ app.get("/testApi", async (req, res) => {
   }
 });
 
+// Bookings API routes (proxy to api_crypto container)
+app.get("/api/bookings", async (req, res) => {
+  try {
+    const userId = req.query.user_id;
+    const url = userId ? `${apiBaseUrl}/bookings?user_id=${userId}` : `${apiBaseUrl}/bookings`;
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error("Bookings error:", error);
+    res.status(500).json({ error: "Failed to get bookings" });
+  }
+});
+
+app.get("/api/bookings/:booking_id", async (req, res) => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/bookings/${req.params.booking_id}`);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error("Booking error:", error);
+    res.status(500).json({ error: "Failed to get booking" });
+  }
+});
+
+app.post("/api/bookings", async (req, res) => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/bookings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error("Create booking error:", error);
+    res.status(500).json({ error: "Failed to create booking" });
+  }
+});
+
+app.put("/api/bookings/:booking_id", async (req, res) => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/bookings/${req.params.booking_id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error("Update booking error:", error);
+    res.status(500).json({ error: "Failed to update booking" });
+  }
+});
+
+app.patch("/api/bookings/:booking_id/status", async (req, res) => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/bookings/${req.params.booking_id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error("Update status error:", error);
+    res.status(500).json({ error: "Failed to update booking status" });
+  }
+});
+
+app.delete("/api/bookings/:booking_id", async (req, res) => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/bookings/${req.params.booking_id}`, {
+      method: "DELETE"
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error("Delete booking error:", error);
+    res.status(500).json({ error: "Failed to delete booking" });
+  }
+});
+
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../Frontend/dist/index.html"));
 });

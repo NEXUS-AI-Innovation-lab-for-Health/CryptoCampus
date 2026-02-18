@@ -28,7 +28,7 @@
         <p>{{ request.description }}</p>
         <div class="request-meta">
           <span class="subject">{{ request.subject }}</span>
-          <span class="reward">💰 {{ request.reward }} coins</span>
+          <span class="reward">💰 {{ request.reward }} CCT</span>
         </div>
       </div>
     </div>
