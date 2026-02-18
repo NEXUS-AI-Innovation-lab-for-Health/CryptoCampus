@@ -10,6 +10,20 @@
             :class="{ active: currentPage === 'requetes' }"
             >Requêtes</router-link
           >
+          <router-link
+            to="/reservations"
+            class="nav-link"
+            :class="{ active: currentPage === 'reservations' }"
+            v-if="isLogged == true"
+            >Réservations</router-link
+          >
+          <router-link
+            to="/agenda"
+            class="nav-link"
+            :class="{ active: currentPage === 'agenda' }"
+            v-if="isLogged == true"
+            >Agenda</router-link
+          >
           <!-- <router-link
             to="/balance"
             class="nav-link"
@@ -28,7 +42,7 @@
             to="/create_request"
             class="nav-link btn-create"
             :class="{ active: currentPage === 'create_request' }"
-            v-if="isLogged == true"
+            v-if="isLogged == true && isTutor"
             >Créer une requête</router-link
           >
           <div v-if="isLogged" class="profile-button" @click="handleLoginClick">
@@ -62,10 +76,12 @@ export default {
     const route = useRoute();
     const isLogged = ref(null);
     const userEmail = ref("");
+    const userRole = ref("");
     const currentPage = computed(() => {
       const path = route.path;
       return path.replace("/", "");
     });
+    const isTutor = computed(() => userRole.value === 'TUTOR');
 
     const checkAuth = async () => {
       try {
@@ -74,6 +90,9 @@ export default {
         isLogged.value = data.isAuthenticated;
         if (data.isAuthenticated && data.email) {
           userEmail.value = data.email;
+        }
+        if (data.isAuthenticated && data.role) {
+          userRole.value = data.role;
         }
       } catch (error) {
         console.error("Auth check failed:", error);
@@ -104,6 +123,8 @@ export default {
     return {
       isLogged,
       userEmail,
+      userRole,
+      isTutor,
       currentPage,
       handleLoginClick,
     };

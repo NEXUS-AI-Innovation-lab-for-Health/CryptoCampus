@@ -1,358 +1,743 @@
 <template>
-  <div class="container">
-    <div class="form-card">
-      <h2>Créer une nouvelle requête d'aide</h2>
-      <p class="subtitle">Décrivez votre besoin et la récompense que vous offrez</p>
+  <div class="page-container">
+    <div class="container">
+      <!-- Main Card -->
+      <div class="card">
+        <h1>📄 Créer une annonce depuis votre CV</h1>
+        <p class="subtitle">Uploadez votre CV et nous vous suggérons automatiquement des cours à proposer</p>
 
-      <form @submit.prevent="submitForm" id="createRequestForm">
-        <div v-if="error" class="error-message">{{ error }}</div>
-        <div v-if="success" class="success-message">{{ success }}</div>
-
-        <div class="form-group">
-          <label for="subject">Matière *</label>
-          <select v-model="form.subject" id="subject" required>
-            <option value="">Sélectionnez une matière</option>
-            <option value="math">Mathématiques</option>
-            <option value="physics">Physique</option>
-            <option value="chemistry">Chimie</option>
-            <option value="programming">Programmation</option>
-            <option value="french">Français</option>
-            <option value="english">Anglais</option>
-            <option value="biology">Biologie</option>
-            <option value="history">Histoire</option>
-            <option value="geography">Géographie</option>
-            <option value="economics">Économie</option>
-            <option value="other">Autre</option>
-          </select>
+        <!-- Info Box -->
+        <div class="info-box">
+          <strong>ℹ️ Comment ça marche ?</strong><br>
+          1. Uploadez votre CV (PDF uniquement)<br>
+          2. Nous analysons vos compétences<br>
+          3. Nous vous suggérons des cours adaptés<br>
+          4. Validez les annonces qui vous intéressent
         </div>
 
-        <div class="form-group">
-          <label for="title">Titre de la requête *</label>
-          <input
-            v-model="form.title"
-            type="text"
-            id="title"
-            placeholder="Ex: Aide pour résoudre des équations du second degré"
-            maxlength="100"
-            required
-          />
-          <small class="char-count"><span>{{ form.title.length }}</span>/100 caractères</small>
+        <!-- Error Message -->
+        <div v-if="errorMessage" class="error-message">
+          ❌ {{ errorMessage }}
         </div>
 
-        <div class="form-group">
-          <label for="description">Description détaillée *</label>
-          <textarea
-            v-model="form.description"
-            id="description"
-            rows="6"
-            placeholder="Décrivez en détail votre besoin d'aide..."
-            maxlength="500"
-            required
-          ></textarea>
-          <small class="char-count"><span>{{ form.description.length }}</span>/500 caractères</small>
-        </div>
-
-        <div class="form-group">
-          <label for="urgency">Niveau d'urgence</label>
-          <select v-model="form.urgency" id="urgency">
-            <option value="low">Faible - J'ai du temps</option>
-            <option value="medium">Moyen - Quelques jours</option>
-            <option value="high">Élevé - Urgent</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="reward">Récompense offerte (en coins) *</label>
-          <input
-            v-model.number="form.reward"
-            type="number"
-            id="reward"
-            min="10"
-            max="200"
-            required
-          />
-          <small>Votre solde actuel: <span id="currentBalance">{{ currentBalance }}</span> coins</small>
-          <div v-if="form.reward > currentBalance" class="error-message" style="margin-top: 0.5rem;">
-            Solde insuffisant pour cette récompense
+        <!-- Upload Section -->
+        <div 
+          v-if="!isAnalyzing && !showResults && !showSuccess" 
+          class="upload-section"
+          :class="{ dragover: isDragging }"
+          @dragover.prevent="isDragging = true"
+          @dragleave="isDragging = false"
+          @drop.prevent="handleDrop"
+        >
+          <div class="upload-icon">📎</div>
+          <h3>Glissez votre CV ici ou cliquez pour sélectionner</h3>
+          <p class="upload-hint">Format accepté : PDF uniquement</p>
+          <div class="file-input-wrapper">
+            <label for="cvFile" class="btn btn-primary">
+              📁 Sélectionner un fichier
+            </label>
+            <input 
+              type="file" 
+              id="cvFile" 
+              accept=".pdf"
+              @change="handleFileSelect"
+              ref="fileInput"
+            />
+          </div>
+          
+          <!-- File Info -->
+          <div v-if="selectedFile" class="file-info">
+            <div class="file-name">
+              📄 {{ selectedFile.name }} ({{ formatFileSize(selectedFile.size) }})
+            </div>
+            <button class="btn btn-danger" @click="clearFile">
+              ❌ Supprimer
+            </button>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="deadline">Date limite (optionnel)</label>
-          <input v-model="form.deadline" type="date" id="deadline" />
+        <!-- Loading Section -->
+        <div v-if="isAnalyzing" class="loading-section">
+          <div class="spinner"></div>
+          <h3>Analyse de votre CV en cours...</h3>
+          <p class="loading-text">Extraction des compétences et génération des suggestions</p>
         </div>
 
-        <div class="form-actions">
-          <router-link to="/home" class="btn-secondary">Annuler</router-link>
-          <button type="submit" class="btn-primary" :disabled="isLoading || form.reward > currentBalance">
-            {{ isLoading ? 'Publication en cours...' : 'Publier la requête' }}
-          </button>
+        <!-- Skills Section -->
+        <div v-if="showResults && extractedSkills.length > 0" class="skills-section">
+          <h2>🎯 Compétences détectées</h2>
+          <div class="skills-list">
+            <span v-for="(skill, index) in extractedSkills" :key="index" class="skill-badge">
+              {{ skill }}
+            </span>
+          </div>
         </div>
-      </form>
-    </div>
 
-    <div class="info-card">
-      <h3>💡 Conseils pour une bonne requête</h3>
-      <ul>
-        <li>Soyez précis dans votre description</li>
-        <li>Indiquez le niveau d'études concerné</li>
-        <li>Mentionnez les concepts spécifiques</li>
-        <li>Proposez une récompense adaptée à la complexité</li>
-        <li>Fixez une deadline réaliste</li>
-      </ul>
+        <!-- Suggestions Section -->
+        <div v-if="showResults && suggestions.length > 0" class="suggestions-section">
+          <h2>💡 Cours suggérés</h2>
+          <p class="suggestions-subtitle">Sélectionnez les annonces que vous souhaitez publier</p>
+          
+          <div class="suggestions-list">
+            <div 
+              v-for="(suggestion, index) in suggestions" 
+              :key="index" 
+              class="suggestion-card"
+            >
+              <div class="suggestion-header">
+                <div class="suggestion-title">{{ suggestion.title }}</div>
+                <div class="suggestion-price">{{ suggestion.price }} CCT/h</div>
+              </div>
+              <div class="suggestion-description">{{ suggestion.description }}</div>
+              <div class="suggestion-meta">
+                <span class="meta-badge badge-subject">📚 {{ suggestion.subject }}</span>
+                <span class="meta-badge badge-level">🎯 {{ suggestion.level }}</span>
+              </div>
+              <div class="checkbox-wrapper">
+                <input 
+                  type="checkbox" 
+                  :id="`suggestion-${index}`"
+                  v-model="suggestion.selected"
+                />
+                <label :for="`suggestion-${index}`">Publier cette annonce</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <button 
+              class="btn btn-success" 
+              @click="publishSelectedListings"
+              :disabled="isPublishing || selectedCount === 0"
+            >
+              {{ isPublishing ? '⏳ Publication en cours...' : `✅ Publier ${selectedCount} annonce${selectedCount > 1 ? 's' : ''} sélectionnée${selectedCount > 1 ? 's' : ''}` }}
+            </button>
+            <button class="btn btn-danger" @click="resetForm">
+              🔄 Recommencer
+            </button>
+          </div>
+        </div>
+
+        <!-- Success Section -->
+        <div v-if="showSuccess" class="success-section">
+          <div class="success-icon">✅</div>
+          <h2>Annonces publiées avec succès !</h2>
+          <p class="success-text">Vos annonces sont maintenant visibles sur la plateforme</p>
+          <div class="success-actions">
+            <router-link to="/requetes" class="btn btn-primary">
+              📋 Voir mes annonces
+            </router-link>
+            <button class="btn btn-secondary" @click="resetForm">
+              ➕ Créer d'autres annonces
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<script>
-import { ref, onMounted } from 'vue'
+<script setup>
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
-export default {
-  name: 'CreateRequest',
-  setup() {
-    const router = useRouter()
-    const isLoading = ref(false)
-    const error = ref('')
-    const success = ref('')
-    const currentBalance = ref(0)
+const router = useRouter()
 
-    const form = ref({
-      subject: '',
-      title: '',
-      description: '',
-      urgency: 'medium',
-      reward: 30,
-      deadline: '',
-    })
+// State
+const selectedFile = ref(null)
+const isDragging = ref(false)
+const isAnalyzing = ref(false)
+const isPublishing = ref(false)
+const showResults = ref(false)
+const showSuccess = ref(false)
+const errorMessage = ref('')
+const extractedSkills = ref([])
+const suggestions = ref([])
+const fileInput = ref(null)
 
-    const loadBalance = async () => {
-      try {
-        const response = await fetch('/api/balance', {
-          credentials: 'include',
-        })
-        if (response.ok) {
-          const data = await response.json()
-          currentBalance.value = data.balance || 0
-        }
-      } catch (error) {
-        console.error('Failed to load balance:', error)
-      }
-    }
+// Computed
+const selectedCount = computed(() => {
+  return suggestions.value.filter(s => s.selected).length
+})
 
-    const submitForm = async () => {
-      error.value = ''
-      success.value = ''
+// Methods
+const formatFileSize = (bytes) => {
+  return (bytes / 1024).toFixed(2) + ' KB'
+}
 
-      if (form.value.reward > currentBalance.value) {
-        error.value = 'Solde insuffisant pour cette récompense'
-        return
-      }
+const showError = (message) => {
+  errorMessage.value = message
+  setTimeout(() => {
+    errorMessage.value = ''
+  }, 5000)
+}
 
-      isLoading.value = true
-
-      try {
-        const response = await fetch('/api/create-request', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(form.value),
-          credentials: 'include',
-        })
-
-        if (response.ok) {
-          success.value = 'Requête créée avec succès!'
-          setTimeout(() => {
-            router.push('/home')
-          }, 1500)
-        } else {
-          const data = await response.json()
-          error.value = data.message || 'Erreur lors de la création de la requête'
-        }
-      } catch (err) {
-        error.value = 'Erreur lors de la création de la requête'
-        console.error(err)
-      } finally {
-        isLoading.value = false
-      }
-    }
-
-    onMounted(() => {
-      loadBalance()
-    })
-
-    return {
-      form,
-      isLoading,
-      error,
-      success,
-      currentBalance,
-      submitForm,
-    }
+const handleDrop = (e) => {
+  isDragging.value = false
+  const file = e.dataTransfer.files[0]
+  if (file && file.type === 'application/pdf') {
+    selectedFile.value = file
+    analyzeCV(file)
+  } else {
+    showError('Veuillez sélectionner un fichier PDF')
   }
+}
+
+const handleFileSelect = (e) => {
+  const file = e.target.files[0]
+  if (file) {
+    selectedFile.value = file
+    analyzeCV(file)
+  }
+}
+
+const clearFile = () => {
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+  showResults.value = false
+  extractedSkills.value = []
+  suggestions.value = []
+}
+
+const analyzeCV = async (file) => {
+  try {
+    isAnalyzing.value = true
+    errorMessage.value = ''
+
+    const formData = new FormData()
+    formData.append('cv', file)
+
+    const response = await fetch('/api/analyze-cv', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    })
+
+    if (!response.ok) {
+      throw new Error(`Erreur ${response.status}: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    
+    extractedSkills.value = data.skills || []
+    suggestions.value = (data.suggestions || []).map(s => ({
+      ...s,
+      selected: true
+    }))
+
+    isAnalyzing.value = false
+    showResults.value = true
+
+  } catch (error) {
+    console.error('Erreur:', error)
+    showError(`Impossible d'analyser le CV: ${error.message}`)
+    isAnalyzing.value = false
+    clearFile()
+  }
+}
+
+const publishSelectedListings = async () => {
+  const selectedSuggestions = suggestions.value.filter(s => s.selected)
+
+  if (selectedSuggestions.length === 0) {
+    showError('Veuillez sélectionner au moins une annonce à publier')
+    return
+  }
+
+  try {
+    isPublishing.value = true
+
+    // Publier chaque annonce
+    for (const suggestion of selectedSuggestions) {
+      const { selected, ...listingData } = suggestion
+      await fetch('/api/listings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(listingData),
+        credentials: 'include'
+      })
+    }
+
+    isPublishing.value = false
+    showResults.value = false
+    showSuccess.value = true
+
+  } catch (error) {
+    console.error('Erreur:', error)
+    showError(`Erreur lors de la publication: ${error.message}`)
+    isPublishing.value = false
+  }
+}
+
+const resetForm = () => {
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+  isDragging.value = false
+  isAnalyzing.value = false
+  isPublishing.value = false
+  showResults.value = false
+  showSuccess.value = false
+  errorMessage.value = ''
+  extractedSkills.value = []
+  suggestions.value = []
 }
 </script>
 
 <style scoped>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.page-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
 .container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 2rem;
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 2rem;
 }
 
-@media (max-width: 768px) {
-  .container {
-    grid-template-columns: 1fr;
-  }
-}
-
-.form-card {
+/* Main Card */
+.card {
   background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
-.form-card h2 {
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
+h1 {
+  color: #667eea;
+  margin-bottom: 0.625rem;
+  font-size: 2.2em;
+  font-weight: 700;
 }
 
 .subtitle {
-  color: #7f8c8d;
-  margin-bottom: 1.5rem;
+  color: #666;
+  margin-bottom: 1.875rem;
+  font-size: 1.1em;
 }
 
-.form-group {
-  margin-bottom: 1.5rem;
+/* Info Box */
+.info-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.8;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
-  font-weight: 500;
+.info-box strong {
+  color: #856404;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #bdc3c7;
-  border-radius: 4px;
+/* Error Message */
+.error-message {
+  background: #ffebee;
+  border: 2px solid #f44336;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  color: #c62828;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Upload Section */
+.upload-section {
+  border: 3px dashed #667eea;
+  border-radius: 15px;
+  padding: 2.5rem;
+  text-align: center;
+  transition: all 0.3s;
+  background: #f8f9ff;
+  margin-bottom: 1.875rem;
+}
+
+.upload-section:hover {
+  border-color: #764ba2;
+  background: #f0f2ff;
+}
+
+.upload-section.dragover {
+  background: #e8ebff;
+  border-color: #764ba2;
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  font-size: 4em;
+  margin-bottom: 1.25rem;
+}
+
+.upload-section h3 {
+  color: #333;
+  margin-bottom: 0.625rem;
+  font-size: 1.3em;
+}
+
+.upload-hint {
+  color: #666;
+  margin: 1rem 0;
+}
+
+.file-input-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+/* Buttons */
+.btn {
+  padding: 1rem 2.25rem;
   font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
   font-family: inherit;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.char-count {
-  display: block;
-  margin-top: 0.25rem;
-  color: #95a5a6;
-  font-size: 0.9rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.btn-primary,
-.btn-secondary {
-  flex: 1;
-  padding: 0.75rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.3s;
-}
-
 .btn-primary {
-  background-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
 }
 
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.btn-success {
+  background: #4caf50;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #45a049;
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: #f44336;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #da190b;
 }
 
 .btn-secondary {
-  background-color: #ecf0f1;
-  color: #2c3e50;
+  background: #f5f5f5;
+  color: #333;
 }
 
 .btn-secondary:hover {
-  background-color: #bdc3c7;
+  background: #e0e0e0;
 }
 
-.error-message {
-  color: #e74c3c;
-  background-color: #fadbd8;
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* File Info */
+.file-info {
+  margin-top: 1.25rem;
   padding: 1rem;
-  border-radius: 4px;
+  background: #e8f5e9;
+  border-radius: 10px;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #2e7d32;
+  font-size: 1.1em;
+  margin-bottom: 0.625rem;
+}
+
+/* Loading Section */
+.loading-section {
+  text-align: center;
+  padding: 3rem 1.875rem;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1.25rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-section h3 {
+  color: #333;
+  margin-bottom: 0.625rem;
+  font-size: 1.3em;
+}
+
+.loading-text {
+  color: #666;
+  margin-top: 0.625rem;
+}
+
+/* Skills Section */
+.skills-section {
+  margin-bottom: 1.875rem;
+}
+
+.skills-section h2 {
+  color: #333;
+  font-size: 1.5em;
+  margin-bottom: 1.25rem;
+  font-weight: 700;
+}
+
+.skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.skill-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.625rem 1.25rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Suggestions Section */
+.suggestions-section {
+  margin-top: 1.875rem;
+}
+
+.suggestions-section h2 {
+  color: #333;
+  font-size: 1.5em;
+  margin-bottom: 0.625rem;
+  font-weight: 700;
+}
+
+.suggestions-subtitle {
+  color: #666;
+  margin-bottom: 1.25rem;
+}
+
+.suggestions-list {
+  margin-bottom: 1.875rem;
+}
+
+.suggestion-card {
+  background: #f8f9ff;
+  border: 2px solid #e0e7ff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s;
+}
+
+.suggestion-card:hover {
+  border-color: #667eea;
+  transform: translateX(5px);
+}
+
+.suggestion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.suggestion-title {
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #333;
+  flex: 1;
+}
+
+.suggestion-price {
+  background: #fff3e0;
+  color: #e65100;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.suggestion-description {
+  color: #666;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.suggestion-meta {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
 }
 
-.success-message {
-  color: #27ae60;
-  background-color: #d5f4e6;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
+.meta-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
-.info-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  height: fit-content;
+.badge-subject {
+  background: #e3f2fd;
+  color: #1976d2;
 }
 
-.info-card h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
+.badge-level {
+  background: #f3e5f5;
+  color: #7b1fa2;
 }
 
-.info-card ul {
-  list-style: none;
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
 }
 
-.info-card li {
-  padding: 0.5rem 0;
-  color: #7f8c8d;
-  padding-left: 1.5rem;
-  position: relative;
+.checkbox-wrapper input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
 }
 
-.info-card li:before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: #27ae60;
-  font-weight: bold;
+.checkbox-wrapper label {
+  cursor: pointer;
+  font-weight: 600;
+  color: #667eea;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Success Section */
+.success-section {
+  text-align: center;
+  padding: 2rem;
+}
+
+.success-icon {
+  font-size: 4em;
+  color: #4caf50;
+  margin-bottom: 1.25rem;
+}
+
+.success-section h2 {
+  color: #333;
+  font-size: 1.8em;
+  margin-bottom: 0.625rem;
+  font-weight: 700;
+}
+
+.success-text {
+  color: #666;
+  margin: 1.25rem 0;
+  font-size: 1.1em;
+}
+
+.success-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1.875rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.8em;
+  }
+
+  .upload-section {
+    padding: 1.5rem;
+  }
+
+  .suggestion-header {
+    flex-direction: column;
+  }
+
+  .actions,
+  .success-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.5em;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .upload-icon {
+    font-size: 3em;
+  }
 }
 </style>

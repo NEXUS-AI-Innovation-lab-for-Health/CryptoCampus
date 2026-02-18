@@ -8,7 +8,7 @@
         <div class="cta-buttons">
           <router-link to="/requetes" class="btn btn-primary">Parcourir les requêtes</router-link>
           <router-link to="/login" v-if="!isLogged" class="btn btn-secondary">Se connecter</router-link>
-          <router-link to="/create_request" v-if="isLogged" class="btn btn-secondary">Créer une requête</router-link>
+          <router-link to="/create_request" v-if="isLogged && isTutor" class="btn btn-secondary">Créer une requête</router-link>
         </div>
       </div>
     </section>
@@ -104,18 +104,24 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 export default {
   name: 'Home',
   setup() {
     const isLogged = ref(null)
+    const userRole = ref('')
+    
+    const isTutor = computed(() => userRole.value === 'TUTOR')
 
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/check-auth')
         const data = await response.json()
         isLogged.value = data.isAuthenticated
+        if (data.isAuthenticated && data.role) {
+          userRole.value = data.role
+        }
       } catch (error) {
         console.error('Auth check failed:', error)
         isLogged.value = false
@@ -128,6 +134,7 @@ export default {
 
     return {
       isLogged,
+      isTutor,
     }
   }
 }

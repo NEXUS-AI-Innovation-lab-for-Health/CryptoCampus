@@ -220,6 +220,7 @@ export default {
             first_name: data.first_name || 'Utilisateur',
             last_name: data.last_name || 'Inconnu',
             email: data.email || 'Email non disponible',
+            role: data.role || '',
             created_at: data.created_at || new Date().toISOString(),
           }
           balance.value = data.balance || 0

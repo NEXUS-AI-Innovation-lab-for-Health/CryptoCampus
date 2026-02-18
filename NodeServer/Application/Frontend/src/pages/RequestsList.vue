@@ -1,177 +1,1255 @@
 <template>
-  <div class="container">
-    <header class="page-header">
-      <h2>Requêtes d'aide disponibles</h2>
-      <div class="filters">
-        <select v-model="subjectFilter">
-          <option value="">Toutes les matières</option>
-          <option value="math">Mathématiques</option>
-          <option value="physics">Physique</option>
-          <option value="chemistry">Chimie</option>
-          <option value="programming">Programmation</option>
-          <option value="french">Français</option>
-          <option value="english">Anglais</option>
-        </select>
-        <select v-model="sortFilter">
-          <option value="recent">Plus récentes</option>
-          <option value="reward">Récompense</option>
-        </select>
-      </div>
-    </header>
+  <div class="page-container">
+    <div class="container">
+      <!-- Header Section -->
+      <header class="page-header">
+        <h1>🎓 Annonces d'Aide aux Devoirs</h1>
+        <p class="subtitle">Recherchez parmi nos annonces grâce à la recherche sémantique</p>
+        
+        <!-- Search Section -->
+        <div class="search-section">
+          <input 
+            v-model="searchQuery"
+            type="text" 
+            class="search-input" 
+            placeholder="Rechercher par matière, niveau, mots-clés... (ex: 'mathématiques lycée', 'anglais conversation')"
+            @keypress.enter="searchListings"
+            autocomplete="off"
+          />
+          <button class="btn btn-primary" @click="searchListings">
+            🔍 Rechercher
+          </button>
+          <button class="btn btn-secondary" @click="loadAllListings">
+            📋 Tout afficher
+          </button>
+          <button class="btn btn-filter" @click="showFilters = !showFilters">
+            {{ showFilters ? '❌ Masquer les filtres' : '🛠️ Filtres & Tri' }}
+          </button>
+        </div>
 
-    <div id="requestsList" class="requests-list">
-      <div v-if="requests.length === 0" class="empty-state">
-        <p>Aucune requête disponible pour le moment</p>
-      </div>
-      <div v-for="request in filteredRequests" :key="request.id" class="request-card">
-        <h3>{{ request.title }}</h3>
-        <p>{{ request.description }}</p>
-        <div class="request-meta">
-          <span class="subject">{{ request.subject }}</span>
-          <span class="reward">💰 {{ request.reward }} CCT</span>
+        <!-- Filters & Sort Section -->
+        <div v-if="showFilters" class="filters-section">
+          <div class="filter-group">
+            <label class="filter-label">📚 Matière :</label>
+            <div class="filter-buttons">
+              <button 
+                class="filter-btn"
+                :class="{ active: subjectFilter === '' }"
+                @click="subjectFilter = ''"
+              >
+                Toutes
+              </button>
+              <button 
+                v-for="subject in availableSubjects" 
+                :key="subject.value"
+                class="filter-btn"
+                :class="{ active: subjectFilter === subject.value }"
+                @click="subjectFilter = subject.value"
+              >
+                {{ subject.label }}
+              </button>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">🎯 Niveau :</label>
+            <div class="filter-buttons">
+              <button 
+                class="filter-btn"
+                :class="{ active: levelFilter === '' }"
+                @click="levelFilter = ''"
+              >
+                Tous
+              </button>
+              <button 
+                v-for="level in availableLevels" 
+                :key="level.value"
+                class="filter-btn"
+                :class="{ active: levelFilter === level.value }"
+                @click="levelFilter = level.value"
+              >
+                {{ level.label }}
+              </button>
+            </div>
+          </div>
+
+          <div class="sort-group">
+            <label class="filter-label">🔀 Trier par :</label>
+            <select v-model="sortBy" class="sort-select">
+              <option value="">Par défaut</option>
+              <option value="price-asc">Prix croissant</option>
+              <option value="price-desc">Prix décroissant</option>
+              <option value="title">Titre (A-Z)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="stats">
+          <span class="stat-badge">{{ filteredListings.length }} annonces affichées</span>
+          <span class="stat-badge">{{ searchStatus }}</span>
+        </div>
+      </header>
+
+      <!-- Error Container -->
+      <div v-if="errorMessage" class="error-container">
+        <div class="error">
+          ❌ {{ errorMessage }}
         </div>
       </div>
-    </div>
 
-    <div v-if="requests.length === 0" class="empty-state">
-      <p>Aucune requête disponible pour le moment</p>
+      <!-- Loading Container -->
+      <div v-if="isLoading" class="loading-container">
+        <div class="loading">⏳ Chargement...</div>
+      </div>
+
+      <!-- Listings Grid -->
+      <div v-if="!isLoading" class="listings-grid">
+        <!-- Empty State -->
+        <div v-if="filteredListings.length === 0" class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <h2 class="empty-state-title">Aucune annonce trouvée</h2>
+          <p class="empty-state-text">
+            {{ currentQuery ? `Aucun résultat pour "${currentQuery}"` : 'La base de données est vide' }}
+          </p>
+          <button v-if="currentQuery" class="btn btn-secondary" @click="loadAllListings">
+            Afficher toutes les annonces
+          </button>
+        </div>
+
+        <!-- Listing Cards -->
+        <div 
+          v-for="listing in filteredListings" 
+          :key="listing.id" 
+          class="listing-card"
+          @click="openListingDetails(listing)"
+        >
+          <div class="listing-header">
+            <h3 class="listing-title">{{ listing.title }}</h3>
+            <div class="listing-meta">
+              <span class="badge badge-subject">📚 {{ listing.subject }}</span>
+              <span class="badge badge-level">🎯 {{ listing.level }}</span>
+              <span class="badge badge-price">💰 {{ listing.price }} CCT/h</span>
+            </div>
+          </div>
+          <p class="listing-description">{{ listing.description }}</p>
+          <div class="listing-footer">
+            <span class="tutor-name">👨‍🏫 {{ listing.tutor_name }}</span>
+            <span v-if="showScores && listing.score !== undefined" class="score-badge">
+              Score: {{ Math.round(listing.score * 100) }}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Détails de l'annonce -->
+      <div v-if="showModal && selectedListing" class="modal-overlay" @click.self="closeModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>{{ selectedListing.title }}</h2>
+            <button @click="closeModal" class="close-btn">×</button>
+          </div>
+          
+          <div class="modal-body">
+            <!-- Info du tuteur -->
+            <div class="tutor-info">
+              <h3>👨‍🏫 Tuteur</h3>
+              <p class="tutor-name-large">{{ selectedListing.tutor_name }}</p>
+              <p class="tutor-email">{{ selectedListing.tutor_email }}</p>
+            </div>
+
+            <!-- Détails du cours -->
+            <div class="course-details">
+              <h3>📋 Détails du cours</h3>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">📚 Matière :</span>
+                  <span class="detail-value">{{ selectedListing.subject }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">🎯 Niveau :</span>
+                  <span class="detail-value">{{ selectedListing.level }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">💰 Prix :</span>
+                  <span class="detail-value">{{ selectedListing.price }} CCT/heure</span>
+                </div>
+              </div>
+              
+              <div class="description-section">
+                <h4>Description</h4>
+                <p>{{ selectedListing.description }}</p>
+              </div>
+            </div>
+
+            <!-- Formulaire de réservation -->
+            <div v-if="!bookingSuccess" class="booking-form">
+              <h3>📅 Réserver ce cours</h3>
+              <div v-if="bookingError" class="error-message">{{ bookingError }}</div>
+              
+              <div class="form-group">
+                <label>Date et heure de début *</label>
+                <input 
+                  v-model="bookingForm.startTime" 
+                  type="datetime-local" 
+                  required
+                  :min="minDateTime"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Date et heure de fin *</label>
+                <input 
+                  v-model="bookingForm.endTime" 
+                  type="datetime-local" 
+                  required
+                  :min="bookingForm.startTime"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Notes (optionnel)</label>
+                <textarea 
+                  v-model="bookingForm.notes" 
+                  rows="3"
+                  placeholder="Ajoutez des informations supplémentaires..."
+                ></textarea>
+              </div>
+
+              <div class="booking-summary">
+                <p><strong>Durée estimée :</strong> {{ estimatedDuration }}</p>
+                <p><strong>Prix estimé :</strong> {{ estimatedPrice }} CCT</p>
+              </div>
+            </div>
+
+            <!-- Message de succès -->
+            <div v-if="bookingSuccess" class="success-message">
+              <div class="success-icon">✅</div>
+              <h3>Réservation confirmée !</h3>
+              <p>Votre réservation a été enregistrée avec succès.</p>
+              <router-link to="/agenda" class="btn btn-primary">
+                Voir dans l'agenda
+              </router-link>
+            </div>
+          </div>
+
+          <div v-if="!bookingSuccess" class="modal-footer">
+            <button @click="closeModal" class="btn btn-secondary">Annuler</button>
+            <button 
+              @click="createBooking" 
+              class="btn btn-primary"
+              :disabled="isBooking || !isFormValid"
+            >
+              {{ isBooking ? 'Réservation...' : 'Confirmer la réservation' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, computed, onMounted } from 'vue'
 
-export default {
-  name: 'RequestsList',
-  setup() {
-    const requests = ref([])
-    const subjectFilter = ref('')
-    const sortFilter = ref('recent')
+// State
+const searchQuery = ref('')
+const currentQuery = ref('')
+const listings = ref([])
+const isLoading = ref(false)
+const errorMessage = ref('')
+const showScores = ref(false)
+const showFilters = ref(false)
+const subjectFilter = ref('')
+const levelFilter = ref('')
+const sortBy = ref('')
 
-    const filteredRequests = computed(() => {
-      let filtered = requests.value
+// Modal & Booking state
+const showModal = ref(false)
+const selectedListing = ref(null)
+const isBooking = ref(false)
+const bookingSuccess = ref(false)
+const bookingError = ref('')
+const bookingForm = ref({
+  startTime: '',
+  endTime: '',
+  notes: ''
+})
 
-      if (subjectFilter.value) {
-        filtered = filtered.filter(r => r.subject === subjectFilter.value)
-      }
+// Available filters
+const availableSubjects = [
+  { value: 'Mathématiques', label: 'Mathématiques' },
+  { value: 'Physique', label: 'Physique' },
+  { value: 'Chimie', label: 'Chimie' },
+  { value: 'Informatique', label: 'Informatique' },
+  { value: 'Anglais', label: 'Anglais' },
+  { value: 'Français', label: 'Français' }
+]
 
-      if (sortFilter.value === 'recent') {
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      } else if (sortFilter.value === 'reward') {
-        filtered.sort((a, b) => b.reward - a.reward)
-      }
+const availableLevels = [
+  { value: 'Collège', label: 'Collège' },
+  { value: 'Lycée', label: 'Lycée' },
+  { value: 'Licence', label: 'Licence' },
+  { value: 'Master', label: 'Master' }
+]
 
-      return filtered
+// Computed
+const filteredListings = computed(() => {
+  let filtered = [...listings.value]
+  
+  // Apply subject filter
+  if (subjectFilter.value) {
+    filtered = filtered.filter(listing => 
+      listing.subject === subjectFilter.value
+    )
+  }
+  
+  // Apply level filter
+  if (levelFilter.value) {
+    filtered = filtered.filter(listing => 
+      listing.level === levelFilter.value
+    )
+  }
+  
+  // Apply sorting
+  if (sortBy.value === 'price-asc') {
+    filtered.sort((a, b) => a.price - b.price)
+  } else if (sortBy.value === 'price-desc') {
+    filtered.sort((a, b) => b.price - a.price)
+  } else if (sortBy.value === 'title') {
+    filtered.sort((a, b) => a.title.localeCompare(b.title))
+  }
+  
+  return filtered
+})
+
+const searchStatus = computed(() => {
+  if (isLoading.value) return 'Chargement...'
+  if (currentQuery.value) return `Recherche: "${currentQuery.value}"`
+  return 'Toutes les annonces'
+})
+
+// Booking computed
+const minDateTime = computed(() => {
+  const now = new Date()
+  now.setHours(now.getHours() + 1) // Minimum 1 heure à l'avance
+  return now.toISOString().slice(0, 16)
+})
+
+const isFormValid = computed(() => {
+  return bookingForm.value.startTime && bookingForm.value.endTime &&
+         bookingForm.value.endTime > bookingForm.value.startTime
+})
+
+const estimatedDuration = computed(() => {
+  if (!bookingForm.value.startTime || !bookingForm.value.endTime) return '0h'
+  const start = new Date(bookingForm.value.startTime)
+  const end = new Date(bookingForm.value.endTime)
+  const hours = (end - start) / (1000 * 60 * 60)
+  return hours.toFixed(1) + 'h'
+})
+
+const estimatedPrice = computed(() => {
+  if (!bookingForm.value.startTime || !bookingForm.value.endTime || !selectedListing.value) return '0'
+  const start = new Date(bookingForm.value.startTime)
+  const end = new Date(bookingForm.value.endTime)
+  const hours = (end - start) / (1000 * 60 * 60)
+  return (hours * selectedListing.value.price).toFixed(2)
+})
+
+// Methods
+const showError = (message) => {
+  errorMessage.value = message
+  setTimeout(() => {
+    errorMessage.value = ''
+  }, 5000)
+}
+
+const loadAllListings = async () => {
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    
+    const response = await fetch('/api/listings', {
+      credentials: 'include'
     })
-
-    const loadRequests = async () => {
-      try {
-        const response = await fetch('/api/requests')
-        if (response.ok) {
-          requests.value = await response.json()
-        }
-      } catch (error) {
-        console.error('Failed to load requests:', error)
-        // Mock data for development
-        requests.value = []
-      }
+    
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`)
     }
-
-    onMounted(() => {
-      loadRequests()
-    })
-
-    return {
-      requests,
-      subjectFilter,
-      sortFilter,
-      filteredRequests,
-    }
+    
+    const data = await response.json()
+    
+    isLoading.value = false
+    currentQuery.value = ''
+    searchQuery.value = ''
+    showScores.value = false
+    
+    listings.value = data.listings || []
+  } catch (error) {
+    isLoading.value = false
+    showError(`Impossible de charger les annonces: ${error.message}`)
+    console.error('Erreur:', error)
   }
 }
+
+const searchListings = async () => {
+  const query = searchQuery.value.trim()
+  
+  if (!query) {
+    showError('Veuillez entrer un terme de recherche')
+    return
+  }
+
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    currentQuery.value = query
+    
+    const response = await fetch(`/api/listings/search?q=${encodeURIComponent(query)}&limit=20`, {
+      credentials: 'include'
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    
+    isLoading.value = false
+    showScores.value = true
+    
+    listings.value = data.results || []
+  } catch (error) {
+    isLoading.value = false
+    showError(`Erreur de recherche: ${error.message}`)
+    console.error('Erreur:', error)
+  }
+}
+
+// Modal & Booking methods
+const openListingDetails = (listing) => {
+  selectedListing.value = listing
+  showModal.value = true
+  bookingSuccess.value = false
+  bookingError.value = ''
+  // Reset form
+  bookingForm.value = {
+    startTime: '',
+    endTime: '',
+    notes: ''
+  }
+}
+
+const closeModal = () => {
+  showModal.value = false
+  selectedListing.value = null
+  bookingSuccess.value = false
+  bookingError.value = ''
+}
+
+const createBooking = async () => {
+  if (!isFormValid.value) {
+    bookingError.value = 'Veuillez remplir tous les champs obligatoires'
+    return
+  }
+
+  try {
+    isBooking.value = true
+    bookingError.value = ''
+
+    const response = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        user_id: null, // Will be set from session on backend
+        listing_id: selectedListing.value.id,
+        title: selectedListing.value.title,
+        description: selectedListing.value.description,
+        subject: selectedListing.value.subject,
+        start_time: bookingForm.value.startTime,
+        end_time: bookingForm.value.endTime,
+        tutor_name: selectedListing.value.tutor_name,
+        price: selectedListing.value.price,
+        notes: bookingForm.value.notes
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Erreur lors de la réservation')
+    }
+
+    const booking = await response.json()
+    console.log('Réservation créée:', booking)
+    
+    isBooking.value = false
+    bookingSuccess.value = true
+
+  } catch (error) {
+    isBooking.value = false
+    bookingError.value = error.message
+    console.error('Erreur:', error)
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  loadAllListings()
+})
 </script>
 
 <style scoped>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.page-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
 }
 
+/* Header Styles */
 .page-header {
+  background: white;
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   margin-bottom: 2rem;
 }
 
-.page-header h2 {
+.page-header h1 {
+  color: #667eea;
   margin-bottom: 1rem;
-  color: #2c3e50;
+  font-size: 2.5em;
+  font-weight: 700;
 }
 
-.filters {
-  display: flex;
-  gap: 1rem;
-}
-
-.filters select {
-  padding: 0.5rem 1rem;
-  border: 1px solid #bdc3c7;
-  border-radius: 4px;
+.subtitle {
+  color: #666;
+  margin-bottom: 1.5rem;
   font-size: 1rem;
 }
 
-.requests-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+/* Search Section */
+.search-section {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn {
+  padding: 1rem 1.875rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background: #e0e0e0;
+}
+
+.btn-filter {
+  background: #fff3e0;
+  color: #e65100;
+  border: 2px solid #ffb74d;
+}
+
+.btn-filter:hover {
+  background: #ffe0b2;
+  border-color: #ff9800;
+  transform: translateY(-2px);
+}
+
+/* Stats Section */
+.stats {
+  display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.request-card {
-  background: white;
+.stat-badge {
+  background: #f0f4ff;
+  color: #667eea;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Filters & Sort Section */
+.filters-section {
+  margin: 1.5rem 0;
   padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
+  background: #f8f9ff;
+  border-radius: 12px;
+  border: 2px solid #e8ebff;
+  animation: slideDown 0.3s ease-out;
+  overflow: hidden;
 }
 
-.request-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
 }
 
-.request-card h3 {
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
+.filter-group,
+.sort-group {
+  margin-bottom: 1.25rem;
 }
 
-.request-card p {
-  color: #7f8c8d;
-  margin-bottom: 1rem;
+.filter-group:last-child,
+.sort-group:last-child {
+  margin-bottom: 0;
+}
+
+.filter-label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.75rem;
   font-size: 0.95rem;
 }
 
-.request-meta {
+.filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 2px solid #e0e0e0;
+  background: white;
+  color: #666;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+.filter-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+  transform: translateY(-1px);
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.sort-select {
+  width: 100%;
+  max-width: 300px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.sort-select:hover {
+  border-color: #667eea;
+}
+
+/* Error & Loading */
+.error-container {
+  margin-bottom: 1.5rem;
+}
+
+.error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  border-left: 4px solid #c62828;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loading-container {
+  text-align: center;
+  padding: 3rem;
+}
+
+.loading {
+  color: white;
+  font-size: 1.5em;
+  font-weight: 600;
+}
+
+/* Listings Grid */
+.listings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.listing-card {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.listing-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.listing-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal {
+  background: white;
+  border-radius: 15px;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  padding: 2rem;
+  border-bottom: 2px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
 }
 
-.subject {
-  background-color: #ecf0f1;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  color: #2c3e50;
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 700;
 }
 
-.reward {
-  color: #27ae60;
-  font-weight: bold;
+.close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 2em;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
 }
 
-.empty-state {
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.tutor-info {
+  background: #f8f9ff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #667eea;
+}
+
+.tutor-info h3 {
+  color: #667eea;
+  margin-bottom: 0.75rem;
+  font-size: 1.1em;
+}
+
+.tutor-name-large {
+  font-size: 1.3em;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.tutor-email {
+  color: #666;
+  font-size: 0.95em;
+}
+
+.course-details {
+  margin-bottom: 1.5rem;
+}
+
+.course-details h3 {
+  color: #333;
+  margin-bottom: 1rem;
+  font-size: 1.1em;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-item {
+  background: #f8f9ff;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 0.9em;
+}
+
+.detail-value {
+  color: #333;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.description-section {
+  background: #f8f9ff;
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.description-section h4 {
+  color: #667eea;
+  margin-bottom: 0.75rem;
+  font-size: 1em;
+}
+
+.description-section p {
+  color: #666;
+  line-height: 1.6;
+}
+
+.booking-form {
+  background: #fff9f0;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid #ffc107;
+}
+
+.booking-form h3 {
+  color: #e65100;
+  margin-bottom: 1rem;
+  font-size: 1.1em;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-size: 0.95em;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.booking-summary {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  border: 2px solid #e0e0e0;
+}
+
+.booking-summary p {
+  color: #333;
+  margin: 0.5rem 0;
+  font-size: 0.95em;
+}
+
+.success-message {
   text-align: center;
   padding: 2rem;
-  color: #7f8c8d;
+}
+
+.success-icon {
+  font-size: 4em;
+  margin-bottom: 1rem;
+  animation: scaleIn 0.5s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.success-message h3 {
+  color: #4caf50;
+  margin-bottom: 0.75rem;
+  font-size: 1.5em;
+}
+
+.success-message p {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.modal-footer {
+  padding: 1.5rem 2rem;
+  border-top: 2px solid #f0f0f0;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-footer .btn {
+  padding: 0.75rem 1.5rem;
+}
+
+.error-message {
+  background: #ffebee;
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  color: #c62828;
+}
+
+/* Listing Card Styles */
+.listing-card {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.listing-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.listing-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.listing-header {
+  margin-bottom: 1rem;
+}
+
+.listing-title {
+  color: #333;
+  font-size: 1.3em;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.listing-meta {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-subject {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.badge-level {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.badge-price {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.listing-description {
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.listing-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+  gap: 0.5rem;
+}
+
+.tutor-name {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.score-badge {
+  background: #4caf50;
+  color: white;
+  padding: 0.375rem 0.625rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Empty State */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.empty-state-icon {
+  font-size: 4em;
+  margin-bottom: 1.25rem;
+}
+
+.empty-state-title {
+  font-size: 1.5em;
+  color: #333;
+  margin-bottom: 0.625rem;
+  font-weight: 700;
+}
+
+.empty-state-text {
+  color: #666;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .page-header {
+    padding: 1.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.8em;
+  }
+
+  .search-section {
+    flex-direction: column;
+  }
+
+  .search-input {
+    min-width: 100%;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .listings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 1.5em;
+  }
+
+  .subtitle {
+    font-size: 0.875rem;
+  }
+
+  .listing-title {
+    font-size: 1.1em;
+  }
+
+  .empty-state {
+    padding: 2rem 1rem;
+  }
 }
 </style>

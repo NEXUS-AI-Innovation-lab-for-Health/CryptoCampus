@@ -8,6 +8,7 @@ import CreateRequest from './pages/CreateRequest.vue'
 import Profile from './pages/Profile.vue'
 import Logout from './pages/Logout.vue'
 import Agenda from './pages/Agenda.vue'
+import Reservations from './pages/Reservations.vue'
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -20,6 +21,7 @@ const routes = [
   { path: '/profile', component: Profile },
   { path: '/logout', component: Logout },
   { path: '/agenda', component: Agenda },
+  { path: '/reservations', component: Reservations },
 ]
 
 const router = createRouter({

@@ -225,8 +225,29 @@ app.get('/api', (req, res) => {
 });
 
 // Vérifier le statut d'authentification
-app.get('/api/check-auth', (req, res) => {
+app.get('/api/check-auth', async (req, res) => {
   const isAuthenticated = !!req.session.userId;
+  
+  if (isAuthenticated && req.session.userId) {
+    try {
+      const result = await pool.query(
+        'SELECT role, email FROM users WHERE user_id = $1',
+        [req.session.userId]
+      );
+      
+      if (result.rows.length > 0) {
+        return res.json({ 
+          isAuthenticated, 
+          userId: req.session.userId,
+          role: result.rows[0].role,
+          email: result.rows[0].email
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  }
+  
   res.json({ 
     isAuthenticated, 
     userId: req.session.userId 
@@ -758,12 +779,19 @@ app.get('/api/bookings/:booking_id', async (req, res) => {
 // CREATE nouvelle réservation
 app.post('/api/bookings', async (req, res) => {
   try {
+    // Get user_id from session
+    const user_id = req.session.userId;
+    
+    if (!user_id) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
+    
     const {
-      user_id, listing_id, title, description, subject,
+      listing_id, title, description, subject,
       start_time, end_time, tutor_name, price, notes
     } = req.body;
     
-    if (!user_id || !title || !start_time || !end_time) {
+    if (!title || !start_time || !end_time) {
       return res.status(400).json({ error: 'Champs requis manquants' });
     }
     
