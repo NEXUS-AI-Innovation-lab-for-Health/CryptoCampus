@@ -116,7 +116,7 @@ async function assignBlockchainAddress(userId) {
     // Récupérer toutes les adresses Ganache disponibles
     const ganacheAccounts = await getAllAccounts();
     
-    if (!ganacheAccounts.success || ganacheAccounts.accounts.length === 0) {
+    if (!ganacheAccounts || ganacheAccounts.length === 0) {
       throw new Error('Aucun compte Ganache disponible');
     }
 
@@ -130,7 +130,7 @@ async function assignBlockchainAddress(userId) {
 
     // Trouver la première adresse disponible
     let availableAddress = null;
-    for (const account of ganacheAccounts.accounts) {
+    for (const account of ganacheAccounts) {
       if (!assignedSet.has(account.address.toLowerCase())) {
         availableAddress = account.address;
         break;
@@ -139,7 +139,7 @@ async function assignBlockchainAddress(userId) {
 
     if (!availableAddress) {
       // Si toutes les adresses sont prises, réutiliser la première
-      availableAddress = ganacheAccounts.accounts[0].address;
+      availableAddress = ganacheAccounts[0].address;
     }
 
     // Créer le wallet dans la base de données
