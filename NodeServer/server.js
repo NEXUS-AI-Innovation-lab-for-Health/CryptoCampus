@@ -591,10 +591,10 @@ app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) =
     );
     console.log('✅ Actions admin supprimées');
 
-    // Supprimer les API keys
+    // Supprimer les API keys (owner est l'email)
     await client.query(
-      'DELETE FROM api_keys WHERE user_id = $1',
-      [userId]
+      'DELETE FROM api_keys WHERE owner = $1',
+      [userEmail]
     );
     console.log('✅ API keys supprimées');
 
