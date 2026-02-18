@@ -6,11 +6,7 @@
       <div class="profile-info">
         <h1>{{ userInfo.first_name }} {{ userInfo.last_name }}</h1>
         <p class="email">{{ userInfo.email }}</p>
-        <div class="status-badge-container">
-          <span :class="['status-badge', getRoleClass(userInfo.role)]">
-            {{ getRoleLabel(userInfo.role) }}
-          </span>
-        </div>
+        <p class="status-text">Statut : <strong>{{ getRoleLabel(userInfo.role) }}</strong></p>
         <p class="join-date">Membre depuis {{ formatDate(userInfo.created_at) }}</p>
       </div>
     </div>
@@ -204,10 +200,6 @@ export default {
       return roleLabels[role] || role
     }
 
-    const getRoleClass = (role) => {
-      return role ? role.toLowerCase() : ''
-    }
-
     const formatDate = (dateString) => {
       const date = new Date(dateString)
       return date.toLocaleDateString('fr-FR', {
@@ -366,7 +358,6 @@ export default {
       passwordSuccess,
       formatDate,
       getRoleLabel,
-      getRoleClass,
       resetPassword,
       logout,
       confirmDeleteAccount,
@@ -423,45 +414,16 @@ export default {
   margin: 0.25rem 0 0 0;
 }
 
-/* Status Badge */
-.status-badge-container {
-  margin: 0.75rem 0 0.5rem 0;
+/* Status Text */
+.status-text {
+  color: #7f8c8d;
+  font-size: 0.95rem;
+  margin: 0.5rem 0 0 0;
 }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
+.status-text strong {
+  color: #2c3e50;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-}
-
-.status-badge:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.badge-icon {
-  font-size: 1.1rem;
-}
-
-.status-badge.student {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.status-badge.tutor {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
-}
-
-.status-badge.admin {
-  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
-  color: white;
 }
 
 /* Main Grid Layout */
