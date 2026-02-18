@@ -412,11 +412,47 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
       }
     }
 
-    // Calculer les statistiques (TODO: implémenter les vraies stats depuis les tables)
+    // Calculer les statistiques dynamiquement depuis la base de données
+    
+    // 1. Nombre d'étudiants aidés (participations confirmées où l'utilisateur est le créateur du service)
+    const helpedCountResult = await pool.query(
+      `SELECT COUNT(DISTINCT sp.user_id) as count
+       FROM service_participations sp
+       JOIN services s ON sp.service_id = s.service_id
+       WHERE s.created_by = $1 AND sp.status = 'CONFIRMED'`,
+      [req.session.userId]
+    );
+    const helpedCount = parseInt(helpedCountResult.rows[0]?.count || 0);
+
+    // 2. Total des coins gagnés (transactions confirmées reçues)
+    const walletIdResult = await pool.query(
+      `SELECT wallet_id FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+      [req.session.userId]
+    );
+    
+    let totalEarned = 0;
+    if (walletIdResult.rows.length > 0) {
+      const walletId = walletIdResult.rows[0].wallet_id;
+      const earnedResult = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total
+         FROM transactions
+         WHERE to_wallet = $1 AND status = 'CONFIRMED'`,
+        [walletId]
+      );
+      totalEarned = parseFloat(earnedResult.rows[0]?.total || 0);
+    }
+
+    // 3. Nombre de services/requêtes créés
+    const requestsCreatedResult = await pool.query(
+      `SELECT COUNT(*) as count FROM services WHERE created_by = $1`,
+      [req.session.userId]
+    );
+    const requestsCreated = parseInt(requestsCreatedResult.rows[0]?.count || 0);
+
     const stats = {
-      helpedCount: 0,
-      totalEarned: balance,
-      requestsCreated: 0
+      helpedCount,
+      totalEarned,
+      requestsCreated
     };
 
     res.json({
