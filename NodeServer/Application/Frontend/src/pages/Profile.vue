@@ -8,7 +8,6 @@
         <p class="email">{{ userInfo.email }}</p>
         <div class="status-badge-container">
           <span :class="['status-badge', getRoleClass(userInfo.role)]">
-            <span class="badge-icon">{{ getRoleIcon(userInfo.role) }}</span>
             {{ getRoleLabel(userInfo.role) }}
           </span>
         </div>
@@ -191,15 +190,6 @@ export default {
       return roleLabels[role] || role
     }
 
-    const getRoleIcon = (role) => {
-      const roleIcons = {
-        'STUDENT': '🎓',
-        'TUTOR': '👨‍🏫',
-        'ADMIN': '👑'
-      }
-      return roleIcons[role] || '👤'
-    }
-
     const getRoleClass = (role) => {
       return role ? role.toLowerCase() : ''
     }
@@ -322,7 +312,6 @@ export default {
       passwordSuccess,
       formatDate,
       getRoleLabel,
-      getRoleIcon,
       getRoleClass,
       resetPassword,
       logout,
