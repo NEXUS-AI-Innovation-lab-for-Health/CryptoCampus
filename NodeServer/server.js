@@ -98,6 +98,65 @@ function authGuard(options) {
 }
 
 /* ========================================
+   HELPER: ASSIGNER ADRESSE BLOCKCHAIN
+   ======================================== */
+
+async function assignBlockchainAddress(userId) {
+  try {
+    // Vérifier si l'utilisateur a déjà une adresse
+    const existingWallet = await pool.query(
+      'SELECT wallet_id FROM wallets WHERE user_id = $1 AND blockchain = $2',
+      [userId, 'ethereum']
+    );
+
+    if (existingWallet.rows.length > 0) {
+      return; // L'utilisateur a déjà un wallet
+    }
+
+    // Récupérer toutes les adresses Ganache disponibles
+    const ganacheAccounts = await getAllAccounts();
+    
+    if (!ganacheAccounts.success || ganacheAccounts.accounts.length === 0) {
+      throw new Error('Aucun compte Ganache disponible');
+    }
+
+    // Récupérer les adresses déjà assignées
+    const assignedAddresses = await pool.query(
+      'SELECT public_address FROM wallets WHERE blockchain = $1',
+      ['ethereum']
+    );
+
+    const assignedSet = new Set(assignedAddresses.rows.map(row => row.public_address.toLowerCase()));
+
+    // Trouver la première adresse disponible
+    let availableAddress = null;
+    for (const account of ganacheAccounts.accounts) {
+      if (!assignedSet.has(account.address.toLowerCase())) {
+        availableAddress = account.address;
+        break;
+      }
+    }
+
+    if (!availableAddress) {
+      // Si toutes les adresses sont prises, réutiliser la première
+      availableAddress = ganacheAccounts.accounts[0].address;
+    }
+
+    // Créer le wallet dans la base de données
+    await pool.query(
+      `INSERT INTO wallets (user_id, public_address, blockchain, created_at)
+       VALUES ($1, $2, $3, NOW())`,
+      [userId, availableAddress, 'ethereum']
+    );
+
+    console.log(`✅ Adresse blockchain assignée: ${availableAddress} -> User ${userId}`);
+  } catch (error) {
+    console.error('Erreur lors de l\'assignation d\'adresse blockchain:', error);
+    throw error;
+  }
+}
+
+/* ========================================
    CONFIGURATION MULTER (Upload de fichiers)
    ======================================== */
 
@@ -281,9 +340,19 @@ app.post('/api/register', async (req, res) => {
       [email, hashedPassword, first_name || null, last_name || null, normalizedRole]
     );
 
+    const newUser = result.rows[0];
+
+    // Assigner automatiquement une adresse blockchain
+    try {
+      await assignBlockchainAddress(newUser.user_id);
+    } catch (walletError) {
+      console.error('Erreur assignation wallet:', walletError);
+      // Ne pas faire échouer l'inscription si l'assignation échoue
+    }
+
     res.status(201).json({
       message: 'Utilisateur créé avec succès',
-      user: result.rows[0]
+      user: newUser
     });
 
   } catch (err) {
@@ -295,17 +364,67 @@ app.post('/api/register', async (req, res) => {
 // Profil utilisateur
 app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
   try {
-    const result = await pool.query(
+    // Récupérer les infos utilisateur
+    const userResult = await pool.query(
       `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login
        FROM users WHERE user_id = $1`,
       [req.session.userId]
     );
 
-    if (result.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    res.json(result.rows[0]);
+    const user = userResult.rows[0];
+    let balance = 0;
+    let blockchainAddress = null;
+
+    // Récupérer l'adresse blockchain de l'utilisateur depuis la table wallets
+    let walletResult = await pool.query(
+      `SELECT public_address, blockchain FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+      [req.session.userId]
+    );
+
+    // Si l'utilisateur n'a pas de wallet, lui en assigner un
+    if (walletResult.rows.length === 0) {
+      try {
+        await assignBlockchainAddress(req.session.userId);
+        // Récupérer à nouveau le wallet créé
+        walletResult = await pool.query(
+          `SELECT public_address, blockchain FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+          [req.session.userId]
+        );
+      } catch (assignError) {
+        console.error('Erreur création wallet:', assignError);
+      }
+    }
+
+    if (walletResult.rows.length > 0) {
+      blockchainAddress = walletResult.rows[0].public_address;
+      
+      // Récupérer le solde réel depuis Ganache
+      try {
+        const balanceData = await getBalance(blockchainAddress);
+        balance = parseFloat(balanceData.balanceEth);
+      } catch (balanceError) {
+        console.error('Erreur récupération solde Ganache:', balanceError);
+        balance = 0;
+      }
+    }
+
+    // Calculer les statistiques (TODO: implémenter les vraies stats depuis les tables)
+    const stats = {
+      helpedCount: 0,
+      totalEarned: balance,
+      requestsCreated: 0
+    };
+
+    res.json({
+      ...user,
+      balance,
+      blockchainAddress,
+      stats
+    });
 
   } catch (err) {
     console.error('Profile error:', err);

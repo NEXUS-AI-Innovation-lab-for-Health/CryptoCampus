@@ -26,9 +26,20 @@
               <p class="balance-label">Mon solde de StudyCoins</p>
               <div class="balance-amount">
                 <span class="coin-icon">🪙</span>
-                <span id="balanceValue" class="balance-value">{{ balance }}</span>
+                <span id="balanceValue" class="balance-value">{{ balance.toFixed(4) }}</span>
                 <span class="coin-label">CCT</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Blockchain Address Card -->
+          <div v-if="blockchainAddress" class="blockchain-card">
+            <div class="blockchain-header">
+              <span class="blockchain-icon">🔗</span>
+              <span class="blockchain-label">Adresse Blockchain</span>
+            </div>
+            <div class="blockchain-address">
+              <code>{{ blockchainAddress }}</code>
             </div>
           </div>
 
@@ -143,6 +154,7 @@ export default {
     const userId = localStorage.getItem('token')
     const router = useRouter()
     const balance = ref(0)
+    const blockchainAddress = ref(null)
     const stats = ref({
       helpedCount: 0,
       totalEarned: 0,
@@ -186,6 +198,7 @@ export default {
             created_at: data.created_at || new Date().toISOString(),
           }
           balance.value = data.balance || 0
+          blockchainAddress.value = data.blockchainAddress || null
           stats.value = data.stats || stats.value
         }
       } catch (error) {
@@ -271,6 +284,7 @@ export default {
 
     return {
       balance,
+      blockchainAddress,
       stats,
       userInfo,
       passwordForm,
@@ -382,6 +396,40 @@ export default {
 
 .balance-content {
   color: white;
+}
+
+/* Blockchain Address Card */
+.blockchain-card {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px rgba(46, 204, 113, 0.25);
+}
+
+.blockchain-card h3 {
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0.95;
+  letter-spacing: 0.5px;
+}
+
+.blockchain-card code {
+  display: block;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .balance-label {
