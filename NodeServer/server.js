@@ -586,7 +586,7 @@ app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) =
 
     // Supprimer les actions admin
     await client.query(
-      'DELETE FROM admin_actions WHERE admin_id = $1 OR target_user_id = $1',
+      'DELETE FROM admin_actions WHERE admin_id = $1 OR target_id = $1',
       [userId]
     );
     console.log('✅ Actions admin supprimées');
