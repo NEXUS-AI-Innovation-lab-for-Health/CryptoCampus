@@ -245,6 +245,11 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Email et mot de passe requis' });
     }
 
+    // Validation du mot de passe
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+    }
+
     // Vérifier si l'utilisateur existe déjà
     const existing = await pool.query(
       'SELECT user_id FROM users WHERE email = $1',
@@ -255,6 +260,15 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
 
+    // Normaliser le rôle (convertir en majuscules)
+    const normalizedRole = (role || 'student').toUpperCase();
+    
+    // Valider le rôle
+    const validRoles = ['STUDENT', 'TUTOR', 'ADMIN'];
+    if (!validRoles.includes(normalizedRole)) {
+      return res.status(400).json({ error: 'Rôle invalide' });
+    }
+
     // Hasher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -262,9 +276,9 @@ app.post('/api/register', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO users 
       (email, password_hash, first_name, last_name, role, is_verified, created_at)
-      VALUES ($1, $2, $3, $4, $5, false, NOW())
+      VALUES ($1, $2, $3, $4, $5::user_role, false, NOW())
       RETURNING user_id, email, first_name, last_name, role, created_at`,
-      [email, hashedPassword, first_name, last_name, role || 'user']
+      [email, hashedPassword, first_name || null, last_name || null, normalizedRole]
     );
 
     res.status(201).json({

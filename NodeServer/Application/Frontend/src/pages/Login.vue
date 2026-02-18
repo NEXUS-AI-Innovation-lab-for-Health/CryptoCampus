@@ -53,18 +53,33 @@
         <!-- Register Form -->
         <form v-if="activeTab === 'register'" @submit.prevent="handleRegister" class="form active">
           <div v-if="error" class="error-message">{{ error }}</div>
-          <div class="form-group">
-            <label for="registerName">Nom complet</label>
-            <input
-              v-model="registerForm.name"
-              type="text"
-              id="registerName"
-              placeholder="Votre nom"
-              required
-            />
+          <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="registerFirstName">Prénom *</label>
+              <input
+                v-model="registerForm.first_name"
+                type="text"
+                id="registerFirstName"
+                placeholder="Votre prénom"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="registerLastName">Nom *</label>
+              <input
+                v-model="registerForm.last_name"
+                type="text"
+                id="registerLastName"
+                placeholder="Votre nom"
+                required
+              />
+            </div>
           </div>
+          
           <div class="form-group">
-            <label for="registerEmail">Email</label>
+            <label for="registerEmail">Email *</label>
             <input
               v-model="registerForm.email"
               type="email"
@@ -73,16 +88,28 @@
               required
             />
           </div>
+          
           <div class="form-group">
-            <label for="registerPassword">Mot de passe</label>
+            <label for="registerPassword">Mot de passe *</label>
             <input
               v-model="registerForm.password"
               type="password"
               id="registerPassword"
-              placeholder="Choisir un mot de passe"
+              placeholder="Minimum 8 caractères"
+              minlength="8"
               required
             />
+            <small class="password-hint">Au moins 8 caractères</small>
           </div>
+          
+          <div class="form-group">
+            <label for="registerRole">Je suis un(e) *</label>
+            <select v-model="registerForm.role" id="registerRole" required>
+              <option value="student">Étudiant(e)</option>
+              <option value="tutor">Tuteur/Tutrice</option>
+            </select>
+          </div>
+          
           <button type="submit" class="btn-primary" :disabled="isLoading">
             {{ isLoading ? 'Création en cours...' : 'Créer mon compte' }}
           </button>
@@ -103,6 +130,7 @@ export default {
     const activeTab = ref('login')
     const isLoading = ref(false)
     const error = ref('')
+    const successMessage = ref('')
 
     const loginForm = ref({
       email: '',
@@ -110,13 +138,16 @@ export default {
     })
 
     const registerForm = ref({
-      name: '',
+      first_name: '',
+      last_name: '',
       email: '',
       password: '',
+      role: 'student',
     })
 
     const handleLogin = async () => {
       error.value = ''
+      successMessage.value = ''
       isLoading.value = true
 
       try {
@@ -129,11 +160,17 @@ export default {
           credentials: 'include',
         })
 
+        const data = await response.json()
+
         if (response.ok) {
+          // Sauvegarder les infos utilisateur dans le localStorage
+          localStorage.setItem('userId', data.userId)
+          localStorage.setItem('userEmail', data.email)
+          localStorage.setItem('userName', `${data.firstName} ${data.lastName}`)
+          
           router.push('/home')
         } else {
-          const data = await response.json()
-          error.value = data.message || 'Connexion échouée'
+          error.value = data.error || 'Connexion échouée'
         }
       } catch (err) {
         error.value = 'Erreur lors de la connexion'
@@ -145,6 +182,7 @@ export default {
 
     const handleRegister = async () => {
       error.value = ''
+      successMessage.value = ''
       isLoading.value = true
 
       try {
@@ -154,15 +192,34 @@ export default {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(registerForm.value),
+          credentials: 'include',
         })
 
+        const data = await response.json()
+
         if (response.ok) {
+          // Basculer vers l'onglet connexion avec les credentials pré-remplis
           activeTab.value = 'login'
           loginForm.value.email = registerForm.value.email
-          error.value = 'Compte créé! Veuillez vous connecter.'
+          loginForm.value.password = registerForm.value.password
+          
+          // Réinitialiser le formulaire d'inscription
+          registerForm.value = {
+            first_name: '',
+            last_name: '',
+            email: '',
+            password: '',
+            role: 'student',
+          }
+          
+          successMessage.value = '✅ Compte créé avec succès ! Connexion en cours...'
+          
+          // Auto-login après inscription
+          setTimeout(async () => {
+            await handleLogin()
+          }, 1000)
         } else {
-          const data = await response.json()
-          error.value = data.message || 'Création du compte échouée'
+          error.value = data.error || 'Création du compte échouée'
         }
       } catch (err) {
         error.value = 'Erreur lors de la création du compte'
@@ -176,6 +233,7 @@ export default {
       activeTab,
       isLoading,
       error,
+      successMessage,
       loginForm,
       registerForm,
       handleLogin,
@@ -304,5 +362,44 @@ export default {
   border-radius: 4px;
   margin-bottom: 1rem;
   text-align: center;
+}
+
+.success-message {
+  color: #27ae60;
+  background-color: #d5f4e6;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+  cursor: pointer;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.password-hint {
+  display: block;
+  margin-top: 0.25rem;
+  color: #7f8c8d;
+  font-size: 0.85rem;
 }
 </style>
