@@ -24,13 +24,14 @@ fi
 echo "📦 Création des tables initiales..."
 
 # Si un fichier de sauvegarde latest existe, l'utiliser
-if [ -f "/docker-entrypoint-initdb.d/CryptoCampus_latest.sql" ]; then
+if [ -f "/backups/CryptoCampus_latest.sql" ]; then
     echo "🔄 Restauration depuis la dernière sauvegarde..."
-    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < /docker-entrypoint-initdb.d/CryptoCampus_latest.sql
+    grep -v '^\s*pg_dump:\|^\s*\\\\restrict\|^\s*\\\\unrestrict' /backups/CryptoCampus_latest.sql | \
+        psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
     echo "✅ Base de données restaurée depuis la sauvegarde"
 else
     echo "⚠️  Pas de sauvegarde trouvée, initialisation manuelle requise"
-    echo "💡 Utilisez le script restoreDB.sh pour restaurer une sauvegarde"
+    echo "💡 Placez CryptoCampus_latest.sql dans Docker/PgAdmin/DB_Backup/"
 fi
 
 echo "🎉 Initialisation terminée !"
