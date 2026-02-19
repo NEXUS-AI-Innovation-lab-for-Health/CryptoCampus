@@ -42,8 +42,7 @@ class AuthProvider with ChangeNotifier {
         return false;
       }
 
-      // Note: Dans un vrai système, la vérification du mot de passe
-      // devrait être faite côté serveur avec un endpoint dédié
+      
       _currentUser = user;
       
       final prefs = await SharedPreferences.getInstance();
