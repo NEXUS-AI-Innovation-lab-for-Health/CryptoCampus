@@ -4,13 +4,13 @@ Plateforme de tutorat décentralisée combinant recherche sémantique IA et tran
 
 ## 📋 Aperçu
 
-CryptoCampus est une application web complète qui permet :
+CryptoCampus est une application web et mobile complète qui permet :
 
 ### 🎯 Fonctionnalités principales
+- � **Application mobile Flutter** (Android/iOS) avec interface native
 - 🔍 **Recherche sémantique intelligente** d'annonces de tutorat (Qdrant)
 - 💰 **Paiements décentralisés** via blockchain Ethereum (Ganache) 
 - 📄 **Analyse automatique de CV** pour création d'annonces en un clic
-- 📊 **Dashboard de monitoring** Qdrant pour visualiser les données vectorielles
 - 🔐 **API REST sécurisée** avec endpoints blockchain et recherche sémantique
 - 💳 **Transactions crypto en temps réel** avec suivi des soldes et historique
 - 🤖 **Matching intelligent** entre tuteurs et étudiants par similarité de compétences
@@ -21,23 +21,25 @@ CryptoCampus est une application web complète qui permet :
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐
-│   Frontend      │  ← Node.js + Express (Port 80)
-│   (HTML/JS/CSS) │
-└────────┬────────┘
-         │
-    ┌────▼─────────────────────────────────────┐
-    │         API CryptoCampus (Port 81)       │
-    │  ┌──────────┬──────────┬──────────────┐  │
-    │  │ REST API │ Web3.js  │ Qdrant SDK   │  │
-    │  └────┬─────┴────┬─────┴──────┬───────┘  │
-    └───────┼──────────┼────────────┼──────────┘
-            │          │            │
-    ┌───────▼─────┐ ┌──▼────────┐ ┌▼──────────┐
-    │ PostgreSQL  │ │  Ganache  │ │  Qdrant   │
-    │  (Port      │ │ Blockchain│ │  Vector   │
-    │   5432)     │ │(Port 8545)│ │  DB       │
-    └─────────────┘ └───────────┘ └───────────┘
+┌─────────────────┐     ┌─────────────────┐
+│   Frontend Web  │     │  Mobile App     │
+│  (HTML/JS/CSS)  │     │   (Flutter)     │
+│   Port 80       │     │  Android/iOS    │
+└────────┬────────┘     └────────┬────────┘
+         │                       │
+         └───────────┬───────────┘
+                     │
+    ┌────────────────▼──────────────────────┐
+    │      API CryptoCampus (Port 81)      │
+    │  ┌──────────┬──────────┬──────────┐  │
+    │  │ REST API │ Web3.js  │ Qdrant   │  │
+    │  └────┬─────┴────┬─────┴────┬─────┘  │
+    └───────┼──────────┼──────────┼────────┘
+            │          │          │
+    ┌───────▼─────┐ ┌──▼──────┐ ┌▼────────┐
+    │ PostgreSQL  │ │ Ganache │ │ Qdrant  │
+    │ (Port 5432) │ │  (8545) │ │ (6333)  │
+    └─────────────┘ └─────────┘ └─────────┘
 ```
 
 ## 🚀 Démarrage rapide
@@ -46,27 +48,42 @@ CryptoCampus est une application web complète qui permet :
 
 - Docker & Docker Compose
 - Git
+- Flutter SDK (pour l'app mobile)
 
-### Installation
+### Installation Backend
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/ThomasLeBg94/SAE5A01.git
-cd SAE5A01/NodeServer
+git clone https://github.com/NEXUS-AI-Innovation-lab-for-Health/CryptoCampus.git
+cd CryptoCampus/NodeServer
 
 # Lancer tous les services
 ./Scripts/startAll.sh
 ```
 
 Les services seront disponibles sur :
-- **Application** : http://localhost:80
+- **Application Web** : http://localhost:80
 - **API** : http://localhost:81
 - **PgAdmin** : http://localhost:5050
 - **Qdrant Dashboard** : http://localhost:6333/dashboard
 
+### Installation App Mobile
+
+```bash
+# Depuis la racine du projet
+cd MobileApp
+
+# Installer les dépendances
+flutter pub get
+
+# Lancer l'app
+flutter run
+```
+
 ### Arrêter les services
 
 ```bash
+cd NodeServer
 ./Scripts/stopAll.sh
 ```
 
@@ -132,28 +149,40 @@ curl -X POST http://localhost:81/analyze-cv \
 ## 🗂️ Structure du projet
 
 ```
-SAE5A01/
+CryptoCampus/
+├── MobileApp/                    # Application Flutter
+│   ├── lib/
+│   │   ├── main.dart            # Point d'entrée
+│   │   ├── screens/             # Écrans (auth, home, shop, etc.)
+│   │   ├── providers/           # State management
+│   │   ├── models/              # Modèles de données
+│   │   └── services/            # Services API
+│   ├── android/                 # Config Android
+│   ├── ios/                     # Config iOS
+│   └── pubspec.yaml             # Dépendances Flutter
 ├── NodeServer/
 │   ├── Api/                      # API REST
 │   │   ├── server.js            # Serveur Express
-│   │   └── blockchain-example.js # Logique blockchain
-│   ├── Application/              # Frontend
-│   │   ├── Front/               # Pages HTML/CSS/JS
-│   │   └── Back/                # Serveur Node
-│   ├── Docker/                   # Dockerfiles
-│   │   ├── Api/                 # Config API
-│   │   ├── Node/                # Config Frontend
-│   │   └── PgAdmin/             # Config + DB backups
+│   │   └── blockchain.js        # Logique blockchain
+│   ├── Application/              # Frontend Web
+│   │   ├── Frontend/            # Pages HTML/CSS/JS
+│   │   └── Backend/             # Serveur Node
+│   ├── Docker/                   # Dockerfiles + Configs
 │   ├── Scripts/                  # Scripts de gestion
 │   │   ├── startAll.sh          # Démarrer tout
 │   │   ├── stopAll.sh           # Arrêter tout
+│   │   ├── dumpDB.sh            # Sauvegarder la DB
 │   │   └── restoreDB.sh         # Restaurer la DB
-│   ├── docker-compose.yml        # Orchestration Docker
-│   └── GUIDE_SERVICES.md         # Documentation détaillée
+│   └── docker-compose.yml        # Orchestration Docker
 └── README.md
 ```
 
 ## 🛠️ Technologies
+
+### Mobile
+- **Flutter** 3.x (Dart)
+- **Provider** (State management)
+- **HTTP** (API calls)
 
 ### Backend
 - **Node.js** 24 (Alpine)
@@ -162,7 +191,7 @@ SAE5A01/
 - **Qdrant Client** (Recherche vectorielle)
 - **PostgreSQL** 16
 
-### Frontend
+### Frontend Web
 - HTML5 / CSS3 / JavaScript Vanilla
 - Fetch API
 
@@ -176,12 +205,16 @@ SAE5A01/
 ## 📚 Documentation
 
 - [Guide des services](NodeServer/GUIDE_SERVICES.md) - Documentation complète des endpoints
+- [Guide Mobile](MobileApp/README.md) - Documentation de l'app Flutter
 
 ## 🎨 Pages de démonstration
 
+**Web :**
 - **Blockchain** : http://localhost:80/blockchain-demo
 - **Annonces Qdrant** : http://localhost:80/listings-demo
 - **Création avec CV** : http://localhost:80/create-listing-cv
+
+**Mobile :** Lancez l'app Flutter pour accéder à toutes les fonctionnalités
 
 ## 🔧 Commandes utiles
 
@@ -249,6 +282,7 @@ Ce projet est développé dans le cadre de la SAE 5A01.
 
 ## 🔗 Liens utiles
 
+- [Documentation Flutter](https://docs.flutter.dev/)
 - [Documentation Docker](https://docs.docker.com/)
 - [Web3.js Documentation](https://web3js.readthedocs.io/)
 - [Qdrant Documentation](https://qdrant.tech/documentation/)

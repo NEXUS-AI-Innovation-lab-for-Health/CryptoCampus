@@ -29,22 +29,22 @@ fi
 BACKUP_DIR="../Docker/PgAdmin/DB_Backup"
 mkdir -p "$BACKUP_DIR"
 
-# Nom du fichier avec timestamp
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="$BACKUP_DIR/CryptoCampus_${TIMESTAMP}.sql"
-LATEST_FILE="$BACKUP_DIR/CryptoCampus_latest.sql"
+# Nom du fichier de backup
+BACKUP_FILE="$BACKUP_DIR/CryptoCampus_latest.sql"
 
-echo -e "${YELLOW}📦 Création du dump...${NC}"
+echo -e "${YELLOW}📦 Création du dump (Format: Plain)...${NC}"
 
-# Effectuer le dump
+# Effectuer le dump avec les paramètres spécifiés
+# Format: Plain (format par défaut)
+# Options: --clean --if-exists pour un dump complet
 docker exec postgres-database pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-    --clean --if-exists --verbose > "$BACKUP_FILE" 2>&1
+    --format=plain \
+    --clean \
+    --if-exists \
+    --verbose > "$BACKUP_FILE" 2>&1
 
 # Vérifier que le dump a réussi
 if [ $? -eq 0 ]; then
-    # Créer aussi une copie "latest"
-    cp "$BACKUP_FILE" "$LATEST_FILE"
-    
     FILESIZE=$(ls -lh "$BACKUP_FILE" | awk '{print $5}')
     echo -e "${GREEN}✅ Dump créé avec succès !${NC}"
     echo -e "${GREEN}📁 Fichier : $BACKUP_FILE${NC}"
@@ -52,9 +52,6 @@ if [ $? -eq 0 ]; then
     echo ""
     echo -e "${GREEN}💡 Pour restaurer cette sauvegarde :${NC}"
     echo -e "   ${YELLOW}./restoreDB.sh $BACKUP_FILE${NC}"
-    echo ""
-    echo -e "${GREEN}💡 Ou utilisez la version latest :${NC}"
-    echo -e "   ${YELLOW}./restoreDB.sh $LATEST_FILE${NC}"
 else
     echo -e "${RED}❌ Erreur lors de la création du dump${NC}"
     exit 1
