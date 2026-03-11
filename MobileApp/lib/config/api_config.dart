@@ -20,4 +20,13 @@ class ApiConfig {
   static String get listingsUrl => '$baseUrl/listings';
   static String listingsSearchUrl(String query) => '$baseUrl/listings/search?q=$query';
   static String get analyzeCvUrl => '$baseUrl/analyze-cv';
+
+  // Availability endpoints
+  static String availabilityUrl({String? listingId}) =>
+      listingId != null ? '$baseUrl/availability?listing_id=$listingId' : '$baseUrl/availability';
+  static String get availabilityMineUrl => '$baseUrl/availability/mine';
+  static String availabilityDeleteUrl(String slotId) => '$baseUrl/availability/$slotId';
+
+  // Bookings endpoints
+  static String get bookingsUrl => '$baseUrl/bookings';
 }

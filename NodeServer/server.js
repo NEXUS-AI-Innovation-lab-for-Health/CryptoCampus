@@ -197,10 +197,15 @@ app.get('/api', (req, res) => {
         'PUT /api/users/:user_id': 'Mettre à jour un utilisateur',
         'DELETE /api/users/:user_id': 'Supprimer un utilisateur'
       },
+      availability: {
+        'GET /api/availability': 'Lister les créneaux disponibles (filtre: ?listing_id=xxx ou ?tutor_user_id=xxx)',
+        'POST /api/availability': 'Créer un ou plusieurs créneaux de disponibilité (tuteur uniquement)',
+        'DELETE /api/availability/:slot_id': 'Supprimer un créneau (tuteur propriétaire uniquement)'
+      },
       bookings: {
         'GET /api/bookings': 'Liste toutes les réservations (optionnel: ?user_id=xxx)',
         'GET /api/bookings/:booking_id': 'Obtenir une réservation par ID',
-        'POST /api/bookings': 'Créer une nouvelle réservation',
+        'POST /api/bookings': 'Créer une nouvelle réservation (via slot_ids ou manuellement)',
         'PUT /api/bookings/:booking_id': 'Mettre à jour une réservation',
         'PATCH /api/bookings/:booking_id/status': 'Mettre à jour le statut d\'une réservation',
         'DELETE /api/bookings/:booking_id': 'Supprimer une réservation'
@@ -739,6 +744,147 @@ app.delete('/api/users/:user_id', async (req, res) => {
 });
 
 /* ========================================
+   ROUTES API - DISPONIBILITÉS TUTEURS
+   ======================================== */
+
+// GET créneaux disponibles
+// Filtres optionnels: ?listing_id=xxx  ou  ?tutor_user_id=xxx
+app.get('/api/availability', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
+  try {
+    const { listing_id, tutor_user_id } = req.query;
+
+    let query = `
+      SELECT ta.slot_id, ta.tutor_user_id, ta.listing_id,
+             ta.start_time, ta.end_time, ta.is_booked, ta.created_at,
+             u.first_name AS tutor_first_name, u.last_name AS tutor_last_name, u.email AS tutor_email
+      FROM tutor_availability ta
+      JOIN users u ON u.user_id = ta.tutor_user_id
+      WHERE ta.is_booked = FALSE AND ta.start_time > NOW()
+    `;
+    const params = [];
+
+    if (listing_id) {
+      params.push(listing_id);
+      query += ` AND ta.listing_id = $${params.length}`;
+    }
+
+    if (tutor_user_id) {
+      params.push(tutor_user_id);
+      query += ` AND ta.tutor_user_id = $${params.length}`;
+    }
+
+    query += ' ORDER BY ta.start_time ASC';
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET tous les créneaux du tuteur connecté (y compris déjà réservés)
+app.get('/api/availability/mine', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
+  try {
+    const result = await pool.query(
+      `SELECT slot_id, tutor_user_id, listing_id,
+              start_time, end_time, is_booked, created_at
+       FROM tutor_availability
+       WHERE tutor_user_id = $1
+       ORDER BY start_time ASC`,
+      [req.session.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST créer des créneaux (tuteur uniquement)
+app.post('/api/availability', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
+  try {
+    // Vérifier que l'utilisateur est bien un TUTOR
+    const userResult = await pool.query(
+      'SELECT role FROM users WHERE user_id = $1',
+      [req.session.userId]
+    );
+    if (userResult.rows.length === 0 || userResult.rows[0].role !== 'TUTOR') {
+      return res.status(403).json({ error: 'Seuls les tuteurs peuvent créer des créneaux' });
+    }
+
+    // Accepter soit un seul créneau soit un tableau
+    let slots = req.body;
+    if (!Array.isArray(slots)) {
+      slots = [slots];
+    }
+
+    const created = [];
+    for (const slot of slots) {
+      const { listing_id, start_time, end_time } = slot;
+      if (!start_time || !end_time) {
+        return res.status(400).json({ error: 'start_time et end_time sont requis' });
+      }
+      if (new Date(end_time) <= new Date(start_time)) {
+        return res.status(400).json({ error: 'end_time doit être après start_time' });
+      }
+
+      // Vérifier qu'il n'y a pas de chevauchement pour ce tuteur
+      const overlap = await pool.query(
+        `SELECT slot_id FROM tutor_availability
+         WHERE tutor_user_id = $1
+           AND is_booked = FALSE
+           AND tsrange(start_time, end_time) && tsrange($2::timestamp, $3::timestamp)`,
+        [req.session.userId, start_time, end_time]
+      );
+      if (overlap.rows.length > 0) {
+        return res.status(409).json({ error: `Créneau en conflit avec un créneau existant (${start_time})` });
+      }
+
+      const result = await pool.query(
+        `INSERT INTO tutor_availability (tutor_user_id, listing_id, start_time, end_time)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [req.session.userId, listing_id || null, start_time, end_time]
+      );
+      created.push(result.rows[0]);
+    }
+
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE supprimer un créneau (tuteur propriétaire uniquement)
+app.delete('/api/availability/:slot_id', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
+  try {
+    // Vérifier que le créneau appartient à ce tuteur
+    const slotResult = await pool.query(
+      'SELECT * FROM tutor_availability WHERE slot_id = $1',
+      [req.params.slot_id]
+    );
+    if (slotResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Créneau non trouvé' });
+    }
+    const slot = slotResult.rows[0];
+    if (slot.tutor_user_id !== req.session.userId) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+    if (slot.is_booked) {
+      return res.status(409).json({ error: 'Ce créneau est déjà réservé et ne peut pas être supprimé' });
+    }
+
+    await pool.query('DELETE FROM tutor_availability WHERE slot_id = $1', [req.params.slot_id]);
+    res.json({ message: 'Créneau supprimé avec succès' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ========================================
    ROUTES API - BOOKINGS (RÉSERVATIONS)
    ======================================== */
 
@@ -792,36 +938,93 @@ app.get('/api/bookings/:booking_id', async (req, res) => {
 // CREATE nouvelle réservation
 app.post('/api/bookings', async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
+  const client = await pool.connect();
   try {
-    // Get user_id from session
     const user_id = req.session.userId;
-    
     if (!user_id) {
       return res.status(401).json({ error: 'Non authentifié' });
     }
-    
+
     const {
+      slot_ids,           // NEW: array of slot UUIDs chosen by the student
       listing_id, title, description, subject,
-      start_time, end_time, tutor_name, price, notes
+      start_time, end_time, tutor_name, tutor_email, price, notes
     } = req.body;
-    
-    if (!title || !start_time || !end_time) {
-      return res.status(400).json({ error: 'Champs requis manquants' });
+
+    await client.query('BEGIN');
+
+    // ── Slot-based booking ──────────────────────────────────────────
+    if (slot_ids && Array.isArray(slot_ids) && slot_ids.length > 0) {
+      const created = [];
+
+      for (const slot_id of slot_ids) {
+        // Lock the row to prevent concurrent bookings
+        const slotResult = await client.query(
+          'SELECT * FROM tutor_availability WHERE slot_id = $1 FOR UPDATE',
+          [slot_id]
+        );
+        if (slotResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: `Créneau introuvable: ${slot_id}` });
+        }
+        const slot = slotResult.rows[0];
+        if (slot.is_booked) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: `Ce créneau est déjà réservé: ${slot_id}` });
+        }
+
+        // Compute per-slot price (hours × price/h)
+        const durationH = (new Date(slot.end_time) - new Date(slot.start_time)) / (1000 * 60 * 60);
+        const slotPrice = price != null ? durationH * parseFloat(price) : null;
+
+        const result = await client.query(
+          `INSERT INTO bookings
+           (user_id, listing_id, slot_id, title, description, subject,
+            start_time, end_time, status, tutor_name, tutor_email, price, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11, $12)
+           RETURNING *`,
+          [user_id, slot.listing_id || listing_id, slot_id,
+           title || '', description, subject,
+           slot.start_time, slot.end_time,
+           tutor_name, tutor_email, slotPrice, notes]
+        );
+
+        // Mark the slot as booked
+        await client.query(
+          'UPDATE tutor_availability SET is_booked = TRUE WHERE slot_id = $1',
+          [slot_id]
+        );
+
+        created.push(result.rows[0]);
+      }
+
+      await client.query('COMMIT');
+      return res.status(201).json(created);
     }
-    
-    const result = await pool.query(
-      `INSERT INTO bookings 
-      (user_id, listing_id, title, description, subject, start_time, end_time, 
-       status, tutor_name, price, notes)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10)
-      RETURNING *`,
+
+    // ── Manual booking (legacy) ─────────────────────────────────────
+    if (!title || !start_time || !end_time) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Champs requis manquants (title, start_time, end_time)' });
+    }
+
+    const result = await client.query(
+      `INSERT INTO bookings
+       (user_id, listing_id, title, description, subject, start_time, end_time,
+        status, tutor_name, tutor_email, price, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11)
+       RETURNING *`,
       [user_id, listing_id, title, description, subject, start_time, end_time,
-       tutor_name, price, notes]
+       tutor_name, tutor_email, price, notes]
     );
-    
+
+    await client.query('COMMIT');
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

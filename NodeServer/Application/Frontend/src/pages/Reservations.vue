@@ -6,6 +6,70 @@
       <p v-else class="subtitle">Suivez vos cours réservés</p>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════
+         SECTION TUTEUR : GESTION DES DISPONIBILITÉS
+         ═══════════════════════════════════════════════════════ -->
+    <section v-if="userRole === 'TUTOR'" class="availability-section">
+      <div class="availability-header">
+        <h2>🗓️ Mes disponibilités</h2>
+        <button @click="showSlotModal = true" class="btn btn-primary btn-sm">+ Ajouter un créneau</button>
+      </div>
+
+      <!-- Slot list -->
+      <div v-if="mySlots.length === 0" class="slots-empty-msg">
+        Vous n'avez aucun créneau défini. Ajoutez vos disponibilités pour que les étudiants puissent réserver.
+      </div>
+      <div v-else class="my-slots-grid">
+        <div
+          v-for="slot in mySlots"
+          :key="slot.slot_id"
+          :class="['my-slot-card', slot.is_booked ? 'booked' : 'available']"
+        >
+          <div class="slot-status-dot"></div>
+          <div class="slot-info">
+            <div class="slot-date-label">{{ formatSlotDate(slot.start_time) }}</div>
+            <div class="slot-time-label">{{ formatSlotTime(slot.start_time) }} – {{ formatSlotTime(slot.end_time) }}</div>
+          </div>
+          <span :class="['slot-badge', slot.is_booked ? 'badge-booked' : 'badge-available']">
+            {{ slot.is_booked ? 'Réservé' : 'Libre' }}
+          </span>
+          <button
+            v-if="!slot.is_booked"
+            @click="deleteSlot(slot.slot_id)"
+            class="btn-icon-danger"
+            title="Supprimer ce créneau"
+          >✕</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal ajout créneau -->
+    <div v-if="showSlotModal" class="modal-overlay" @click.self="showSlotModal = false">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h3>Ajouter un créneau de disponibilité</h3>
+          <button @click="showSlotModal = false" class="close-btn">×</button>
+        </div>
+        <div v-if="slotError" class="error-msg">{{ slotError }}</div>
+        <form @submit.prevent="createSlot" class="modal-form">
+          <div class="form-group">
+            <label>Date et heure de début *</label>
+            <input v-model="slotForm.start_time" type="datetime-local" required :min="minSlotDateTime" />
+          </div>
+          <div class="form-group">
+            <label>Date et heure de fin *</label>
+            <input v-model="slotForm.end_time" type="datetime-local" required :min="slotForm.start_time || minSlotDateTime" />
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showSlotModal = false" class="btn btn-secondary">Annuler</button>
+            <button type="submit" class="btn btn-primary" :disabled="creatingSlot">
+              {{ creatingSlot ? 'Création...' : 'Créer' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Filters -->
     <div class="filters-bar">
       <button 
@@ -184,6 +248,81 @@ export default {
     const updating = ref(null);
     const userRole = ref('');
 
+    // ── Availability state ──────────────────────────────────────────
+    const mySlots = ref([]);
+    const showSlotModal = ref(false);
+    const creatingSlot = ref(false);
+    const slotError = ref('');
+    const slotForm = ref({ start_time: '', end_time: '' });
+
+    const minSlotDateTime = computed(() => {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + 30);
+      return now.toISOString().slice(0, 16);
+    });
+
+    const formatSlotDate = (dt) =>
+      new Date(dt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    const formatSlotTime = (dt) =>
+      new Date(dt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    const fetchMySlots = async () => {
+      try {
+        const res = await fetch('/api/availability/mine', { credentials: 'include' });
+        if (res.ok) mySlots.value = await res.json();
+      } catch (e) {
+        console.error('Erreur chargement créneaux:', e);
+      }
+    };
+
+    const createSlot = async () => {
+      if (!slotForm.value.start_time || !slotForm.value.end_time) return;
+      creatingSlot.value = true;
+      slotError.value = '';
+      try {
+        const res = await fetch('/api/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            start_time: slotForm.value.start_time,
+            end_time: slotForm.value.end_time,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          slotError.value = err.error || 'Erreur';
+          return;
+        }
+        showSlotModal.value = false;
+        slotForm.value = { start_time: '', end_time: '' };
+        await fetchMySlots();
+      } catch (e) {
+        slotError.value = e.message;
+      } finally {
+        creatingSlot.value = false;
+      }
+    };
+
+    const deleteSlot = async (slotId) => {
+      if (!confirm('Supprimer ce créneau ?')) return;
+      try {
+        const res = await fetch(`/api/availability/${slotId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          mySlots.value = mySlots.value.filter(s => s.slot_id !== slotId);
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Erreur lors de la suppression');
+        }
+      } catch (e) {
+        alert(e.message);
+      }
+    };
+
     const statusOptions = [
       { value: 'all', label: 'Toutes', icon: '📋' },
       { value: 'pending', label: 'En attente', icon: '⏳' },
@@ -209,6 +348,10 @@ export default {
         if (!authRes.ok) throw new Error('Non authentifié');
         const authData = await authRes.json();
         userRole.value = authData.role || 'STUDENT';
+
+        if (userRole.value === 'TUTOR') {
+          await fetchMySlots();
+        }
 
         // Fetch bookings
         const response = await fetch('/api/bookings', {
@@ -337,7 +480,18 @@ export default {
       getStatusLabel,
       getStatusIcon,
       formatDateTime,
-      calculateDuration
+      calculateDuration,
+      // availability
+      mySlots,
+      showSlotModal,
+      creatingSlot,
+      slotError,
+      slotForm,
+      minSlotDateTime,
+      formatSlotDate,
+      formatSlotTime,
+      createSlot,
+      deleteSlot,
     };
   }
 };
@@ -703,5 +857,209 @@ export default {
   .btn {
     width: 100%;
   }
+}
+
+/* ══════════════════════════════════════════════
+   AVAILABILITY SECTION
+   ══════════════════════════════════════════════ */
+.availability-section {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.07);
+}
+
+.availability-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.availability-header h2 {
+  font-size: 1.4em;
+  color: #333;
+}
+
+.slots-empty-msg {
+  color: #888;
+  font-style: italic;
+  padding: 0.75rem 0;
+}
+
+.my-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.my-slot-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 2px solid #e0e0e0;
+  background: #fafafa;
+}
+
+.my-slot-card.available {
+  border-color: #4caf50;
+  background: #f1fdf2;
+}
+
+.my-slot-card.booked {
+  border-color: #ffc107;
+  background: #fffdf0;
+  opacity: 0.8;
+}
+
+.slot-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.my-slot-card.available .slot-status-dot { background: #4caf50; }
+.my-slot-card.booked   .slot-status-dot { background: #ffc107; }
+
+.slot-info {
+  flex: 1;
+}
+
+.slot-date-label {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: #555;
+  text-transform: capitalize;
+}
+
+.slot-time-label {
+  font-weight: 700;
+  font-size: 1em;
+  color: #333;
+}
+
+.slot-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.78em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-available {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge-booked {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.btn-icon-danger {
+  background: none;
+  border: none;
+  color: #f44336;
+  font-size: 1.1em;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-icon-danger:hover {
+  background: #fdecea;
+}
+
+/* Small modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.modal-sm {
+  max-width: 380px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.modal-header h3 {
+  font-size: 1.15em;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #888;
+  line-height: 1;
+}
+
+.modal-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.modal-form label {
+  display: block;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.35rem;
+  font-size: 0.9em;
+}
+
+.modal-form input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.95em;
+  box-sizing: border-box;
+}
+
+.modal-form input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+.error-msg {
+  background: #fdecea;
+  color: #b71c1c;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9em;
 }
 </style>

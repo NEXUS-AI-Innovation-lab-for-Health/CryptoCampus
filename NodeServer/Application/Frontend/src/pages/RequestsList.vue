@@ -186,28 +186,36 @@
             <div v-if="!bookingSuccess" class="booking-form">
               <h3>📅 Réserver ce cours</h3>
               <div v-if="bookingError" class="error-message">{{ bookingError }}</div>
-              
-              <div class="form-group">
-                <label>Date et heure de début *</label>
-                <input 
-                  v-model="bookingForm.startTime" 
-                  type="datetime-local" 
-                  required
-                  :min="minDateTime"
-                />
+
+              <!-- Loading slots -->
+              <div v-if="loadingSlots" class="slots-loading">⏳ Chargement des disponibilités...</div>
+
+              <!-- No slots available -->
+              <div v-else-if="availableSlots.length === 0" class="slots-empty">
+                <p>😕 Aucun créneau disponible pour ce tuteur pour le moment.</p>
+                <p>Revenez plus tard ou contactez le tuteur directement.</p>
               </div>
 
-              <div class="form-group">
-                <label>Date et heure de fin *</label>
-                <input 
-                  v-model="bookingForm.endTime" 
-                  type="datetime-local" 
-                  required
-                  :min="bookingForm.startTime"
-                />
+              <!-- Slot picker -->
+              <div v-else class="slots-section">
+                <p class="slots-hint">Sélectionnez un ou plusieurs créneaux :</p>
+                <div class="slots-grid">
+                  <div
+                    v-for="slot in availableSlots"
+                    :key="slot.slot_id"
+                    :class="['slot-card', { selected: selectedSlotIds.includes(slot.slot_id) }]"
+                    @click="toggleSlot(slot.slot_id)"
+                  >
+                    <div class="slot-date">{{ formatSlotDate(slot.start_time) }}</div>
+                    <div class="slot-time">
+                      {{ formatSlotTime(slot.start_time) }} – {{ formatSlotTime(slot.end_time) }}
+                    </div>
+                    <div class="slot-duration">{{ slotDuration(slot) }}</div>
+                  </div>
+                </div>
               </div>
 
-              <div class="form-group">
+              <div class="form-group" style="margin-top:1rem;">
                 <label>Notes (optionnel)</label>
                 <textarea 
                   v-model="bookingForm.notes" 
@@ -216,9 +224,10 @@
                 ></textarea>
               </div>
 
-              <div class="booking-summary">
-                <p><strong>Durée estimée :</strong> {{ estimatedDuration }}</p>
-                <p><strong>Prix estimé :</strong> {{ estimatedPrice }} CCT</p>
+              <div v-if="selectedSlotIds.length > 0" class="booking-summary">
+                <p><strong>Créneaux sélectionnés :</strong> {{ selectedSlotIds.length }}</p>
+                <p><strong>Durée totale :</strong> {{ totalSelectedDuration }}</p>
+                <p><strong>Prix total estimé :</strong> {{ totalSelectedPrice }} CCT</p>
               </div>
             </div>
 
@@ -238,9 +247,9 @@
             <button 
               @click="createBooking" 
               class="btn btn-primary"
-              :disabled="isBooking || !isFormValid"
+              :disabled="isBooking || selectedSlotIds.length === 0"
             >
-              {{ isBooking ? 'Réservation...' : 'Confirmer la réservation' }}
+              {{ isBooking ? 'Réservation...' : `Confirmer (${selectedSlotIds.length} créneau${selectedSlotIds.length > 1 ? 'x' : ''})` }}
             </button>
           </div>
         </div>
@@ -270,11 +279,12 @@ const selectedListing = ref(null)
 const isBooking = ref(false)
 const bookingSuccess = ref(false)
 const bookingError = ref('')
-const bookingForm = ref({
-  startTime: '',
-  endTime: '',
-  notes: ''
-})
+const bookingForm = ref({ notes: '' })
+
+// Availability slots
+const availableSlots = ref([])
+const loadingSlots = ref(false)
+const selectedSlotIds = ref([])
 
 // Available filters
 const availableSubjects = [
@@ -329,32 +339,41 @@ const searchStatus = computed(() => {
   return 'Toutes les annonces'
 })
 
-// Booking computed
-const minDateTime = computed(() => {
-  const now = new Date()
-  now.setHours(now.getHours() + 1) // Minimum 1 heure à l'avance
-  return now.toISOString().slice(0, 16)
+// Slot helpers
+const slotDuration = (slot) => {
+  const h = (new Date(slot.end_time) - new Date(slot.start_time)) / (1000 * 60 * 60)
+  const wholeH = Math.floor(h)
+  const mins = Math.round((h - wholeH) * 60)
+  return mins === 0 ? `${wholeH}h` : `${wholeH}h${mins}`
+}
+
+const formatSlotDate = (dt) => {
+  return new Date(dt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+const formatSlotTime = (dt) => {
+  return new Date(dt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
+const totalSelectedDuration = computed(() => {
+  const totalH = selectedSlotIds.value.reduce((sum, id) => {
+    const slot = availableSlots.value.find(s => s.slot_id === id)
+    if (!slot) return sum
+    return sum + (new Date(slot.end_time) - new Date(slot.start_time)) / (1000 * 60 * 60)
+  }, 0)
+  const wholeH = Math.floor(totalH)
+  const mins = Math.round((totalH - wholeH) * 60)
+  return mins === 0 ? `${wholeH}h` : `${wholeH}h${mins}`
 })
 
-const isFormValid = computed(() => {
-  return bookingForm.value.startTime && bookingForm.value.endTime &&
-         bookingForm.value.endTime > bookingForm.value.startTime
-})
-
-const estimatedDuration = computed(() => {
-  if (!bookingForm.value.startTime || !bookingForm.value.endTime) return '0h'
-  const start = new Date(bookingForm.value.startTime)
-  const end = new Date(bookingForm.value.endTime)
-  const hours = (end - start) / (1000 * 60 * 60)
-  return hours.toFixed(1) + 'h'
-})
-
-const estimatedPrice = computed(() => {
-  if (!bookingForm.value.startTime || !bookingForm.value.endTime || !selectedListing.value) return '0'
-  const start = new Date(bookingForm.value.startTime)
-  const end = new Date(bookingForm.value.endTime)
-  const hours = (end - start) / (1000 * 60 * 60)
-  return (hours * selectedListing.value.price).toFixed(2)
+const totalSelectedPrice = computed(() => {
+  if (!selectedListing.value) return '0'
+  const totalH = selectedSlotIds.value.reduce((sum, id) => {
+    const slot = availableSlots.value.find(s => s.slot_id === id)
+    if (!slot) return sum
+    return sum + (new Date(slot.end_time) - new Date(slot.start_time)) / (1000 * 60 * 60)
+  }, 0)
+  return (totalH * selectedListing.value.price).toFixed(2)
 })
 
 // Methods
@@ -428,16 +447,26 @@ const searchListings = async () => {
 }
 
 // Modal & Booking methods
-const openListingDetails = (listing) => {
+const openListingDetails = async (listing) => {
   selectedListing.value = listing
   showModal.value = true
   bookingSuccess.value = false
   bookingError.value = ''
-  // Reset form
-  bookingForm.value = {
-    startTime: '',
-    endTime: '',
-    notes: ''
+  bookingForm.value = { notes: '' }
+  selectedSlotIds.value = []
+
+  // Fetch available slots for this listing
+  loadingSlots.value = true
+  availableSlots.value = []
+  try {
+    const res = await fetch(`/api/availability?listing_id=${listing.id}`, { credentials: 'include' })
+    if (res.ok) {
+      availableSlots.value = await res.json()
+    }
+  } catch (e) {
+    console.error('Erreur chargement créneaux:', e)
+  } finally {
+    loadingSlots.value = false
   }
 }
 
@@ -446,11 +475,22 @@ const closeModal = () => {
   selectedListing.value = null
   bookingSuccess.value = false
   bookingError.value = ''
+  availableSlots.value = []
+  selectedSlotIds.value = []
+}
+
+const toggleSlot = (slotId) => {
+  const idx = selectedSlotIds.value.indexOf(slotId)
+  if (idx >= 0) {
+    selectedSlotIds.value.splice(idx, 1)
+  } else {
+    selectedSlotIds.value.push(slotId)
+  }
 }
 
 const createBooking = async () => {
-  if (!isFormValid.value) {
-    bookingError.value = 'Veuillez remplir tous les champs obligatoires'
+  if (selectedSlotIds.value.length === 0) {
+    bookingError.value = 'Veuillez sélectionner au moins un créneau'
     return
   }
 
@@ -460,19 +500,16 @@ const createBooking = async () => {
 
     const response = await fetch('/api/bookings', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        user_id: null, // Will be set from session on backend
+        slot_ids: selectedSlotIds.value,
         listing_id: selectedListing.value.id,
         title: selectedListing.value.title,
         description: selectedListing.value.description,
         subject: selectedListing.value.subject,
-        start_time: bookingForm.value.startTime,
-        end_time: bookingForm.value.endTime,
         tutor_name: selectedListing.value.tutor_name,
+        tutor_email: selectedListing.value.tutor_email,
         price: selectedListing.value.price,
         notes: bookingForm.value.notes
       })
@@ -483,9 +520,6 @@ const createBooking = async () => {
       throw new Error(error.error || 'Erreur lors de la réservation')
     }
 
-    const booking = await response.json()
-    console.log('Réservation créée:', booking)
-    
     isBooking.value = false
     bookingSuccess.value = true
 
@@ -1022,6 +1056,67 @@ onMounted(() => {
   color: #333;
   margin: 0.5rem 0;
   font-size: 0.95em;
+}
+
+/* ── Slot picker ──────────────────────────────────── */
+.slots-loading,
+.slots-empty {
+  text-align: center;
+  padding: 1.5rem;
+  color: #666;
+  background: #f8f9ff;
+  border-radius: 8px;
+}
+
+.slots-hint {
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.75rem;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.slot-card {
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  text-align: center;
+}
+
+.slot-card:hover {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+
+.slot-card.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.slot-date {
+  font-size: 0.78em;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  text-transform: capitalize;
+}
+
+.slot-time {
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.slot-duration {
+  font-size: 0.8em;
+  margin-top: 0.25rem;
+  opacity: 0.75;
 }
 
 .success-message {

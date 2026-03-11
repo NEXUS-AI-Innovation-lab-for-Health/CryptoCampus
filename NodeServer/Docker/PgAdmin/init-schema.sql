@@ -126,12 +126,27 @@ CREATE TABLE service_participations (
 );
 
 -- =========================
+-- TUTOR AVAILABILITY SLOTS
+-- =========================
+CREATE TABLE tutor_availability (
+    slot_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tutor_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    listing_id BIGINT,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    is_booked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT valid_slot_time CHECK (end_time > start_time)
+);
+
+-- =========================
 -- BOOKINGS (RÉSERVATIONS)
 -- =========================
 CREATE TABLE bookings (
     booking_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(user_id),
     listing_id BIGINT,
+    slot_id UUID REFERENCES tutor_availability(slot_id) ON DELETE SET NULL,
     title VARCHAR NOT NULL,
     description TEXT,
     subject VARCHAR,
