@@ -1,13 +1,24 @@
 services:
-  app:
-    container_name: cryptocampus-app
+  frontend:
+    container_name: cryptocampus-frontend
+    build:
+      context: ./Application/Frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    container_name: cryptocampus-api
     build:
       context: .
       dockerfile: ./Dockerfile
     volumes:
       - /app/node_modules
-    ports:
-      - "80:3000"
+    expose:
+      - "3000"
     environment:
       SESSION_SECRET: ${SESSION_SECRET}
       DB_HOST: db

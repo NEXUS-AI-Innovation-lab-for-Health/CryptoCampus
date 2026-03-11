@@ -34,7 +34,6 @@ echo "------------------------------------------------------"
 echo "✅ Application CryptoCampus démarrée avec succès !"
 echo ""
 echo "  - Frontend : http://127.0.0.1:80"
-echo "  - Interface web       : http://127.0.0.1:80"
 
 echo ""
 echo "Services disponibles :"

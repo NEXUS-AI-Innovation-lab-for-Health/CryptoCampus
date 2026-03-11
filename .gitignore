@@ -1,1 +1,3 @@
 .DS_Store
+node_modules/
+NodeServer/swagger-output.json

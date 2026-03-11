@@ -14,6 +14,9 @@ RUN npm install
 # Copier les fichiers de l'application
 COPY . .
 
+# Générer la documentation Swagger
+RUN node swagger.js
+
 # Exposer le port
 EXPOSE 3000
 

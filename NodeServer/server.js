@@ -1,17 +1,20 @@
 /* ========================================
-   CRYPTOCAMPUS - SERVEUR UNIFIÉ
+   CRYPTOCAMPUS - SERVEUR API
    ========================================
-   Ce serveur combine frontend + API + services
+   Ce serveur expose uniquement les routes /api/*
+   Le frontend est servi par un container Nginx séparé
    ======================================== */
 
 import express from 'express';
 import { Pool } from 'pg';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { readFileSync, existsSync } from 'fs';
 import session from 'express-session';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import multer from 'multer';
+import swaggerUi from 'swagger-ui-express';
 import 'dotenv/config';
 
 // Services métier
@@ -35,9 +38,6 @@ app.use(cors({
   origin: '*',
   credentials: true,
 }));
-
-// Servir le frontend Vue (fichiers statiques)
-app.use(express.static(join(__dirname, 'Application/Frontend/dist')));
 
 /* ========================================
    CONNEXION BASE DE DONNÉES
@@ -179,6 +179,7 @@ const upload = multer({
 
 // Index API - Documentation des endpoints
 app.get('/api', (req, res) => {
+  /* #swagger.tags = ['General'] */
   res.json({
     message: 'CryptoCampus API - Serveur Unifié',
     version: '2.0.0',
@@ -226,6 +227,7 @@ app.get('/api', (req, res) => {
 
 // Vérifier le statut d'authentification
 app.get('/api/check-auth', async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
   const isAuthenticated = !!req.session.userId;
   
   if (isAuthenticated && req.session.userId) {
@@ -256,6 +258,7 @@ app.get('/api/check-auth', async (req, res) => {
 
 // Login
 app.post('/api/login', async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
   try {
     const { email, password } = req.body;
 
@@ -307,6 +310,7 @@ app.post('/api/login', async (req, res) => {
 
 // Logout
 app.post('/api/logout', (req, res) => {
+  /* #swagger.tags = ['Auth'] */
   req.session.destroy((err) => {
     if (err) {
       console.error('Logout error:', err);
@@ -318,6 +322,7 @@ app.post('/api/logout', (req, res) => {
 
 // Register
 app.post('/api/register', async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
   try {
     const { email, password, first_name, last_name, role } = req.body;
 
@@ -384,6 +389,7 @@ app.post('/api/register', async (req, res) => {
 
 // Profil utilisateur
 app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
   try {
     // Récupérer les infos utilisateur
     const userResult = await pool.query(
@@ -491,6 +497,7 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
 
 // DELETE account (suppression complète du compte)
 app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
   const client = await pool.connect();
   
   try {
@@ -654,6 +661,7 @@ app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) =
 
 // GET tous les utilisateurs
 app.get('/api/users', async (req, res) => {
+  /* #swagger.tags = ['Users'] */
   try {
     const result = await pool.query(
       `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login 
@@ -667,6 +675,7 @@ app.get('/api/users', async (req, res) => {
 
 // GET un utilisateur par ID
 app.get('/api/users/:user_id', async (req, res) => {
+  /* #swagger.tags = ['Users'] */
   try {
     const result = await pool.query(
       `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login
@@ -686,6 +695,7 @@ app.get('/api/users/:user_id', async (req, res) => {
 
 // UPDATE utilisateur
 app.put('/api/users/:user_id', async (req, res) => {
+  /* #swagger.tags = ['Users'] */
   try {
     const { first_name, last_name, role } = req.body;
 
@@ -711,6 +721,7 @@ app.put('/api/users/:user_id', async (req, res) => {
 
 // DELETE utilisateur
 app.delete('/api/users/:user_id', async (req, res) => {
+  /* #swagger.tags = ['Users'] */
   try {
     const result = await pool.query(
       'DELETE FROM users WHERE user_id = $1 RETURNING user_id',
@@ -733,6 +744,7 @@ app.delete('/api/users/:user_id', async (req, res) => {
 
 // GET toutes les réservations (avec filtre optionnel par user)
 app.get('/api/bookings', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
   try {
     const { user_id } = req.query;
     
@@ -760,6 +772,7 @@ app.get('/api/bookings', async (req, res) => {
 
 // GET une réservation par ID
 app.get('/api/bookings/:booking_id', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
   try {
     const result = await pool.query(
       'SELECT * FROM bookings WHERE booking_id = $1',
@@ -778,6 +791,7 @@ app.get('/api/bookings/:booking_id', async (req, res) => {
 
 // CREATE nouvelle réservation
 app.post('/api/bookings', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
   try {
     // Get user_id from session
     const user_id = req.session.userId;
@@ -813,6 +827,7 @@ app.post('/api/bookings', async (req, res) => {
 
 // UPDATE réservation
 app.put('/api/bookings/:booking_id', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
   try {
     const {
       title, description, subject, start_time, end_time,
@@ -849,6 +864,7 @@ app.put('/api/bookings/:booking_id', async (req, res) => {
 
 // UPDATE statut réservation
 app.patch('/api/bookings/:booking_id/status', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
   try {
     const { status } = req.body;
     
@@ -876,6 +892,7 @@ app.patch('/api/bookings/:booking_id/status', async (req, res) => {
 
 // DELETE réservation
 app.delete('/api/bookings/:booking_id', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
   try {
     const result = await pool.query(
       'DELETE FROM bookings WHERE booking_id = $1 RETURNING booking_id',
@@ -898,6 +915,7 @@ app.delete('/api/bookings/:booking_id', async (req, res) => {
 
 // GET tous les comptes blockchain
 app.get('/api/blockchain/accounts', async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
   try {
     const accounts = await getAllAccounts();
     res.json({ success: true, accounts });
@@ -908,6 +926,7 @@ app.get('/api/blockchain/accounts', async (req, res) => {
 
 // GET balance d'un compte
 app.get('/api/blockchain/balance/:address', async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
   try {
     const balance = await getBalance(req.params.address);
     res.json({ success: true, ...balance });
@@ -918,6 +937,7 @@ app.get('/api/blockchain/balance/:address', async (req, res) => {
 
 // POST transaction blockchain
 app.post('/api/blockchain/transaction', async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
   try {
     const { fromAddress, toAddress, amount } = req.body;
     
@@ -938,6 +958,7 @@ app.post('/api/blockchain/transaction', async (req, res) => {
 
 // GET toutes les annonces
 app.get('/api/listings', async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
   try {
     const listings = await getAllListings();
     res.json({ success: true, count: listings.length, listings });
@@ -948,6 +969,7 @@ app.get('/api/listings', async (req, res) => {
 
 // SEARCH annonces (recherche sémantique)
 app.get('/api/listings/search', async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
   try {
     const { q } = req.query;
     
@@ -964,6 +986,7 @@ app.get('/api/listings/search', async (req, res) => {
 
 // CREATE nouvelle annonce
 app.post('/api/listings', async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
   try {
     const { title, description, subject, level, price, tutor_name } = req.body;
     
@@ -995,6 +1018,7 @@ app.post('/api/listings', async (req, res) => {
    ======================================== */
 
 app.post('/api/analyze-cv', upload.single('cv'), async (req, res) => {
+  /* #swagger.tags = ['CV'] */
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Aucun fichier fourni' });
@@ -1015,6 +1039,7 @@ app.post('/api/analyze-cv', upload.single('cv'), async (req, res) => {
 
 // GET requêtes d'aide (mock pour l'instant)
 app.get('/api/requests', async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
   try {
     // TODO: Implémenter la vraie logique
     res.json([]);
@@ -1025,6 +1050,7 @@ app.get('/api/requests', async (req, res) => {
 
 // GET balance utilisateur (mock)
 app.get('/api/balance', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
   try {
     // TODO: Intégrer avec la blockchain
     res.json({
@@ -1043,6 +1069,7 @@ app.get('/api/balance', authGuard({ mustBeLogged: true }), async (req, res) => {
 
 // GET shop (mock)
 app.get('/api/shop', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['General'] */
   try {
     res.json({
       balance: 150,
@@ -1088,14 +1115,15 @@ app.get('/create-listing-cv', (req, res) => {
 });
 
 /* ========================================
-   ROUTES FRONTEND (VUE SPA)
+   SWAGGER API DOCUMENTATION
    ======================================== */
 
-// Servir le frontend Vue pour toutes les autres routes
-// Ceci doit être en dernier pour ne pas capturer les routes API
-app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, 'Application/Frontend/dist/index.html'));
-});
+const swaggerPath = join(__dirname, 'swagger-output.json');
+if (existsSync(swaggerPath)) {
+  const swaggerDoc = JSON.parse(readFileSync(swaggerPath, 'utf8'));
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
+  console.log('📖 Swagger docs available at /api/docs');
+}
 
 /* ========================================
    DÉMARRAGE DU SERVEUR
