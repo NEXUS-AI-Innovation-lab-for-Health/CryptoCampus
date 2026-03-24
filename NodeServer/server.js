@@ -322,7 +322,8 @@ app.post('/api/login', async (req, res) => {
       userId: user.user_id,
       email: user.email,
       firstName: user.first_name,
-      lastName: user.last_name
+      lastName: user.last_name,
+      role: user.role
     });
 
   } catch (err) {
@@ -336,7 +337,6 @@ app.post('/api/logout', (req, res) => {
   /* #swagger.tags = ['Auth'] */
   req.session.destroy((err) => {
     if (err) {
-      console.error('Logout error:', err);
       return res.status(500).json({ error: 'Erreur lors de la déconnexion' });
     }
     res.json({ message: 'Déconnecté avec succès' });

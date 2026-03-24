@@ -15,6 +15,7 @@ import 'screens/balance/balance_screen.dart';
 import 'screens/shop/shop_screen.dart';
 import 'screens/shop/listing_detail_screen.dart';
 import 'screens/create_request/create_request_screen.dart';
+import 'screens/bookings/bookings_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -70,6 +71,7 @@ class MyApp extends StatelessWidget {
           '/shop': (context) => const ShopScreen(),
           '/listing-detail': (context) => const ListingDetailScreen(),
           '/create-request': (context) => const CreateRequestScreen(),
+          '/bookings': (context) => const BookingsScreen(),
         },
       ),
     );

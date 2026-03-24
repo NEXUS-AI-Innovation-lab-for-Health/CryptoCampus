@@ -109,8 +109,16 @@ class HomeScreen extends StatelessWidget {
                   color: Colors.blue,
                   onTap: () => Navigator.of(context).pushNamed('/shop'),
                 ),
+                const SizedBox(height: 12),
+                _MenuCard(
+                  icon: Icons.event_note,
+                  title: 'Mes Réservations',
+                  subtitle: 'Voir mes réservations de cours',
+                  color: Colors.orange,
+                  onTap: () => Navigator.of(context).pushNamed('/bookings'),
+                ),
                 // Only show "Créer une demande" for tutors
-                if (user?.role == 'TUTOR') ...[  
+                if (user?.role == 'TUTOR') ...[
                   const SizedBox(height: 12),
                   _MenuCard(
                     icon: Icons.add_circle,

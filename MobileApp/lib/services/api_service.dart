@@ -231,6 +231,23 @@ class ApiService {
     }
   }
 
+  // ==================== BOOKINGS ENDPOINTS ====================
+  
+  Future<List<Map<String, dynamic>>> getBookings(String userId) async {
+    final uri = Uri.parse('${ApiConfig.bookingsUrl}?user_id=$userId');
+    final response = await http.get(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to get bookings: ${response.body}');
+    }
+  }
+
   // ==================== NOTIFICATIONS ENDPOINTS ====================
 
   Future<List<Map<String, dynamic>>> checkTutorNotifications(String userId, String email) async {
