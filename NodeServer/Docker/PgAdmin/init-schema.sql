@@ -157,6 +157,7 @@ CREATE TABLE bookings (
     tutor_email VARCHAR,
     price DECIMAL(10,2),
     notes TEXT,
+    is_notified_tutor BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     CONSTRAINT valid_booking_status CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),

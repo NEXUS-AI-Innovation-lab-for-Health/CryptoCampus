@@ -44,19 +44,31 @@ class ApiService {
     }
   }
 
-  Future<User?> getUserByEmail(String email) async {
+    Future<User?> login(String email, String password) async {
     final response = await http.post(
-      Uri.parse(ApiConfig.userByEmailUrl),
+      Uri.parse(ApiConfig.loginUrl),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email}),
+      body: jsonEncode({'email': email, 'password': password}), // Envoi email + mdp
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      if (data == null) return null;
-      return User.fromJson(data);
+      
+      // The login API returns { userId, email, firstName, lastName }
+      // But the User.fromJson expects { user_id, email, first_name, last_name, role, created_at, ... }
+      // We need to map the fields correctly from the login payload to match standard user json format
+      return User.fromJson({
+        'user_id': data['userId'] ?? data['user_id'],
+        'email': data['email'],
+        'first_name': data['firstName'] ?? data['first_name'] ?? '',
+        'last_name': data['lastName'] ?? data['last_name'] ?? '',
+        'role': data['role'] ?? 'STUDENT',
+        'is_verified': data['is_verified'] ?? true,
+        'created_at': data['created_at'] ?? DateTime.now().toIso8601String(),
+        'last_login': data['last_login'] ?? DateTime.now().toIso8601String(),
+      });
     } else {
-      throw Exception('Failed to get user: ${response.body}');
+      throw Exception('Failed to login: ${response.body}');
     }
   }
 
@@ -216,6 +228,35 @@ class ApiService {
       return Listing.fromJson(responseData['listing']);
     } else {
       throw Exception('Failed to create listing: ${response.body}');
+    }
+  }
+
+  // ==================== NOTIFICATIONS ENDPOINTS ====================
+
+  Future<List<Map<String, dynamic>>> checkTutorNotifications(String userId, String email) async {
+    final uri = Uri.parse('${ApiConfig.tutorNotificationsUrl}?user_id=$userId&tutor_email=$email');
+    final response = await http.get(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to get notifications: ${response.body}');
+    }
+  }
+
+  Future<void> markNotificationsRead(List<String> bookingIds) async {
+    final response = await http.put(
+      Uri.parse(ApiConfig.markNotificationsReadUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'booking_ids': bookingIds}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mark notifications as read: ${response.body}');
     }
   }
 }

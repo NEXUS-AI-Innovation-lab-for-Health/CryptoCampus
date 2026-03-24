@@ -222,7 +222,7 @@ curl http://localhost:81/blockchain/accounts
 **Pour émulateur Android :**
 ```env
 # MobileApp/.env
-API_BASE_URL=http://10.0.2.2:81
+API_BASE_URL=http://127.0.0.1:81
 ```
 
 **Pour téléphone physique (même réseau Wi-Fi) :**

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/blockchain_provider.dart';
 import 'providers/listings_provider.dart';
+import 'providers/notification_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
@@ -14,6 +15,8 @@ import 'screens/balance/balance_screen.dart';
 import 'screens/shop/shop_screen.dart';
 import 'screens/shop/listing_detail_screen.dart';
 import 'screens/create_request/create_request_screen.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,8 +34,21 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BlockchainProvider()),
         ChangeNotifierProvider(create: (_) => ListingsProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
+          create: (_) => NotificationProvider(navigatorKey),
+          update: (_, auth, notif) {
+            final notificationProvider = notif ?? NotificationProvider(navigatorKey);
+            if (auth.isAuthenticated && auth.currentUser != null) {
+              notificationProvider.startPolling(auth.currentUser!.userId, auth.currentUser!.email);
+            } else {
+              notificationProvider.stopPolling();
+            }
+            return notificationProvider;
+          },
+        ),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'CryptoCampus',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(

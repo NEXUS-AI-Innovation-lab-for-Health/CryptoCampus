@@ -161,7 +161,7 @@ flutter build apk --release
 - Vérifier que Docker est démarré : `docker ps`
 - Vérifier l'URL dans `.env`
 - Pour émulateur Android : `API_BASE_URL=http://10.0.2.2:81`
-
+- Pour  émuler sur chrome : `API_BASE_URL=http://127.0.0.1:81`
 ### "No devices found"
 - Lancer un émulateur Android
 - OU connecter un appareil physique

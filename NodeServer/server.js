@@ -16,6 +16,8 @@ import cors from 'cors';
 import multer from 'multer';
 import swaggerUi from 'swagger-ui-express';
 import 'dotenv/config';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 // Services métier
 import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './Api/blockchain.js';
@@ -30,6 +32,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log(`🔌 Nouveau client Socket.io connecté: ${socket.id}`);
+  
+  socket.on('disconnect', () => {
+    console.log(`🔌 Client déconnecté: ${socket.id}`);
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 
 // Middlewares généraux
@@ -911,6 +929,64 @@ app.get('/api/bookings', async (req, res) => {
     
     const result = await pool.query(query, params);
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET notifications pour le tuteur
+app.get('/api/tutor/notifications', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
+  try {
+    const { tutor_email, user_id } = req.query;
+    if (!tutor_email && !user_id) {
+      return res.status(400).json({ error: 'tutor_email ou user_id requis' });
+    }
+
+    let query = `
+      SELECT b.* 
+      FROM bookings b
+      LEFT JOIN tutor_availability ta ON b.slot_id = ta.slot_id
+      WHERE b.is_notified_tutor = FALSE
+    `;
+    const params = [];
+
+    if (user_id && tutor_email) {
+      query += ` AND (ta.tutor_user_id = $1 OR b.tutor_email = $2)`;
+      params.push(user_id, tutor_email);
+    } else if (user_id) {
+      query += ` AND ta.tutor_user_id = $1`;
+      params.push(user_id);
+    } else {
+      query += ` AND b.tutor_email = $1`;
+      params.push(tutor_email);
+    }
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// MARQUER notifications comme lues
+app.put('/api/tutor/notifications/mark-read', async (req, res) => {
+  /* #swagger.tags = ['Bookings'] */
+  try {
+    const { booking_ids } = req.body;
+    if (!booking_ids || !Array.isArray(booking_ids) || booking_ids.length === 0) {
+      return res.status(400).json({ error: 'Tableau booking_ids requis' });
+    }
+
+    const placeholders = booking_ids.map((_, i) => `$${i + 1}`).join(',');
+    const query = `
+      UPDATE bookings 
+      SET is_notified_tutor = TRUE 
+      WHERE booking_id IN (${placeholders})
+    `;
+    await pool.query(query, booking_ids);
+    
+    res.json({ message: 'Notifications marquées comme lues' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

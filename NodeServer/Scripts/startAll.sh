@@ -27,7 +27,7 @@ docker compose up -d
 
 echo "Restoration de la database..."
 cd ./Scripts
-./restoreDB.sh
+./restoreDB.sh ../Docker/PgAdmin/DB_Backup/CryptoCampusProMax2.sql
 echo "Restoration de la database terminée."
 
 echo "------------------------------------------------------"

@@ -34,7 +34,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final user = await _apiService.getUserByEmail(email);
+      final user = await _apiService.login(email, password);
       
       if (user == null) {
         _isLoading = false;
@@ -53,6 +53,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
+      print('❌ Erreur de connexion: $e');
       _isLoading = false;
       notifyListeners();
       return false;

@@ -203,7 +203,7 @@ class _BookingSlotDialogState extends State<_BookingSlotDialog> {
   Future<void> _fetchSlots() async {
     try {
       final uri = Uri.parse(
-        ApiConfig.availabilityUrl(listingId: widget.listing.id.toString()),
+        ApiConfig.availabilityUrl(listingId: widget.listing.listingId.toString()),
       );
       final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
       if (response.statusCode == 200) {
@@ -281,7 +281,7 @@ class _BookingSlotDialogState extends State<_BookingSlotDialog> {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'slot_ids': _selectedSlotIds.toList(),
-            'listing_id': widget.listing.id,
+            'listing_id': widget.listing.listingId,
             'title': widget.listing.title,
             'description': widget.listing.description,
             'subject': widget.listing.subject,

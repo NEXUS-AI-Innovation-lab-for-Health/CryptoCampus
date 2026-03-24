@@ -17,8 +17,8 @@ services:
       dockerfile: ./Dockerfile
     volumes:
       - /app/node_modules
-    expose:
-      - "3000"
+    ports:
+      - "81:3000"
     environment:
       SESSION_SECRET: ${SESSION_SECRET}
       DB_HOST: db
