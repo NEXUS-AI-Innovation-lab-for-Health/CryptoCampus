@@ -782,12 +782,12 @@ app.get('/api/availability', async (req, res) => {
     `;
     const params = [];
 
-    if (listing_id) {
+    if (listing_id && listing_id !== 'undefined' && listing_id !== 'null') {
       params.push(listing_id);
       query += ` AND ta.listing_id = $${params.length}`;
     }
 
-    if (tutor_user_id) {
+    if (tutor_user_id && tutor_user_id !== 'undefined' && tutor_user_id !== 'null') {
       params.push(tutor_user_id);
       query += ` AND ta.tutor_user_id = $${params.length}`;
     }
@@ -1239,8 +1239,21 @@ app.post('/api/blockchain/transaction', async (req, res) => {
 app.get('/api/listings', async (req, res) => {
   /* #swagger.tags = ['Listings'] */
   try {
-    const listings = await getAllListings();
+    const listings = await getAllListings(1000);
     res.json({ success: true, count: listings.length, listings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET mes annonces (tuteur)
+app.get('/api/listings/mine', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const userId = req.session.userId;
+    const allListings = await getAllListings(1000);
+    const myListings = allListings.filter(l => l.tutor_user_id === userId);
+    res.json({ success: true, count: myListings.length, listings: myListings });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1264,15 +1277,30 @@ app.get('/api/listings/search', async (req, res) => {
 });
 
 // CREATE nouvelle annonce
-app.post('/api/listings', async (req, res) => {
+app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Listings'] */
   try {
     const { title, description, subject, level, price, tutor_name } = req.body;
-    
+
     if (!title || !description) {
       return res.status(400).json({ error: 'Titre et description requis' });
     }
-    
+
+    let tutor_user_id = req.session.userId;
+    let tutor_email = null;
+    let final_tutor_name = tutor_name || 'Anonymous';
+
+    if (tutor_user_id) {
+      const userResult = await pool.query('SELECT email, first_name, last_name FROM users WHERE user_id = $1', [tutor_user_id]);
+      if (userResult.rows.length > 0) {
+        const u = userResult.rows[0];
+        tutor_email = u.email;
+        if (!tutor_name || tutor_name === 'Anonymous') {
+          final_tutor_name = `${u.first_name || ''} ${u.last_name || ''}`.trim();
+        }
+      }
+    }
+
     const listing = {
       id: Date.now(),
       title,
@@ -1280,13 +1308,33 @@ app.post('/api/listings', async (req, res) => {
       subject: subject || 'other',
       level: level || 'intermediate',
       price: parseFloat(price) || 0,
-      tutor_name: tutor_name || 'Anonymous',
-      created_at: new Date().toISOString()
+      tutor_name: final_tutor_name || 'Anonymous',
+      tutor_email: tutor_email,
+      tutor_user_id: tutor_user_id,
     };
 
     await indexListing(listing);
 
     res.status(201).json({ success: true, listing });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE une annonce (tuteur)
+app.delete('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listId = req.params.id;
+    // On va vérifier que l'annonce lui appartient
+    const allListings = await getAllListings(1000);
+    const listing = allListings.find(l => l.id == listId);
+    
+    if (!listing) return res.status(404).json({ error: 'Annonce non trouvée' });
+    if (listing.tutor_user_id !== req.session.userId) return res.status(403).json({ error: 'Non autorisé' });
+
+    await deleteListing(listId); 
+    res.json({ success: true, message: 'Annonce supprimée' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

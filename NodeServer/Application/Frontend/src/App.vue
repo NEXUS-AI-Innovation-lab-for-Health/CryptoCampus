@@ -39,6 +39,13 @@
             >Boutique</router-link
           >
           <router-link
+            to="/mes-cours"
+            class="nav-link"
+            :class="{ active: currentPage === 'mes-cours' }"
+            v-if="isLogged == true && isTutor"
+            >Mes cours</router-link
+          >
+          <router-link
             to="/create_request"
             class="nav-link btn-create"
             :class="{ active: currentPage === 'create_request' }"

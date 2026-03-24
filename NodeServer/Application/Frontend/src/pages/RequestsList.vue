@@ -459,7 +459,7 @@ const openListingDetails = async (listing) => {
   loadingSlots.value = true
   availableSlots.value = []
   try {
-    const res = await fetch(`/api/availability?listing_id=${listing.id}`, { credentials: 'include' })
+    const res = await fetch(`/api/availability?tutor_user_id=${listing.tutor_user_id}`, { credentials: 'include' })
     if (res.ok) {
       availableSlots.value = await res.json()
     }

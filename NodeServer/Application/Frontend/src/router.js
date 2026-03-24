@@ -9,6 +9,7 @@ import Profile from './pages/Profile.vue'
 import Logout from './pages/Logout.vue'
 import Agenda from './pages/Agenda.vue'
 import Reservations from './pages/Reservations.vue'
+import MyCourses from './pages/MyCourses.vue'
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -22,6 +23,7 @@ const routes = [
   { path: '/logout', component: Logout },
   { path: '/agenda', component: Agenda },
   { path: '/reservations', component: Reservations },
+  { path: '/mes-cours', component: MyCourses },
 ]
 
 const router = createRouter({
