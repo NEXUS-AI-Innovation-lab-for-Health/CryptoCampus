@@ -29,23 +29,29 @@ class _BookingsScreenState extends State<BookingsScreen> {
       final user = authProvider.currentUser;
 
       if (user == null) {
-        setState(() {
-          _error = 'Utilisateur non connecté';
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _error = 'Utilisateur non connecté';
+            _isLoading = false;
+          });
+        }
         return;
       }
 
       final bookings = await _apiService.getBookings(user.userId);
-      setState(() {
-        _bookings = bookings;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _bookings = bookings;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 

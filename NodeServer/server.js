@@ -913,20 +913,20 @@ app.get('/api/bookings', async (req, res) => {
     const { user_id } = req.query;
     
     let query = `
-      SELECT booking_id, user_id, listing_id, title, description, subject,
-             start_time, end_time, status, tutor_name, price, notes,
-             created_at, updated_at
-      FROM bookings
+      SELECT b.booking_id, b.user_id, b.listing_id, b.title, b.description, b.subject,      
+             b.start_time, b.end_time, b.status, b.tutor_name, b.price, b.notes,
+             b.created_at, b.updated_at
+      FROM bookings b
+      LEFT JOIN tutor_availability ta ON b.slot_id = ta.slot_id
     `;
-    
+
     const params = [];
     if (user_id) {
-      query += ' WHERE user_id = $1';
+      query += ' WHERE b.user_id = $1 OR ta.tutor_user_id = $1';
       params.push(user_id);
     }
-    
-    query += ' ORDER BY start_time ASC';
-    
+
+    query += ' ORDER BY b.start_time ASC';
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {

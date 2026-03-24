@@ -1,6 +1,6 @@
 class Listing {
   final int listingId;
-  final int tutorUserId;
+  final String tutorUserId;
   final String title;
   final String description;
   final String subject;
@@ -25,8 +25,8 @@ class Listing {
 
   factory Listing.fromJson(Map<String, dynamic> json) {
     return Listing(
-      listingId: json['listing_id'] ?? json['id'],
-      tutorUserId: json['tutor_user_id'] ?? 0,
+      listingId: json['listing_id'] ?? json['id'] ?? 0,
+      tutorUserId: json['tutor_user_id']?.toString() ?? '',
       title: json['title'],
       description: json['description'],
       subject: json['subject'],

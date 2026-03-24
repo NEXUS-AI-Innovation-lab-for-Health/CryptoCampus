@@ -132,7 +132,7 @@
           <div class="booking-content">
             <div class="booking-header">
               <h3 class="booking-title">{{ booking.title }}</h3>
-              <span class="booking-price">{{ booking.price }}€/h</span>
+              <span class="booking-price">{{ booking.price }}CCT/h</span>
             </div>
 
             <div class="booking-info">
