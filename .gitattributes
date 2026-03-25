@@ -1,0 +1,53 @@
+# Auto-detect text files and normalize line endings to LF
+* text=auto
+
+# Shell scripts - always LF (Unix)
+*.sh text eol=lf
+
+# Batch files - always CRLF (Windows)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Bash-specific files
+.bash* text eol=lf
+.profile text eol=lf
+
+# Linux/Unix configuration files
+*.conf text eol=lf
+*.cfg text eol=lf
+
+# Docker
+Dockerfile* text eol=lf
+*.dockerfile text eol=lf
+
+# Scripts in various locations
+Scripts/** text eol=lf
+scripts/** text eol=lf
+
+# Source code - let auto-detection handle based on language
+*.dart text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.vue text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.gradle.kts text eol=lf
+*.gradle text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.gz binary
+*.zip binary
+*.7z binary
+*.ttf binary
+*.otf binary
