@@ -53,26 +53,22 @@
         <div v-if="slotError" class="error-msg">{{ slotError }}</div>
         <form @submit.prevent="createSlot" class="modal-form">
           <div class="form-group">
-            <label>Date et heure de début (XX:00 ou XX:30) *</label>
-            <input 
-              v-model="slotForm.start_time" 
-              type="datetime-local" 
-              required 
-              :min="minSlotDateTime"
-              step="1800"
-              @blur="validateSlotTime('start')"
+            <label>Date et heure de début *</label>
+            <TimePickerInput 
+              v-model="slotForm.start_time"
+              :min-date-time="minSlotDateTime"
+              placeholder="Cliquez pour sélectionner"
+              :has-error="timeValidationErrors.start !== ''"
             />
             <small v-if="timeValidationErrors.start" class="error-hint">{{ timeValidationErrors.start }}</small>
           </div>
           <div class="form-group">
-            <label>Date et heure de fin (XX:00 ou XX:30) *</label>
-            <input 
-              v-model="slotForm.end_time" 
-              type="datetime-local" 
-              required 
-              :min="slotForm.start_time || minSlotDateTime"
-              step="1800"
-              @blur="validateSlotTime('end')"
+            <label>Date et heure de fin *</label>
+            <TimePickerInput 
+              v-model="slotForm.end_time"
+              :min-date-time="slotForm.start_time || minSlotDateTime"
+              placeholder="Cliquez pour sélectionner"
+              :has-error="timeValidationErrors.end !== ''"
             />
             <small v-if="timeValidationErrors.end" class="error-hint">{{ timeValidationErrors.end }}</small>
           </div>
@@ -254,9 +250,11 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue';
+import TimePickerInput from '../components/TimePickerInput.vue';
 
 export default {
   name: 'Reservations',
+  components: { TimePickerInput },
   setup() {
     const bookings = ref([]);
     const loading = ref(true);

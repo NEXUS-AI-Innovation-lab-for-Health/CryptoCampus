@@ -247,7 +247,7 @@
             <button 
               @click="createBooking" 
               class="btn btn-primary"
-              :disabled="isBooking || selectedSlotIds.length === 0"
+              :disabled="isBooking || selectedSlotIds.length === 0 || availableSlots.length === 0"
             >
               {{ isBooking ? 'Réservation...' : `Confirmer (${selectedSlotIds.length} créneau${selectedSlotIds.length > 1 ? 'x' : ''})` }}
             </button>
