@@ -6,16 +6,18 @@
         type="text"
         class="time-display-input"
         :value="displayValue"
-        @click="showPicker = !showPicker"
-        @focus="showPicker = true"
+        @click="openPicker"
+        @focus="openPicker"
         readonly
         :placeholder="placeholder"
+        :disabled="disabled"
         :class="{ 'has-error': hasError }"
       />
       <button 
         type="button"
         class="time-picker-toggle-btn"
-        @click="showPicker = !showPicker"
+        @click="togglePicker"
+        :disabled="disabled"
         title="Ouvrir le sélecteur d'heure"
       >
         📅
@@ -32,6 +34,7 @@
             v-model="localDate" 
             type="date"
             class="date-input"
+            :min="minDateOnly"
           />
         </div>
 
@@ -72,21 +75,24 @@
               <button 
                 type="button"
                 class="minute-btn"
-                :class="{ active: localMinute === 0 }"
+                :class="{ active: localMinute === 0, locked: isMinuteLocked }"
                 @click="localMinute = 0"
+                :disabled="isMinuteLocked"
               >
                 00
               </button>
               <button 
                 type="button"
                 class="minute-btn"
-                :class="{ active: localMinute === 30 }"
+                :class="{ active: localMinute === 30, locked: isMinuteLocked }"
                 @click="localMinute = 30"
+                :disabled="isMinuteLocked"
               >
                 30
               </button>
             </div>
             <div class="input-hint">{{ localMinute.toString().padStart(2, '0') }}</div>
+            <small v-if="isMinuteLocked" class="lock-hint">Verrouille sur l'heure de debut</small>
           </div>
         </div>
 
@@ -136,6 +142,14 @@ const props = defineProps({
   hasError: {
     type: Boolean,
     default: false
+  },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
+  lockedMinute: {
+    type: Number,
+    default: null
   }
 })
 
@@ -145,6 +159,19 @@ const showPicker = ref(false)
 const localDate = ref('')
 const localHour = ref(0)
 const localMinute = ref(0)
+
+const isMinuteLocked = computed(() => props.lockedMinute === 0 || props.lockedMinute === 30)
+
+const minDateOnly = computed(() => {
+  if (!props.minDateTime) return ''
+  return props.minDateTime.split('T')[0]
+})
+
+const minDateTimeValue = computed(() => {
+  if (!props.minDateTime) return null
+  const parsed = new Date(props.minDateTime)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+})
 
 // Initialize from modelValue
 watch(() => props.modelValue, (newVal) => {
@@ -156,10 +183,29 @@ watch(() => props.modelValue, (newVal) => {
   }
 })
 
+watch(() => props.lockedMinute, (newVal) => {
+  if (newVal === 0 || newVal === 30) {
+    localMinute.value = newVal
+  }
+}, { immediate: true })
+
+watch(() => props.disabled, (newVal) => {
+  if (newVal) {
+    closePicker()
+  }
+})
+
 // Set initial min date if provided
 watch(() => props.minDateTime, (newVal) => {
   if (newVal && !localDate.value) {
     localDate.value = newVal.split('T')[0]
+  }
+})
+
+watch(() => localDate.value, (newDate) => {
+  if (!newDate || !minDateOnly.value) return
+  if (newDate < minDateOnly.value) {
+    localDate.value = minDateOnly.value
   }
 })
 
@@ -201,12 +247,30 @@ const validateHour = () => {
   if (localHour.value > 23) localHour.value = 23
 }
 
+const openPicker = () => {
+  if (props.disabled) return
+  showPicker.value = true
+}
+
+const togglePicker = () => {
+  if (props.disabled) return
+  showPicker.value = !showPicker.value
+}
+
 const confirmSelection = () => {
   if (!localDate.value) {
     alert('Veuillez sélectionner une date')
     return
   }
-  const dateTimeLocal = `${localDate.value}T${localHour.value.toString().padStart(2, '0')}:${localMinute.value.toString().padStart(2, '0')}`
+  const minuteToUse = isMinuteLocked.value ? props.lockedMinute : localMinute.value
+  const dateTimeLocal = `${localDate.value}T${localHour.value.toString().padStart(2, '0')}:${minuteToUse.toString().padStart(2, '0')}`
+  const selectedDateTime = new Date(dateTimeLocal)
+
+  if (minDateTimeValue.value && selectedDateTime < minDateTimeValue.value) {
+    alert('Ce créneau est avant la limite autorisée.')
+    return
+  }
+
   emit('update:modelValue', dateTimeLocal)
   closePicker()
 }
@@ -239,6 +303,12 @@ const closePicker = () => {
   transition: all 0.2s ease;
 }
 
+.time-display-input:disabled {
+  cursor: not-allowed;
+  background: #f6f6f6;
+  color: #8a8a8a;
+}
+
 .time-display-input:hover {
   border-color: #0066cc;
 }
@@ -262,6 +332,12 @@ const closePicker = () => {
   cursor: pointer;
   font-size: 16px;
   transition: all 0.2s ease;
+}
+
+.time-picker-toggle-btn:disabled {
+  cursor: not-allowed;
+  background: #f6f6f6;
+  color: #8a8a8a;
 }
 
 .time-picker-toggle-btn:hover {
@@ -412,6 +488,21 @@ const closePicker = () => {
   background: #0066cc;
   color: white;
   border-color: #0066cc;
+}
+
+.minute-btn.locked {
+  opacity: 0.85;
+}
+
+.minute-btn:disabled {
+  cursor: not-allowed;
+}
+
+.lock-hint {
+  display: block;
+  margin-top: 6px;
+  color: #666;
+  font-size: 11px;
 }
 
 .time-preview {

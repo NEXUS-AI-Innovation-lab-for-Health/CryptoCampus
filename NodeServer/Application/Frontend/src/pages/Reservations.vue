@@ -69,8 +69,11 @@
               :min-date-time="slotForm.start_time || minSlotDateTime"
               placeholder="Cliquez pour sélectionner"
               :has-error="timeValidationErrors.end !== ''"
+              :disabled="!slotForm.start_time"
+              :locked-minute="lockedEndMinute"
             />
             <small v-if="timeValidationErrors.end" class="error-hint">{{ timeValidationErrors.end }}</small>
+            <small v-if="!slotForm.start_time" class="help-text">Choisissez d'abord l'heure de debut.</small>
           </div>
           <p class="help-text">💡 Les créneaux seront automatiquement divisés en tranches d'1 heure</p>
           <div class="modal-actions">
@@ -249,7 +252,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import TimePickerInput from '../components/TimePickerInput.vue';
 
 export default {
@@ -271,6 +274,15 @@ export default {
     const slotForm = ref({ start_time: '', end_time: '' });
     const timeValidationErrors = ref({ start: '', end: '' });
 
+    const toDateTimeLocalValue = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hour = String(date.getHours()).padStart(2, '0');
+      const minute = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hour}:${minute}`;
+    };
+
     const isSlotFormValid = computed(() => {
       return slotForm.value.start_time && 
              slotForm.value.end_time && 
@@ -281,7 +293,31 @@ export default {
     const minSlotDateTime = computed(() => {
       const now = new Date();
       now.setMinutes(now.getMinutes() + 30);
-      return now.toISOString().slice(0, 16);
+      return toDateTimeLocalValue(now);
+    });
+
+    const lockedEndMinute = computed(() => {
+      if (!slotForm.value.start_time) return null;
+      const minute = new Date(slotForm.value.start_time).getMinutes();
+      return minute === 0 || minute === 30 ? minute : null;
+    });
+
+    // Keep end minute aligned with start minute and block end input until start is chosen.
+    watch(() => slotForm.value.start_time, (newStart) => {
+      if (!newStart) {
+        slotForm.value.end_time = '';
+        timeValidationErrors.value.end = '';
+        return;
+      }
+
+      const startMinute = new Date(newStart).getMinutes();
+      if (!slotForm.value.end_time) return;
+
+      const endDate = new Date(slotForm.value.end_time);
+      if (endDate.getMinutes() !== startMinute) {
+        endDate.setMinutes(startMinute, 0, 0);
+        slotForm.value.end_time = toDateTimeLocalValue(endDate);
+      }
     });
 
     const formatSlotDate = (dt) =>
@@ -549,6 +585,7 @@ export default {
       timeValidationErrors,
       isSlotFormValid,
       minSlotDateTime,
+      lockedEndMinute,
       formatSlotDate,
       formatSlotTime,
       validateSlotTime,
