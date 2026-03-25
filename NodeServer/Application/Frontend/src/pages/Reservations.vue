@@ -47,22 +47,39 @@
     <div v-if="showSlotModal" class="modal-overlay" @click.self="showSlotModal = false">
       <div class="modal modal-sm">
         <div class="modal-header">
-          <h3>Ajouter un créneau de disponibilité</h3>
+          <h3>Ajouter des créneaux de disponibilité</h3>
           <button @click="showSlotModal = false" class="close-btn">×</button>
         </div>
         <div v-if="slotError" class="error-msg">{{ slotError }}</div>
         <form @submit.prevent="createSlot" class="modal-form">
           <div class="form-group">
-            <label>Date et heure de début *</label>
-            <input v-model="slotForm.start_time" type="datetime-local" required :min="minSlotDateTime" />
+            <label>Date et heure de début (XX:00 ou XX:30) *</label>
+            <input 
+              v-model="slotForm.start_time" 
+              type="datetime-local" 
+              required 
+              :min="minSlotDateTime"
+              step="1800"
+              @blur="validateSlotTime('start')"
+            />
+            <small v-if="timeValidationErrors.start" class="error-hint">{{ timeValidationErrors.start }}</small>
           </div>
           <div class="form-group">
-            <label>Date et heure de fin *</label>
-            <input v-model="slotForm.end_time" type="datetime-local" required :min="slotForm.start_time || minSlotDateTime" />
+            <label>Date et heure de fin (XX:00 ou XX:30) *</label>
+            <input 
+              v-model="slotForm.end_time" 
+              type="datetime-local" 
+              required 
+              :min="slotForm.start_time || minSlotDateTime"
+              step="1800"
+              @blur="validateSlotTime('end')"
+            />
+            <small v-if="timeValidationErrors.end" class="error-hint">{{ timeValidationErrors.end }}</small>
           </div>
+          <p class="help-text">💡 Les créneaux seront automatiquement divisés en tranches d'1 heure</p>
           <div class="modal-actions">
             <button type="button" @click="showSlotModal = false" class="btn btn-secondary">Annuler</button>
-            <button type="submit" class="btn btn-primary" :disabled="creatingSlot">
+            <button type="submit" class="btn btn-primary" :disabled="creatingSlot || !isSlotFormValid">
               {{ creatingSlot ? 'Création...' : 'Créer' }}
             </button>
           </div>
@@ -254,6 +271,14 @@ export default {
     const creatingSlot = ref(false);
     const slotError = ref('');
     const slotForm = ref({ start_time: '', end_time: '' });
+    const timeValidationErrors = ref({ start: '', end: '' });
+
+    const isSlotFormValid = computed(() => {
+      return slotForm.value.start_time && 
+             slotForm.value.end_time && 
+             !timeValidationErrors.value.start && 
+             !timeValidationErrors.value.end;
+    });
 
     const minSlotDateTime = computed(() => {
       const now = new Date();
@@ -267,6 +292,22 @@ export default {
     const formatSlotTime = (dt) =>
       new Date(dt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
+    // Validate that time is on round/half-hour boundary
+    const validateSlotTime = (field) => {
+      const timeStr = field === 'start' ? slotForm.value.start_time : slotForm.value.end_time;
+      if (!timeStr) {
+        timeValidationErrors.value[field] = '';
+        return;
+      }
+      const date = new Date(timeStr);
+      const minutes = date.getMinutes();
+      if (minutes !== 0 && minutes !== 30) {
+        timeValidationErrors.value[field] = 'Doit être à XX:00 ou XX:30';
+      } else {
+        timeValidationErrors.value[field] = '';
+      }
+    };
+
     const fetchMySlots = async () => {
       try {
         const res = await fetch('/api/availability/mine', { credentials: 'include' });
@@ -277,7 +318,26 @@ export default {
     };
 
     const createSlot = async () => {
-      if (!slotForm.value.start_time || !slotForm.value.end_time) return;
+      if (!slotForm.value.start_time || !slotForm.value.end_time) {
+        slotError.value = 'Tous les champs sont requis';
+        return;
+      }
+
+      // Validate times
+      validateSlotTime('start');
+      validateSlotTime('end');
+      if (timeValidationErrors.value.start || timeValidationErrors.value.end) {
+        slotError.value = 'Les heures doivent être à XX:00 ou XX:30';
+        return;
+      }
+
+      const startDate = new Date(slotForm.value.start_time);
+      const endDate = new Date(slotForm.value.end_time);
+      if (endDate <= startDate) {
+        slotError.value = 'La date/heure de fin doit être après le début';
+        return;
+      }
+
       creatingSlot.value = true;
       slotError.value = '';
       try {
@@ -297,6 +357,7 @@ export default {
         }
         showSlotModal.value = false;
         slotForm.value = { start_time: '', end_time: '' };
+        timeValidationErrors.value = { start: '', end: '' };
         await fetchMySlots();
       } catch (e) {
         slotError.value = e.message;
@@ -487,9 +548,12 @@ export default {
       creatingSlot,
       slotError,
       slotForm,
+      timeValidationErrors,
+      isSlotFormValid,
       minSlotDateTime,
       formatSlotDate,
       formatSlotTime,
+      validateSlotTime,
       createSlot,
       deleteSlot,
     };
@@ -1061,5 +1125,21 @@ export default {
   border-radius: 8px;
   margin-bottom: 1rem;
   font-size: 0.9em;
+}
+
+.error-hint {
+  display: block;
+  color: #d32f2f;
+  font-size: 0.8em;
+  margin-top: 0.25rem;
+}
+
+.help-text {
+  font-size: 0.9em;
+  color: #666;
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background: #f0f4ff;
+  border-radius: 6px;
 }
 </style>

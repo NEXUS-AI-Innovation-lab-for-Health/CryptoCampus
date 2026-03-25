@@ -247,15 +247,6 @@ class _BookingSlotDialogState extends State<_BookingSlotDialog> {
     return '$day  $startT – $endT';
   }
 
-  String _slotDuration(Map<String, dynamic> slot) {
-    final start = DateTime.parse(slot['start_time'] as String);
-    final end = DateTime.parse(slot['end_time'] as String);
-    final mins = end.difference(start).inMinutes;
-    final h = mins ~/ 60;
-    final m = mins % 60;
-    return m == 0 ? '${h}h' : '${h}h${m}min';
-  }
-
   Future<void> _confirm() async {
     if (_selectedSlotIds.isEmpty) return;
 
@@ -361,7 +352,7 @@ class _BookingSlotDialogState extends State<_BookingSlotDialog> {
                                     });
                                   },
                                   title: Text(_formatSlot(slot)),
-                                  subtitle: Text(_slotDuration(slot)),
+                                  subtitle: const Text('1 heure'),
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
                                 );

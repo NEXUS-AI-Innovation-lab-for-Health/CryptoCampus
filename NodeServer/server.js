@@ -819,12 +819,46 @@ app.get('/api/availability/mine', authGuard({ mustBeLogged: true }), async (req,
   }
 });
 
+// Helper function: validate time is on round/half-hour boundary (XX:00 or XX:30)
+function isValidTimeSlot(dateString) {
+  const date = new Date(dateString);
+  const minutes = date.getMinutes();
+  return minutes === 0 || minutes === 30;
+}
+
+// Helper function: generate 1-hour slots from a time range
+function generateOneHourSlots(startTime, endTime) {
+  const slots = [];
+  let current = new Date(startTime);
+  
+  while (current < new Date(endTime)) {
+    const slotEnd = new Date(current);
+    slotEnd.setHours(slotEnd.getHours() + 1);
+    
+    // Don't go past the requested end time
+    if (slotEnd > new Date(endTime)) {
+      slotEnd.setTime(new Date(endTime).getTime());
+    }
+    
+    slots.push({
+      start: new Date(current),
+      end: slotEnd
+    });
+    
+    current = slotEnd;
+  }
+  
+  return slots;
+}
+
 // POST créer des créneaux (tuteur uniquement)
+// Automatically splits long time ranges into 1-hour slots
 app.post('/api/availability', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
+  const client = await pool.connect();
   try {
     // Vérifier que l'utilisateur est bien un TUTOR
-    const userResult = await pool.query(
+    const userResult = await client.query(
       'SELECT role FROM users WHERE user_id = $1',
       [req.session.userId]
     );
@@ -833,45 +867,90 @@ app.post('/api/availability', authGuard({ mustBeLogged: true }), async (req, res
     }
 
     // Accepter soit un seul créneau soit un tableau
-    let slots = req.body;
-    if (!Array.isArray(slots)) {
-      slots = [slots];
+    let inputSlots = req.body;
+    if (!Array.isArray(inputSlots)) {
+      inputSlots = [inputSlots];
     }
 
     const created = [];
-    for (const slot of slots) {
-      const { listing_id, start_time, end_time } = slot;
+    
+    await client.query('BEGIN');
+
+    for (const inputSlot of inputSlots) {
+      const { listing_id, start_time, end_time } = inputSlot;
+      
       if (!start_time || !end_time) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'start_time et end_time sont requis' });
       }
-      if (new Date(end_time) <= new Date(start_time)) {
+
+      // Validate that times are on round/half-hour boundaries
+      if (!isValidTimeSlot(start_time)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'La date de début doit être à XX:00 ou XX:30' 
+        });
+      }
+      if (!isValidTimeSlot(end_time)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'La date de fin doit être à XX:00 ou XX:30' 
+        });
+      }
+
+      const startDate = new Date(start_time);
+      const endDate = new Date(end_time);
+
+      if (endDate <= startDate) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'end_time doit être après start_time' });
       }
 
-      // Vérifier qu'il n'y a pas de chevauchement pour ce tuteur
-      const overlap = await pool.query(
-        `SELECT slot_id FROM tutor_availability
-         WHERE tutor_user_id = $1
-           AND is_booked = FALSE
-           AND tsrange(start_time, end_time) && tsrange($2::timestamp, $3::timestamp)`,
-        [req.session.userId, start_time, end_time]
-      );
-      if (overlap.rows.length > 0) {
-        return res.status(409).json({ error: `Créneau en conflit avec un créneau existant (${start_time})` });
+      // Generate 1-hour slots
+      const oneHourSlots = generateOneHourSlots(startDate, endDate);
+
+      if (oneHourSlots.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'L\'intervalle doit couvrir au moins 1 heure' });
       }
 
-      const result = await pool.query(
-        `INSERT INTO tutor_availability (tutor_user_id, listing_id, start_time, end_time)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [req.session.userId, listing_id || null, start_time, end_time]
-      );
-      created.push(result.rows[0]);
+      // Check for overlaps with THIS TUTOR's existing slots (booked or not)
+      for (const hourSlot of oneHourSlots) {
+        const overlap = await client.query(
+          `SELECT slot_id FROM tutor_availability
+           WHERE tutor_user_id = $1
+             AND tsrange(start_time, end_time, '[]') && tsrange($2::timestamp, $3::timestamp, '[]')`,
+          [req.session.userId, hourSlot.start.toISOString(), hourSlot.end.toISOString()]
+        );
+        
+        if (overlap.rows.length > 0) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ 
+            error: `Créneau en conflit avec une disponibilité existante (${hourSlot.start.toISOString()})` 
+          });
+        }
+      }
+
+      // Insert all 1-hour slots for this input range
+      for (const hourSlot of oneHourSlots) {
+        const result = await client.query(
+          `INSERT INTO tutor_availability (tutor_user_id, listing_id, start_time, end_time)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
+          [req.session.userId, listing_id || null, hourSlot.start.toISOString(), hourSlot.end.toISOString()]
+        );
+        created.push(result.rows[0]);
+      }
     }
 
+    await client.query('COMMIT');
     res.status(201).json(created);
   } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error in POST /api/availability:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

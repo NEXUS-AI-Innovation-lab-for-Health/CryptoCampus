@@ -198,7 +198,7 @@
 
               <!-- Slot picker -->
               <div v-else class="slots-section">
-                <p class="slots-hint">Sélectionnez un ou plusieurs créneaux :</p>
+                <p class="slots-hint">Sélectionnez un ou plusieurs créneaux d'1 heure :</p>
                 <div class="slots-grid">
                   <div
                     v-for="slot in availableSlots"
@@ -210,7 +210,7 @@
                     <div class="slot-time">
                       {{ formatSlotTime(slot.start_time) }} – {{ formatSlotTime(slot.end_time) }}
                     </div>
-                    <div class="slot-duration">{{ slotDuration(slot) }}</div>
+                    <div class="slot-duration">1 heure</div>
                   </div>
                 </div>
               </div>
