@@ -90,8 +90,7 @@
                 </div>
                 <div v-if="booking.description" class="card-description">{{ booking.description }}</div>
                 <div class="card-actions">
-                  <button @click="editBooking(booking)" class="btn-action btn-edit" title="Éditer">✏️</button>
-                  <button @click="cancelBooking(booking.booking_id)" class="btn-action btn-cancel" title="Annuler">✕</button>
+                  <button @click="showCancelConfirm(booking.booking_id)" class="btn-action btn-cancel" title="Annuler">✕ Annuler</button>
                 </div>
               </div>
             </div>
@@ -127,8 +126,7 @@
                     <span v-if="booking.tutor_name" class="detail-instructor">{{ booking.tutor_name }}</span>
                   </div>
                   <div class="info-actions">
-                    <button @click="editBooking(booking)" class="btn-mini" title="Éditer">✏️</button>
-                    <button @click="cancelBooking(booking.booking_id)" class="btn-mini btn-danger-mini" title="Annuler">✕</button>
+                    <button @click="showCancelConfirm(booking.booking_id)" class="btn-mini btn-danger-mini" title="Annuler">✕</button>
                   </div>
                 </div>
               </div>
@@ -141,7 +139,25 @@
       </div>
     </div>
 
-    <!-- Modal for editing/creating bookings -->
+    <!-- Custom Cancel Confirmation Dialog -->
+    <div v-if="cancelConfirmDialog.show" class="confirmation-overlay" @click.self="closeCancelConfirm">
+      <div class="confirmation-dialog">
+        <div class="confirmation-header">
+          <div class="confirmation-icon">⚠️</div>
+          <h3>Annuler la réservation</h3>
+        </div>
+        <div class="confirmation-body">
+          <p>Êtes-vous sûr de vouloir annuler cette réservation ?</p>
+          <p class="confirmation-warning">Cette action ne peut pas être annulée.</p>
+        </div>
+        <div class="confirmation-actions">
+          <button @click="closeCancelConfirm" class="btn-confirm btn-secondary">Non, garder la réservation</button>
+          <button @click="confirmCancel" class="btn-confirm btn-danger">Oui, annuler la réservation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for editing/creating bookings (hidden)-->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
         <div class="modal-header">
@@ -246,6 +262,11 @@ export default {
       price: null,
       status: 'pending',
       notes: ''
+    })
+    
+    const cancelConfirmDialog = ref({
+      show: false,
+      bookingId: null
     })
 
     // Computed properties
@@ -483,10 +504,19 @@ export default {
       }
     }
 
-    const cancelBooking = async (bookingId) => {
-      if (!confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
-        return
-      }
+    const showCancelConfirm = (bookingId) => {
+      cancelConfirmDialog.value.show = true
+      cancelConfirmDialog.value.bookingId = bookingId
+    }
+
+    const closeCancelConfirm = () => {
+      cancelConfirmDialog.value.show = false
+      cancelConfirmDialog.value.bookingId = null
+    }
+
+    const confirmCancel = async () => {
+      const bookingId = cancelConfirmDialog.value.bookingId
+      closeCancelConfirm()
 
       try {
         const response = await fetch(`/api/bookings/${bookingId}/status`, {
@@ -519,6 +549,7 @@ export default {
       showModal,
       editingBooking,
       bookingForm,
+      cancelConfirmDialog,
       previousMonth,
       nextMonth,
       selectDay,
@@ -530,7 +561,9 @@ export default {
       editBooking,
       closeModal,
       saveBooking,
-      cancelBooking
+      showCancelConfirm,
+      closeCancelConfirm,
+      confirmCancel
     }
   }
 }
@@ -1150,61 +1183,53 @@ export default {
   padding: 0.5rem;
 }
 
-/* ACTION BUTTONS */
 .btn-action {
-  width: 32px;
-  height: 32px;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
   border-radius: 6px;
   border: none;
   cursor: pointer;
-  font-size: 1em;
+  font-size: 0.9em;
   transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-.btn-edit {
-  background: #e2e8f0;
-  color: #1e293b;
   flex: 1;
-}
-
-.btn-edit:hover {
-  background: #cbd5e1;
-  transform: scale(1.05);
+  font-weight: 600;
 }
 
 .btn-cancel {
   background: #fecaca;
   color: #991b1b;
-  flex: 1;
 }
 
 .btn-cancel:hover {
   background: #fca5a5;
-  transform: scale(1.05);
+  transform: translateY(-2px);
 }
 
 .btn-mini {
-  width: 28px;
-  height: 28px;
+  width: auto;
+  height: auto;
+  padding: 0.4rem 0.8rem;
   border-radius: 4px;
   border: none;
   background: #e2e8f0;
   color: #1e293b;
   cursor: pointer;
-  font-size: 0.85em;
+  font-size: 0.9em;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 600;
 }
 
 .btn-mini:hover {
   background: #cbd5e1;
-  transform: scale(1.1);
+  transform: translateY(-2px);
 }
 
 .btn-danger-mini {
@@ -1349,6 +1374,126 @@ export default {
 
 .btn-secondary:hover {
   background: #cbd5e1;
+}
+
+/* CONFIRMATION DIALOG */
+.confirmation-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.confirmation-dialog {
+  background: white;
+  border-radius: 15px;
+  max-width: 450px;
+  width: 100%;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.confirmation-header {
+  padding: 2rem 1.5rem 1rem;
+  text-align: center;
+  border-bottom: 2px solid #f0f4ff;
+}
+
+.confirmation-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.confirmation-header h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.confirmation-body {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.confirmation-body p {
+  margin: 0.5rem 0;
+  color: #475569;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.confirmation-warning {
+  color: #ef4444;
+  font-weight: 600;
+  font-size: 0.9em;
+  margin-top: 1rem !important;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 2px solid #f0f4ff;
+}
+
+.btn-confirm {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-confirm.btn-secondary {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.btn-confirm.btn-secondary:hover {
+  background: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+.btn-confirm.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.btn-confirm.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 /* RESPONSIVE */
