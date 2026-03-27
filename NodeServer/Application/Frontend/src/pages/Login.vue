@@ -121,6 +121,38 @@
               <option value="tutor">Tuteur/Tutrice</option>
             </select>
           </div>
+
+          <div v-if="registerForm.role === 'tutor'" class="tutor-location-fields">
+            <div class="form-group">
+              <label for="registerLessonMode">Mode principal des cours *</label>
+              <select v-model="registerForm.lesson_mode" id="registerLessonMode" required>
+                <option value="Visio">Visio</option>
+                <option value="Presentiel">Presentiel</option>
+                <option value="Hybride">Hybride</option>
+              </select>
+            </div>
+
+            <div class="form-group" v-if="registerForm.lesson_mode === 'Visio' || registerForm.lesson_mode === 'Hybride'">
+              <label for="registerVisioTool">Outil visio *</label>
+              <select v-model="registerForm.visio_tool" id="registerVisioTool" required>
+                <option value="Zoom">Zoom</option>
+                <option value="Teams">Teams</option>
+                <option value="Google Meet">Google Meet</option>
+                <option value="Discord">Discord</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="registerPlaces">Lieux (separes par des virgules)</label>
+              <input
+                v-model="registerForm.lesson_places_raw"
+                type="text"
+                id="registerPlaces"
+                placeholder="Visio, Bibliotheque, Domicile..."
+              />
+            </div>
+          </div>
           
           <button type="submit" class="btn-primary" :disabled="isLoading">
             {{ isLoading ? 'Création en cours...' : 'Créer mon compte' }}
@@ -157,6 +189,9 @@ export default {
       email: '',
       password: '',
       role: 'student',
+      lesson_mode: 'Visio',
+      visio_tool: 'Zoom',
+      lesson_places_raw: 'Visio',
     })
 
     const handleLogin = async () => {
@@ -205,7 +240,13 @@ export default {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(registerForm.value),
+          body: JSON.stringify({
+            ...registerForm.value,
+            lesson_places: registerForm.value.lesson_places_raw
+              .split(',')
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0),
+          }),
           credentials: 'include',
         })
 
@@ -224,6 +265,9 @@ export default {
             email: '',
             password: '',
             role: 'student',
+            lesson_mode: 'Visio',
+            visio_tool: 'Zoom',
+            lesson_places_raw: 'Visio',
           }
           
           successMessage.value = '✅ Compte créé avec succès ! Connexion en cours...'

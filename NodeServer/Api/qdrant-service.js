@@ -53,7 +53,20 @@ function createSimpleEmbedding(text, size = 384) {
 // Indexer une annonce dans Qdrant
 export async function indexListing(listing) {
   try {
-    const { id, title, description, subject, level, price, tutor_name, tutor_email, tutor_user_id } = listing;
+    const {
+      id,
+      title,
+      description,
+      subject,
+      level,
+      price,
+      tutor_name,
+      tutor_email,
+      tutor_user_id,
+      tutor_lesson_mode,
+      tutor_visio_tool,
+      tutor_places,
+    } = listing;
     
     // Créer un texte combiné pour l'embedding
     const combinedText = `${title} ${description} ${subject} ${level} ${tutor_name}`;
@@ -74,6 +87,9 @@ export async function indexListing(listing) {
             tutor_name,
             tutor_email,
             tutor_user_id,
+            tutor_lesson_mode: tutor_lesson_mode || 'Visio',
+            tutor_visio_tool: tutor_visio_tool || 'Zoom',
+            tutor_places: Array.isArray(tutor_places) && tutor_places.length > 0 ? tutor_places : ['Visio'],
             created_at: listing.created_at || new Date().toISOString()
           }
         }

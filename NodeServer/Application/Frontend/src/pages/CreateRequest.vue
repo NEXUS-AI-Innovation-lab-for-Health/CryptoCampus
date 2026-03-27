@@ -85,13 +85,15 @@
               class="suggestion-card"
             >
               <div class="suggestion-header">
-                <div class="suggestion-title">{{ suggestion.title }}</div>
-                <div class="suggestion-price">{{ suggestion.price }} CCT/h</div>
+                <input class="edit-input" v-model="suggestion.title" />
+                <div class="suggestion-price">
+                  <input class="price-input" v-model.number="suggestion.price" type="number" min="0" step="0.5" /> CCT/h
+                </div>
               </div>
-              <div class="suggestion-description">{{ suggestion.description }}</div>
+              <textarea class="edit-input description-input" v-model="suggestion.description" rows="3"></textarea>
               <div class="suggestion-meta">
-                <span class="meta-badge badge-subject">📚 {{ suggestion.subject }}</span>
-                <span class="meta-badge badge-level">🎯 {{ suggestion.level }}</span>
+                <span class="meta-badge badge-subject">📚 <input class="meta-input" v-model="suggestion.subject" /></span>
+                <span class="meta-badge badge-level">🎯 <input class="meta-input" v-model="suggestion.level" /></span>
               </div>
               <div class="checkbox-wrapper">
                 <input 
@@ -593,6 +595,37 @@ input[type="file"] {
   font-weight: 700;
   color: #333;
   flex: 1;
+}
+
+.edit-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.description-input {
+  margin-bottom: 1rem;
+}
+
+.price-input {
+  width: 80px;
+  border: 1px solid #ffcc80;
+  border-radius: 6px;
+  padding: 0.35rem;
+  margin-right: 0.35rem;
+}
+
+.meta-input {
+  border: none;
+  background: transparent;
+  min-width: 80px;
+  font-weight: 600;
+}
+
+.meta-input:focus {
+  outline: none;
 }
 
 .suggestion-price {

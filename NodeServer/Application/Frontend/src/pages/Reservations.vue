@@ -15,30 +15,39 @@
         <button @click="showSlotModal = true" class="btn btn-primary btn-sm">+ Ajouter un créneau</button>
       </div>
 
-      <!-- Slot list -->
+      <!-- Week Navigation -->
+      <div class="week-navigation">
+        <button @click="previousWeek" class="nav-btn">‹ Semaine précédente</button>
+        <span class="week-label">{{ weekLabel }}</span>
+        <button @click="nextWeek" class="nav-btn">Semaine suivante ›</button>
+      </div>
+
+      <!-- Week Calendar -->
       <div v-if="mySlots.length === 0" class="slots-empty-msg">
         Vous n'avez aucun créneau défini. Ajoutez vos disponibilités pour que les étudiants puissent réserver.
       </div>
-      <div v-else class="my-slots-grid">
-        <div
-          v-for="slot in mySlots"
-          :key="slot.slot_id"
-          :class="['my-slot-card', slot.is_booked ? 'booked' : 'available']"
-        >
-          <div class="slot-status-dot"></div>
-          <div class="slot-info">
-            <div class="slot-date-label">{{ formatSlotDate(slot.start_time) }}</div>
-            <div class="slot-time-label">{{ formatSlotTime(slot.start_time) }} – {{ formatSlotTime(slot.end_time) }}</div>
+      <div v-else class="week-calendar">
+        <div v-for="day in weekDays" :key="day.date" class="calendar-day-column">
+          <div class="day-header">
+            <div class="day-name">{{ day.dayName }}</div>
+            <div class="day-date">{{ day.formattedDate }}</div>
           </div>
-          <span :class="['slot-badge', slot.is_booked ? 'badge-booked' : 'badge-available']">
-            {{ slot.is_booked ? 'Réservé' : 'Libre' }}
-          </span>
-          <button
-            v-if="!slot.is_booked"
-            @click="deleteSlot(slot.slot_id)"
-            class="btn-icon-danger"
-            title="Supprimer ce créneau"
-          >✕</button>
+          <div class="slots-container">
+            <div v-if="day.slots.length === 0" class="no-slots">—</div>
+            <div v-for="slot in day.slots" :key="slot.slot_id" :class="['week-slot-card', slot.is_booked ? 'booked' : 'available']">
+              <div class="slot-time">{{ formatSlotTime(slot.start_time) }}</div>
+              <div class="slot-duration">{{ formatSlotTime(slot.end_time) }}</div>
+              <span :class="['slot-status', slot.is_booked ? 'status-booked' : 'status-available']">
+                {{ slot.is_booked ? '🔒' : '✓' }}
+              </span>
+              <button
+                v-if="!slot.is_booked"
+                @click="deleteSlot(slot.slot_id)"
+                class="btn-delete-slot"
+                title="Supprimer"
+              >✕</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -269,6 +278,53 @@ export default {
     const statusFilter = ref('all');
     const updating = ref(null);
     const userRole = ref('');
+
+    // ── Week calendar state ──────────────────────────────────────────
+    const currentWeekStart = ref(getMonday(new Date()));
+    const weekDays = computed(() => {
+      const days = [];
+      const dayNames = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentWeekStart.value);
+        date.setDate(date.getDate() + i);
+        const daySlots = mySlots.value.filter(slot => {
+          const slotDate = new Date(slot.start_time);
+          return slotDate.toDateString() === date.toDateString();
+        }).sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+        days.push({
+          date,
+          dayName: dayNames[i],
+          formattedDate: date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'numeric' }),
+          slots: daySlots
+        });
+      }
+      return days;
+    });
+
+    const weekLabel = computed(() => {
+      const end = new Date(currentWeekStart.value);
+      end.setDate(end.getDate() + 6);
+      return `${currentWeekStart.value.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+    });
+
+    function getMonday(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
+    }
+
+    const previousWeek = () => {
+      const newDate = new Date(currentWeekStart.value);
+      newDate.setDate(newDate.getDate() - 7);
+      currentWeekStart.value = newDate;
+    };
+
+    const nextWeek = () => {
+      const newDate = new Date(currentWeekStart.value);
+      newDate.setDate(newDate.getDate() + 7);
+      currentWeekStart.value = newDate;
+    };
 
     // ── Availability state ──────────────────────────────────────────
     const mySlots = ref([]);
@@ -596,6 +652,12 @@ export default {
       getStatusIcon,
       formatDateTime,
       calculateDuration,
+      // week calendar
+      currentWeekStart,
+      weekDays,
+      weekLabel,
+      previousWeek,
+      nextWeek,
       // availability
       mySlots,
       showSlotModal,
@@ -1012,14 +1074,194 @@ export default {
   padding: 0.75rem 0;
 }
 
+.week-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.week-navigation .nav-btn {
+  padding: 0.6rem 1rem;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #333;
+  transition: all 0.3s;
+}
+
+.week-navigation .nav-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.week-label {
+  font-weight: 700;
+  color: #333;
+  font-size: 1.1em;
+  flex: 1;
+  text-align: center;
+}
+
+.week-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.calendar-day-column {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.day-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.75rem;
+  text-align: center;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.day-name {
+  font-weight: 700;
+  font-size: 1em;
+  text-transform: uppercase;
+}
+
+.day-date {
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+
+.slots-container {
+  padding: 0.75rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 150px;
+}
+
+.no-slots {
+  color: #ccc;
+  text-align: center;
+  font-size: 1.5em;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.week-slot-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.85em;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.week-slot-card.available {
+  background: #f0fdf2;
+  border-color: #4caf50;
+  border-left: 3px solid #4caf50;
+}
+
+.week-slot-card.booked {
+  background: #fffdf0;
+  border-color: #ffc107;
+  border-left: 3px solid #ffc107;
+}
+
+.slot-time {
+  font-weight: 700;
+  color: #333;
+}
+
+.slot-duration {
+  font-size: 0.8em;
+  color: #666;
+}
+
+.slot-status {
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.status-available {
+  color: #4caf50;
+}
+
+.status-booked {
+  color: #ffc107;
+}
+
+.btn-delete-slot {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  background: none;
+  border: none;
+  color: #f44336;
+  cursor: pointer;
+  font-size: 0.9em;
+  padding: 0.2rem 0.4rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.week-slot-card:hover .btn-delete-slot {
+  opacity: 1;
+}
+
+.btn-delete-slot:hover {
+  color: #d32f2f;
+}
+
 .my-slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 0.75rem;
 }
 
+@media (max-width: 1024px) {
+  .week-calendar {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .week-calendar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .week-navigation {
+    flex-direction: column;
+  }
+
+  .week-label {
+    width: 100%;
+  }
+}
+
 @media (max-width: 640px) {
   .my-slots-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .week-calendar {
     grid-template-columns: 1fr;
   }
 }

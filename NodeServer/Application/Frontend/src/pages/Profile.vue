@@ -126,6 +126,48 @@
             </div>
           </div>
 
+          <div v-if="userInfo.role === 'TUTOR'" class="password-reset-card">
+            <h3 class="card-subtitle">Lieux et modalites de cours</h3>
+            <div class="password-form">
+              <div v-if="locationError" class="error-message">{{ locationError }}</div>
+              <div v-if="locationSuccess" class="success-message">{{ locationSuccess }}</div>
+
+              <div class="form-group">
+                <label for="lessonMode">Mode principal</label>
+                <select id="lessonMode" v-model="locationForm.lesson_mode">
+                  <option value="Visio">Visio</option>
+                  <option value="Presentiel">Presentiel</option>
+                  <option value="Hybride">Hybride</option>
+                </select>
+              </div>
+
+              <div class="form-group" v-if="locationForm.lesson_mode === 'Visio' || locationForm.lesson_mode === 'Hybride'">
+                <label for="visioTool">Outil visio</label>
+                <select id="visioTool" v-model="locationForm.visio_tool">
+                  <option value="Zoom">Zoom</option>
+                  <option value="Teams">Teams</option>
+                  <option value="Google Meet">Google Meet</option>
+                  <option value="Discord">Discord</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="lessonPlaces">Lieux (separes par des virgules)</label>
+                <input
+                  id="lessonPlaces"
+                  v-model="locationForm.lesson_places_raw"
+                  type="text"
+                  placeholder="Visio, Bibliotheque, Domicile..."
+                />
+              </div>
+
+              <button @click="saveLessonLocations" class="btn-update" :disabled="isSavingLocations">
+                {{ isSavingLocations ? 'Enregistrement...' : 'Enregistrer les lieux de cours' }}
+              </button>
+            </div>
+          </div>
+
           <!-- Logout Section -->
           <div class="logout-card">
             <div class="logout-content">
@@ -185,6 +227,14 @@ export default {
     const isResettingPassword = ref(false)
     const passwordError = ref('')
     const passwordSuccess = ref('')
+    const isSavingLocations = ref(false)
+    const locationError = ref('')
+    const locationSuccess = ref('')
+    const locationForm = ref({
+      lesson_mode: 'Visio',
+      visio_tool: 'Zoom',
+      lesson_places_raw: 'Visio',
+    })
     const passwordForm = ref({
       currentPassword: '',
       newPassword: '',
@@ -223,12 +273,57 @@ export default {
             role: data.role || '',
             created_at: data.created_at || new Date().toISOString(),
           }
+          locationForm.value.lesson_mode = data.lesson_mode || 'Visio'
+          locationForm.value.visio_tool = data.visio_tool || 'Zoom'
+          locationForm.value.lesson_places_raw = Array.isArray(data.lesson_places) && data.lesson_places.length > 0
+            ? data.lesson_places.join(', ')
+            : 'Visio'
           balance.value = data.balance || 0
           blockchainAddress.value = data.blockchainAddress || null
           stats.value = data.stats || stats.value
         }
       } catch (error) {
         console.error('Failed to load profile:', error)
+      }
+    }
+
+    const saveLessonLocations = async () => {
+      locationError.value = ''
+      locationSuccess.value = ''
+
+      if (!locationForm.value.lesson_mode) {
+        locationError.value = 'Le mode principal est requis'
+        return
+      }
+
+      isSavingLocations.value = true
+      try {
+        const response = await fetch('/api/profile/lesson-locations', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            lesson_mode: locationForm.value.lesson_mode,
+            visio_tool: locationForm.value.visio_tool,
+            lesson_places: locationForm.value.lesson_places_raw
+              .split(',')
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0),
+          }),
+        })
+
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors de la mise a jour')
+        }
+
+        locationSuccess.value = 'Lieux de cours mis a jour avec succes'
+      } catch (error) {
+        locationError.value = error.message
+      } finally {
+        isSavingLocations.value = false
       }
     }
 
@@ -354,12 +449,17 @@ export default {
       stats,
       userInfo,
       passwordForm,
+      locationForm,
       isResettingPassword,
+      isSavingLocations,
       passwordError,
       passwordSuccess,
+      locationError,
+      locationSuccess,
       formatDate,
       getRoleLabel,
       resetPassword,
+      saveLessonLocations,
       logout,
       confirmDeleteAccount,
     }
@@ -628,7 +728,23 @@ export default {
   transition: border-color 0.3s, box-shadow 0.3s;
 }
 
+.form-group select {
+  padding: 0.875rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
 .form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.form-group select:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);

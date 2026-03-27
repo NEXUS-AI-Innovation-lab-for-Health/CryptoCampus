@@ -3,7 +3,7 @@ import Home from './pages/Home.vue'
 import RequestsList from './pages/RequestsList.vue'
 import Login from './pages/Login.vue'
 import Balance from './pages/Balance.vue'
-import Shop from './pages/Shop.vue'
+import Favorites from './pages/Favorites.vue'
 import CreateRequest from './pages/CreateRequest.vue'
 import Profile from './pages/Profile.vue'
 import Logout from './pages/Logout.vue'
@@ -17,7 +17,8 @@ const routes = [
   { path: '/requetes', component: RequestsList },
   { path: '/login', component: Login },
   { path: '/balance', component: Balance },
-  { path: '/shop', component: Shop },
+  { path: '/favoris', component: Favorites },
+  { path: '/shop', redirect: '/favoris' },
   { path: '/create_request', component: CreateRequest },
   { path: '/profile', component: Profile },
   { path: '/logout', component: Logout },

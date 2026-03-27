@@ -23,6 +23,9 @@ CREATE TABLE users (
     first_name VARCHAR,
     last_name VARCHAR,
     role user_role NOT NULL,
+    lesson_mode VARCHAR(30) DEFAULT 'Visio',
+    visio_tool VARCHAR(60) DEFAULT 'Zoom',
+    lesson_places TEXT[] DEFAULT ARRAY['Visio']::TEXT[],
     is_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     last_login TIMESTAMP
@@ -162,4 +165,24 @@ CREATE TABLE bookings (
     updated_at TIMESTAMP DEFAULT NOW(),
     CONSTRAINT valid_booking_status CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
     CONSTRAINT valid_booking_time CHECK (end_time > start_time)
+);
+
+-- =========================
+-- LISTING INTERESTS
+-- =========================
+CREATE TABLE listing_interests (
+    listing_id BIGINT NOT NULL,
+    student_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (listing_id, student_user_id)
+);
+
+-- =========================
+-- LISTING FAVORITES
+-- =========================
+CREATE TABLE listing_favorites (
+    listing_id BIGINT NOT NULL,
+    student_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (listing_id, student_user_id)
 );

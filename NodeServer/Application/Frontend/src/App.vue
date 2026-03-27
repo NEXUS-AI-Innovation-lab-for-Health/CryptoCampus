@@ -32,11 +32,11 @@
             >Mon solde</router-link
           > -->
           <router-link
-            to="/shop"
+            to="/favoris"
             class="nav-link"
-            :class="{ active: currentPage === 'shop' }"
+            :class="{ active: currentPage === 'favoris' }"
             v-if="isLogged == true"
-            >Boutique</router-link
+            >Cours favoris</router-link
           >
           <router-link
             to="/mes-cours"

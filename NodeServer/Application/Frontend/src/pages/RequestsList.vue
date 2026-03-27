@@ -135,9 +135,30 @@
           <p class="listing-description">{{ listing.description }}</p>
           <div class="listing-footer">
             <span class="tutor-name">👨‍🏫 {{ listing.tutor_name }}</span>
+            <span class="engagement">⭐ {{ favoriteCounts[listing.id] || 0 }} favoris</span>
+            <span class="engagement">🙋 {{ interestCounts[listing.id] || 0 }} interesses</span>
             <span v-if="showScores && listing.score !== undefined" class="score-badge">
               Score: {{ Math.round(listing.score * 100) }}%
             </span>
+          </div>
+
+          <div v-if="currentUserId" class="listing-actions" @click.stop>
+            <button
+              class="btn btn-favorite"
+              :class="{ active: isFavorite(listing.id) }"
+              @click="toggleFavorite(listing.id)"
+            >
+              {{ isFavorite(listing.id) ? '❤️ Favori' : '🤍 Favori' }}
+            </button>
+
+            <button
+              v-if="canToggleInterest(listing)"
+              class="btn btn-interest"
+              :class="{ active: isInterested(listing.id) }"
+              @click="toggleInterest(listing.id)"
+            >
+              {{ isInterested(listing.id) ? '🙋 Interesse' : '🙋 Montrer mon interet' }}
+            </button>
           </div>
         </div>
       </div>
@@ -156,6 +177,30 @@
               <h3>👨‍🏫 Tuteur</h3>
               <p class="tutor-name-large">{{ selectedListing.tutor_name }}</p>
               <p class="tutor-email">{{ selectedListing.tutor_email }}</p>
+              <p class="tutor-email"><strong>Mode:</strong> {{ selectedListing.tutor_lesson_mode || 'Visio' }}</p>
+              <p class="tutor-email" v-if="selectedListing.tutor_lesson_mode === 'Visio' || selectedListing.tutor_lesson_mode === 'Hybride'">
+                <strong>Outil:</strong> {{ selectedListing.tutor_visio_tool || 'Zoom' }}
+              </p>
+              <p class="tutor-email"><strong>Lieux:</strong> {{ formatPlaces(selectedListing.tutor_places) }}</p>
+            </div>
+
+            <div class="course-details" style="margin-top: 1rem;">
+              <h3>🙋 Interet pour ce cours</h3>
+              <p><strong>{{ selectedListingInterestCount }}</strong> personne(s) interessee(s)</p>
+              <div v-if="isCurrentUserListingOwner && selectedListingInterestPeople.length > 0" class="interest-emails">
+                <p><strong>Etudiants interesses (emails):</strong></p>
+                <ul>
+                  <li v-for="mail in selectedListingInterestPeople" :key="mail">{{ mail }}</li>
+                </ul>
+              </div>
+              <button
+                v-if="currentUserId && canToggleInterest(selectedListing)"
+                class="btn btn-interest"
+                :class="{ active: isInterested(selectedListing.id) }"
+                @click="toggleInterest(selectedListing.id)"
+              >
+                {{ isInterested(selectedListing.id) ? 'Retirer mon interet' : 'Montrer mon interet' }}
+              </button>
             </div>
 
             <!-- Détails du cours -->
@@ -272,6 +317,8 @@ const showFilters = ref(false)
 const subjectFilter = ref('')
 const levelFilter = ref('')
 const sortBy = ref('')
+const userRole = ref('')
+const currentUserId = ref('')
 
 // Modal & Booking state
 const showModal = ref(false)
@@ -285,6 +332,12 @@ const bookingForm = ref({ notes: '' })
 const availableSlots = ref([])
 const loadingSlots = ref(false)
 const selectedSlotIds = ref([])
+const interestCounts = ref({})
+const favoriteCounts = ref({})
+const myInterestIds = ref([])
+const myFavoriteIds = ref([])
+const selectedListingInterestCount = ref(0)
+const selectedListingInterestPeople = ref([])
 
 // Available filters
 const availableSubjects = [
@@ -339,6 +392,11 @@ const searchStatus = computed(() => {
   return 'Toutes les annonces'
 })
 
+const isCurrentUserListingOwner = computed(() => {
+  if (!selectedListing.value || !currentUserId.value) return false
+  return selectedListing.value.tutor_user_id === currentUserId.value
+})
+
 // Slot helpers
 const slotDuration = (slot) => {
   const h = (new Date(slot.end_time) - new Date(slot.start_time)) / (1000 * 60 * 60)
@@ -384,6 +442,135 @@ const showError = (message) => {
   }, 5000)
 }
 
+const formatPlaces = (places) => {
+  if (!Array.isArray(places) || places.length === 0) {
+    return 'Visio'
+  }
+  return places.join(', ')
+}
+
+const canToggleInterest = (listing) => {
+  if (!listing || !currentUserId.value) return false
+  return listing.tutor_user_id !== currentUserId.value
+}
+
+const isInterested = (listingId) => {
+  return myInterestIds.value.includes(Number(listingId))
+}
+
+const isFavorite = (listingId) => {
+  return myFavoriteIds.value.includes(Number(listingId))
+}
+
+const loadAuthData = async () => {
+  try {
+    const response = await fetch('/api/check-auth', { credentials: 'include' })
+    if (!response.ok) return
+    const data = await response.json()
+    userRole.value = data.role || ''
+    currentUserId.value = data.userId || ''
+  } catch (error) {
+    console.error('Erreur auth:', error)
+  }
+}
+
+const loadEngagement = async () => {
+  if (listings.value.length === 0) {
+    interestCounts.value = {}
+    favoriteCounts.value = {}
+    return
+  }
+
+  const ids = listings.value.map((listing) => listing.id).join(',')
+  try {
+    const response = await fetch(`/api/listings/engagement?listing_ids=${ids}`, {
+      credentials: 'include',
+    })
+    if (!response.ok) return
+    const data = await response.json()
+    interestCounts.value = data.interests || {}
+    favoriteCounts.value = data.favorites || {}
+    myInterestIds.value = data.myInterests || []
+    myFavoriteIds.value = data.myFavorites || []
+  } catch (error) {
+    console.error('Erreur engagement:', error)
+  }
+}
+
+const refreshSelectedListingInterests = async () => {
+  if (!selectedListing.value) return
+  try {
+    const response = await fetch(`/api/listings/${selectedListing.value.id}/interests`, {
+      credentials: 'include',
+    })
+    if (!response.ok) return
+    const data = await response.json()
+    selectedListingInterestCount.value = data.count || 0
+    selectedListingInterestPeople.value = data.people || []
+  } catch (error) {
+    console.error('Erreur chargement interets:', error)
+  }
+}
+
+const toggleFavorite = async (listingId) => {
+  const isAlreadyFavorite = isFavorite(listingId)
+  const endpoint = `/api/listings/${listingId}/favorite`
+
+  try {
+    const response = await fetch(endpoint, {
+      method: isAlreadyFavorite ? 'DELETE' : 'POST',
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      throw new Error('Impossible de modifier le favori')
+    }
+
+    if (isAlreadyFavorite) {
+      myFavoriteIds.value = myFavoriteIds.value.filter((id) => id !== Number(listingId))
+      favoriteCounts.value[listingId] = Math.max(0, (favoriteCounts.value[listingId] || 1) - 1)
+    } else {
+      myFavoriteIds.value.push(Number(listingId))
+      favoriteCounts.value[listingId] = (favoriteCounts.value[listingId] || 0) + 1
+    }
+  } catch (error) {
+    showError(error.message)
+  }
+}
+
+const toggleInterest = async (listingId) => {
+  const isAlreadyInterested = isInterested(listingId)
+  const endpoint = `/api/listings/${listingId}/interests`
+
+  try {
+    const response = await fetch(endpoint, {
+      method: isAlreadyInterested ? 'DELETE' : 'POST',
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const payload = await response.json()
+      throw new Error(payload.error || 'Impossible de modifier l\'interet')
+    }
+
+    const data = await response.json()
+
+    if (isAlreadyInterested) {
+      myInterestIds.value = myInterestIds.value.filter((id) => id !== Number(listingId))
+    } else {
+      myInterestIds.value.push(Number(listingId))
+    }
+
+    interestCounts.value[listingId] = data.count || 0
+
+    if (selectedListing.value && Number(selectedListing.value.id) === Number(listingId)) {
+      await refreshSelectedListingInterests()
+    }
+  } catch (error) {
+    showError(error.message)
+  }
+}
+
 const loadAllListings = async () => {
   try {
     isLoading.value = true
@@ -405,6 +592,7 @@ const loadAllListings = async () => {
     showScores.value = false
     
     listings.value = data.listings || []
+    await loadEngagement()
   } catch (error) {
     isLoading.value = false
     showError(`Impossible de charger les annonces: ${error.message}`)
@@ -439,6 +627,7 @@ const searchListings = async () => {
     showScores.value = true
     
     listings.value = data.results || []
+    await loadEngagement()
   } catch (error) {
     isLoading.value = false
     showError(`Erreur de recherche: ${error.message}`)
@@ -454,6 +643,9 @@ const openListingDetails = async (listing) => {
   bookingError.value = ''
   bookingForm.value = { notes: '' }
   selectedSlotIds.value = []
+  selectedListingInterestCount.value = interestCounts.value[listing.id] || 0
+  selectedListingInterestPeople.value = []
+  await refreshSelectedListingInterests()
 
   // Fetch available slots for this listing
   loadingSlots.value = true
@@ -477,6 +669,8 @@ const closeModal = () => {
   bookingError.value = ''
   availableSlots.value = []
   selectedSlotIds.value = []
+  selectedListingInterestCount.value = 0
+  selectedListingInterestPeople.value = []
 }
 
 const toggleSlot = (slotId) => {
@@ -532,6 +726,7 @@ const createBooking = async () => {
 
 // Lifecycle
 onMounted(() => {
+  loadAuthData()
   loadAllListings()
 })
 </script>
@@ -830,6 +1025,48 @@ onMounted(() => {
 .listing-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.listing-actions {
+  margin-top: 0.85rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.engagement {
+  font-size: 0.82rem;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+}
+
+.btn-favorite,
+.btn-interest {
+  padding: 0.55rem 0.9rem;
+  border-radius: 8px;
+  border: 2px solid #dbeafe;
+  background: #f8fafc;
+  color: #1f2937;
+}
+
+.btn-favorite.active,
+.btn-interest.active {
+  border-color: #667eea;
+  background: #eef2ff;
+}
+
+.interest-emails {
+  margin: 0.75rem 0;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.interest-emails ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.15rem;
 }
 
 /* Modal Styles */

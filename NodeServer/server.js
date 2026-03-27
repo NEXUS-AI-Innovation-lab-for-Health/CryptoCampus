@@ -115,6 +115,69 @@ function authGuard(options) {
   };
 }
 
+function normalizeTutorPlaces(inputPlaces) {
+  if (!Array.isArray(inputPlaces)) {
+    return ['Visio'];
+  }
+
+  const cleaned = inputPlaces
+    .map((place) => (typeof place === 'string' ? place.trim() : ''))
+    .filter((place) => place.length > 0)
+    .slice(0, 10);
+
+  return cleaned.length > 0 ? cleaned : ['Visio'];
+}
+
+function normalizeLessonMode(mode) {
+  const normalized = typeof mode === 'string' ? mode.trim() : '';
+  return normalized.length > 0 ? normalized : 'Visio';
+}
+
+function normalizeVisioTool(tool) {
+  const normalized = typeof tool === 'string' ? tool.trim() : '';
+  return normalized.length > 0 ? normalized : 'Zoom';
+}
+
+async function ensureFeatureSchema() {
+  const statements = [
+    `ALTER TABLE users
+     ADD COLUMN IF NOT EXISTS lesson_mode VARCHAR(30) DEFAULT 'Visio'`,
+    `ALTER TABLE users
+     ADD COLUMN IF NOT EXISTS visio_tool VARCHAR(60) DEFAULT 'Zoom'`,
+    `ALTER TABLE users
+     ADD COLUMN IF NOT EXISTS lesson_places TEXT[] DEFAULT ARRAY['Visio']::TEXT[]`,
+    `CREATE TABLE IF NOT EXISTS listing_interests (
+      listing_id BIGINT NOT NULL,
+      student_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      PRIMARY KEY (listing_id, student_user_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS listing_favorites (
+      listing_id BIGINT NOT NULL,
+      student_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      PRIMARY KEY (listing_id, student_user_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_listing_interests_listing_id
+     ON listing_interests (listing_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_listing_favorites_listing_id
+     ON listing_favorites (listing_id)`,
+  ];
+
+  for (const sql of statements) {
+    await pool.query(sql);
+  }
+
+  await pool.query(`
+    UPDATE users
+    SET lesson_mode = COALESCE(lesson_mode, 'Visio'),
+        visio_tool = COALESCE(visio_tool, 'Zoom'),
+        lesson_places = COALESCE(lesson_places, ARRAY['Visio']::TEXT[])
+  `);
+
+  console.log('✅ Feature schema ensured (locations, favorites, interests)');
+}
+
 /* ========================================
    HELPER: ASSIGNER ADRESSE BLOCKCHAIN
    ======================================== */
@@ -347,7 +410,16 @@ app.post('/api/logout', (req, res) => {
 app.post('/api/register', async (req, res) => {
   /* #swagger.tags = ['Auth'] */
   try {
-    const { email, password, first_name, last_name, role } = req.body;
+    const {
+      email,
+      password,
+      first_name,
+      last_name,
+      role,
+      lesson_mode,
+      visio_tool,
+      lesson_places,
+    } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email et mot de passe requis' });
@@ -370,6 +442,9 @@ app.post('/api/register', async (req, res) => {
 
     // Normaliser le rôle (convertir en majuscules)
     const normalizedRole = (role || 'student').toUpperCase();
+    const normalizedLessonMode = normalizeLessonMode(lesson_mode);
+    const normalizedVisioTool = normalizeVisioTool(visio_tool);
+    const normalizedLessonPlaces = normalizeTutorPlaces(lesson_places);
     
     // Valider le rôle
     const validRoles = ['STUDENT', 'TUTOR', 'ADMIN'];
@@ -383,10 +458,19 @@ app.post('/api/register', async (req, res) => {
     // Créer l'utilisateur
     const result = await pool.query(
       `INSERT INTO users 
-      (email, password_hash, first_name, last_name, role, is_verified, created_at)
-      VALUES ($1, $2, $3, $4, $5::user_role, false, NOW())
-      RETURNING user_id, email, first_name, last_name, role, created_at`,
-      [email, hashedPassword, first_name || null, last_name || null, normalizedRole]
+      (email, password_hash, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, is_verified, created_at)
+      VALUES ($1, $2, $3, $4, $5::user_role, $6, $7, $8, false, NOW())
+      RETURNING user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, created_at`,
+      [
+        email,
+        hashedPassword,
+        first_name || null,
+        last_name || null,
+        normalizedRole,
+        normalizedLessonMode,
+        normalizedVisioTool,
+        normalizedLessonPlaces,
+      ]
     );
 
     const newUser = result.rows[0];
@@ -416,7 +500,8 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
   try {
     // Récupérer les infos utilisateur
     const userResult = await pool.query(
-      `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login
+      `SELECT user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places,
+              is_verified, created_at, last_login
        FROM users WHERE user_id = $1`,
       [req.session.userId]
     );
@@ -515,6 +600,45 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
   } catch (err) {
     console.error('Profile error:', err);
     res.status(500).json({ error: 'Erreur lors de la récupération du profil' });
+  }
+});
+
+app.put('/api/profile/lesson-locations', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    const { lesson_mode, visio_tool, lesson_places } = req.body;
+
+    const userRoleResult = await pool.query(
+      'SELECT role FROM users WHERE user_id = $1',
+      [req.session.userId]
+    );
+
+    if (userRoleResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const role = userRoleResult.rows[0].role;
+    if (role !== 'TUTOR') {
+      return res.status(403).json({ error: 'Seuls les tuteurs peuvent modifier leurs lieux de cours' });
+    }
+
+    const normalizedLessonMode = normalizeLessonMode(lesson_mode);
+    const normalizedVisioTool = normalizeVisioTool(visio_tool);
+    const normalizedLessonPlaces = normalizeTutorPlaces(lesson_places);
+
+    const result = await pool.query(
+      `UPDATE users
+       SET lesson_mode = $1,
+           visio_tool = $2,
+           lesson_places = $3
+       WHERE user_id = $4
+       RETURNING lesson_mode, visio_tool, lesson_places`,
+      [normalizedLessonMode, normalizedVisioTool, normalizedLessonPlaces, req.session.userId]
+    );
+
+    res.json({ success: true, ...result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1368,15 +1492,24 @@ app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) =>
     let tutor_user_id = req.session.userId;
     let tutor_email = null;
     let final_tutor_name = tutor_name || 'Anonymous';
+    let tutorLessonMode = 'Visio';
+    let tutorVisioTool = 'Zoom';
+    let tutorPlaces = ['Visio'];
 
     if (tutor_user_id) {
-      const userResult = await pool.query('SELECT email, first_name, last_name FROM users WHERE user_id = $1', [tutor_user_id]);
+      const userResult = await pool.query(
+        'SELECT email, first_name, last_name, lesson_mode, visio_tool, lesson_places FROM users WHERE user_id = $1',
+        [tutor_user_id]
+      );
       if (userResult.rows.length > 0) {
         const u = userResult.rows[0];
         tutor_email = u.email;
         if (!tutor_name || tutor_name === 'Anonymous') {
           final_tutor_name = `${u.first_name || ''} ${u.last_name || ''}`.trim();
         }
+        tutorLessonMode = normalizeLessonMode(u.lesson_mode);
+        tutorVisioTool = normalizeVisioTool(u.visio_tool);
+        tutorPlaces = normalizeTutorPlaces(u.lesson_places);
       }
     }
 
@@ -1390,11 +1523,59 @@ app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) =>
       tutor_name: final_tutor_name || 'Anonymous',
       tutor_email: tutor_email,
       tutor_user_id: tutor_user_id,
+      tutor_lesson_mode: tutorLessonMode,
+      tutor_visio_tool: tutorVisioTool,
+      tutor_places: tutorPlaces,
     };
 
     await indexListing(listing);
 
     res.status(201).json({ success: true, listing });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE annonce (tuteur propriétaire)
+app.put('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listId = req.params.id;
+    const allListings = await getAllListings(1000);
+    const existing = allListings.find((l) => String(l.id) === String(listId));
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Annonce non trouvée' });
+    }
+
+    if (existing.tutor_user_id !== req.session.userId) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+
+    const {
+      title,
+      description,
+      subject,
+      level,
+      price,
+    } = req.body;
+
+    const updatedListing = {
+      ...existing,
+      id: existing.id,
+      title: title ?? existing.title,
+      description: description ?? existing.description,
+      subject: subject ?? existing.subject,
+      level: level ?? existing.level,
+      price: price != null ? parseFloat(price) : existing.price,
+      tutor_places: normalizeTutorPlaces(existing.tutor_places),
+      tutor_lesson_mode: normalizeLessonMode(existing.tutor_lesson_mode),
+      tutor_visio_tool: normalizeVisioTool(existing.tutor_visio_tool),
+      created_at: existing.created_at,
+    };
+
+    await indexListing(updatedListing);
+    res.json({ success: true, listing: updatedListing });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1414,6 +1595,247 @@ app.delete('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, r
 
     await deleteListing(listId); 
     res.json({ success: true, message: 'Annonce supprimée' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET engagement stats for multiple listings
+app.get('/api/listings/engagement', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listingIdsParam = req.query.listing_ids;
+    if (!listingIdsParam) {
+      return res.json({ interests: {}, favorites: {}, myInterests: [], myFavorites: [] });
+    }
+
+    const listingIds = String(listingIdsParam)
+      .split(',')
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id));
+
+    if (listingIds.length === 0) {
+      return res.json({ interests: {}, favorites: {}, myInterests: [], myFavorites: [] });
+    }
+
+    const interestCountResult = await pool.query(
+      `SELECT listing_id, COUNT(*)::int AS count
+       FROM listing_interests
+       WHERE listing_id = ANY($1)
+       GROUP BY listing_id`,
+      [listingIds]
+    );
+
+    const favoriteCountResult = await pool.query(
+      `SELECT listing_id, COUNT(*)::int AS count
+       FROM listing_favorites
+       WHERE listing_id = ANY($1)
+       GROUP BY listing_id`,
+      [listingIds]
+    );
+
+    const myInterestsResult = await pool.query(
+      `SELECT listing_id
+       FROM listing_interests
+       WHERE student_user_id = $1 AND listing_id = ANY($2)`,
+      [req.session.userId, listingIds]
+    );
+
+    const myFavoritesResult = await pool.query(
+      `SELECT listing_id
+       FROM listing_favorites
+       WHERE student_user_id = $1 AND listing_id = ANY($2)`,
+      [req.session.userId, listingIds]
+    );
+
+    const interests = {};
+    const favorites = {};
+
+    for (const row of interestCountResult.rows) {
+      interests[row.listing_id] = row.count;
+    }
+
+    for (const row of favoriteCountResult.rows) {
+      favorites[row.listing_id] = row.count;
+    }
+
+    res.json({
+      interests,
+      favorites,
+      myInterests: myInterestsResult.rows.map((r) => Number(r.listing_id)),
+      myFavorites: myFavoritesResult.rows.map((r) => Number(r.listing_id)),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST mark interest in listing
+app.post('/api/listings/:id/interests', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listingId = Number(req.params.id);
+    if (!Number.isFinite(listingId)) {
+      return res.status(400).json({ error: 'ID annonce invalide' });
+    }
+
+    const listings = await getAllListings(1000);
+    const listing = listings.find((l) => Number(l.id) === listingId);
+    if (!listing) {
+      return res.status(404).json({ error: 'Annonce non trouvée' });
+    }
+
+    if (listing.tutor_user_id === req.session.userId) {
+      return res.status(400).json({ error: 'Vous ne pouvez pas montrer un intérêt pour votre propre annonce' });
+    }
+
+    await pool.query(
+      `INSERT INTO listing_interests (listing_id, student_user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (listing_id, student_user_id) DO NOTHING`,
+      [listingId, req.session.userId]
+    );
+
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM listing_interests WHERE listing_id = $1',
+      [listingId]
+    );
+
+    res.json({ success: true, interested: true, count: countResult.rows[0].count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE remove interest from listing
+app.delete('/api/listings/:id/interests', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listingId = Number(req.params.id);
+    if (!Number.isFinite(listingId)) {
+      return res.status(400).json({ error: 'ID annonce invalide' });
+    }
+
+    await pool.query(
+      'DELETE FROM listing_interests WHERE listing_id = $1 AND student_user_id = $2',
+      [listingId, req.session.userId]
+    );
+
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM listing_interests WHERE listing_id = $1',
+      [listingId]
+    );
+
+    res.json({ success: true, interested: false, count: countResult.rows[0].count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET listing interests (owner tutor sees emails, others only count)
+app.get('/api/listings/:id/interests', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listingId = Number(req.params.id);
+    if (!Number.isFinite(listingId)) {
+      return res.status(400).json({ error: 'ID annonce invalide' });
+    }
+
+    const listings = await getAllListings(1000);
+    const listing = listings.find((l) => Number(l.id) === listingId);
+    if (!listing) {
+      return res.status(404).json({ error: 'Annonce non trouvée' });
+    }
+
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM listing_interests WHERE listing_id = $1',
+      [listingId]
+    );
+    const count = countResult.rows[0].count;
+
+    if (listing.tutor_user_id === req.session.userId) {
+      const peopleResult = await pool.query(
+        `SELECT u.first_name, u.last_name, u.email
+         FROM listing_interests li
+         JOIN users u ON u.user_id = li.student_user_id
+         WHERE li.listing_id = $1
+         ORDER BY li.created_at DESC`,
+        [listingId]
+      );
+
+      return res.json({ 
+        count, 
+        people: peopleResult.rows.map((row) => ({
+          firstName: row.first_name || '',
+          lastName: row.last_name || '',
+          email: row.email,
+          fullName: `${row.first_name || ''} ${row.last_name || ''}`.trim()
+        }))
+      });
+    }
+
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST add favorite listing
+app.post('/api/listings/:id/favorite', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listingId = Number(req.params.id);
+    if (!Number.isFinite(listingId)) {
+      return res.status(400).json({ error: 'ID annonce invalide' });
+    }
+
+    await pool.query(
+      `INSERT INTO listing_favorites (listing_id, student_user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (listing_id, student_user_id) DO NOTHING`,
+      [listingId, req.session.userId]
+    );
+
+    res.json({ success: true, favorited: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE favorite listing
+app.delete('/api/listings/:id/favorite', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const listingId = Number(req.params.id);
+    if (!Number.isFinite(listingId)) {
+      return res.status(400).json({ error: 'ID annonce invalide' });
+    }
+
+    await pool.query(
+      'DELETE FROM listing_favorites WHERE listing_id = $1 AND student_user_id = $2',
+      [listingId, req.session.userId]
+    );
+
+    res.json({ success: true, favorited: false });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET favorite listing IDs for current user
+app.get('/api/favorites', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const result = await pool.query(
+      `SELECT listing_id
+       FROM listing_favorites
+       WHERE student_user_id = $1
+       ORDER BY created_at DESC`,
+      [req.session.userId]
+    );
+
+    const listingIds = result.rows.map((row) => Number(row.listing_id));
+    res.json({ success: true, listingIds });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1543,6 +1965,7 @@ app.listen(PORT, async () => {
   
   // Initialiser les services externes
   try {
+    await ensureFeatureSchema();
     await initQdrantCollection();
     console.log('✅ Qdrant initialized');
   } catch (error) {
