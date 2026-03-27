@@ -43,114 +43,98 @@
             </div>
           </div>
         </div>
-
-
       </div>
 
-      <!-- PROCHAINS COURS À DROITE -->
+      <!-- PROCHAINS COURS À DROITE - REWORKED -->
       <div class="upcoming-section" :class="{ 'is-empty': upcomingBookings.length === 0 && !selectedDateBookings.length }">
-        <div class="upcoming-header">
-          <h2>Prochains cours</h2>
-          <span class="course-count">{{ upcomingBookings.length }}</span>
+        <!-- Header avec titre et actions -->
+        <div class="upcoming-header-new">
+          <div class="header-content">
+            <h2>📅 Prochains cours</h2>
+            <span v-if="upcomingBookings.length > 0" class="course-count">{{ upcomingBookings.length }}</span>
+          </div>
         </div>
 
         <!-- État vide -->
-        <div v-if="upcomingBookings.length === 0 && !selectedDateBookings.length" class="empty-state">
-          <p>📭 Aucun cours à venir</p>
-          <p class="empty-subtext">Réservez un cours pour commencer</p>
+        <div v-if="upcomingBookings.length === 0 && !selectedDateBookings.length" class="empty-state-new">
+          <div class="empty-icon">📭</div>
+          <h3>Aucun cours à venir</h3>
+          <p>Réservez un cours pour commencer votre parcours d'apprentissage</p>
         </div>
 
-        <!-- Liste des cours -->
-        <div v-else class="bookings-container">
-          <!-- Cours du jour sélectionné (si applicable) -->
-          <div v-if="selectedDateBookings.length > 0" class="selected-date-section">
-            <h3 class="selected-date-title">
-              📅 {{ formatSelectedDate() }}
-            </h3>
-            <div class="bookings-list">
+        <!-- Contenu principal -->
+        <div v-else class="courses-main-content">
+          <!-- Section : Cours du jour sélectionné -->
+          <div v-if="selectedDateBookings.length > 0" class="courses-section">
+            <div class="section-header">
+              <h3 class="section-title">{{ formatSelectedDate() }}</h3>
+              <span class="section-badge">{{ selectedDateBookings.length }} cours</span>
+            </div>
+            <div class="courses-grid">
               <div
                 v-for="booking in selectedDateBookings"
                 :key="booking.booking_id"
-                :class="['booking-card', `status-${booking.status}`]"
+                :class="['course-card', `status-${booking.status}`, 'selected-date-card']"
               >
-                <div class="booking-header">
-                  <div class="booking-time-large">{{ formatTime(booking.start_time) }}</div>
-                  <span :class="['status-badge', `status-${booking.status}`]">
+                <div class="card-time">
+                  <span class="time-badge">{{ formatTime(booking.start_time) }}</span>
+                  <span :class="['status-tag', `status-${booking.status}`]">
                     {{ getStatusLabel(booking.status) }}
                   </span>
                 </div>
-                <h4 class="booking-title">{{ booking.title }}</h4>
-                <div class="booking-info">
-                  <p v-if="booking.subject"><strong>📚</strong> {{ booking.subject }}</p>
-                  <p v-if="booking.tutor_name"><strong>👨‍🏫</strong> {{ booking.tutor_name }}</p>
-                  <p><strong>⏱️</strong> {{ formatDuration(booking.start_time, booking.end_time) }}</p>
-                  <p v-if="booking.price"><strong>💰</strong> {{ booking.price }} CCT</p>
+                <div class="card-title">{{ booking.title }}</div>
+                <div class="card-meta">
+                  <div v-if="booking.subject" class="meta-item"><span class="emoji">📚</span> {{ booking.subject }}</div>
+                  <div v-if="booking.tutor_name" class="meta-item"><span class="emoji">👨‍🏫</span> {{ booking.tutor_name }}</div>
+                  <div class="meta-item"><span class="emoji">⏱️</span> {{ formatDuration(booking.start_time, booking.end_time) }}</div>
                 </div>
-                <div v-if="booking.description" class="booking-description">
-                  {{ booking.description }}
-                </div>
-                <div class="booking-actions">
-                  <button @click="editBooking(booking)" class="btn btn-secondary btn-sm">✏️ Éditer</button>
-                  <button @click="cancelBooking(booking.booking_id)" class="btn btn-danger btn-sm">✕ Annuler</button>
+                <div v-if="booking.description" class="card-description">{{ booking.description }}</div>
+                <div class="card-actions">
+                  <button @click="editBooking(booking)" class="btn-action btn-edit" title="Éditer">✏️</button>
+                  <button @click="cancelBooking(booking.booking_id)" class="btn-action btn-cancel" title="Annuler">✕</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Cours à venir (scrollable avec arrows) -->
-          <div v-if="upcomingBookings.length > 0" :class="['upcoming-list', { 'with-selected': selectedDateBookings.length > 0 }]">
-            <div v-if="selectedDateBookings.length > 0" class="divider"></div>
-            
-            <div v-if="selectedDateBookings.length > 0" class="upcoming-label">
-              <h3>À venir</h3>
+          <!-- Divider -->
+          <div v-if="selectedDateBookings.length > 0 && upcomingBookings.length > 0" class="section-divider"></div>
+
+          <!-- Section : Cours à venir -->
+          <div v-if="upcomingBookings.length > 0" class="courses-section">
+            <div class="section-header">
+              <h3 class="section-title" v-if="selectedDateBookings.length === 0">À venir</h3>
+              <h3 class="section-title" v-else>Autres cours</h3>
+              <span class="section-badge">{{ upcomingBookings.length }} cours</span>
             </div>
-
-            <!-- Navigation Arrows + Scroll Container -->
-            <div class="scroll-wrapper">
-              <button 
-                v-if="upcomingBookings.length > 1"
-                @click="scrollLeft" 
-                class="scroll-btn scroll-btn-left"
-                :disabled="scrollPosition === 0"
+            <div class="courses-timeline">
+              <div
+                v-for="(booking, index) in upcomingBookings.slice(0, 5)"
+                :key="booking.booking_id"
+                :class="['timeline-item', `status-${booking.status}`, { 'is-first': index === 0 }]"
               >
-                ‹
-              </button>
-
-              <div class="bookings-scroll-container" ref="scrollContainer">
-                <div
-                  v-for="booking in upcomingBookings"
-                  :key="booking.booking_id"
-                  :class="['booking-card', `status-${booking.status}`, 'upcoming-card']"
-                >
-                  <div class="booking-header">
-                    <div class="booking-time-large">{{ formatTime(booking.start_time) }}</div>
-                    <span :class="['status-badge', `status-${booking.status}`]">
+                <div class="timeline-dot"></div>
+                <div class="course-info">
+                  <div class="info-header">
+                    <div class="info-title">{{ booking.title }}</div>
+                    <span :class="['info-status', `status-${booking.status}`]">
                       {{ getStatusLabel(booking.status) }}
                     </span>
                   </div>
-                  <h4 class="booking-title">{{ booking.title }}</h4>
-                  <div class="booking-date">
-                    {{ formatDateTime(booking.start_time) }}
+                  <div class="info-date">{{ formatDateTime(booking.start_time) }}</div>
+                  <div class="info-details">
+                    <span v-if="booking.subject" class="detail-tag">{{ booking.subject }}</span>
+                    <span v-if="booking.tutor_name" class="detail-instructor">{{ booking.tutor_name }}</span>
                   </div>
-                  <div class="booking-info-compact">
-                    <p v-if="booking.subject"><strong>📚</strong> {{ booking.subject }}</p>
-                    <p v-if="booking.tutor_name"><strong>👨‍🏫</strong> {{ booking.tutor_name }}</p>
-                  </div>
-                  <div class="booking-actions">
-                    <button @click="editBooking(booking)" class="btn btn-secondary btn-xs">✏️</button>
-                    <button @click="cancelBooking(booking.booking_id)" class="btn btn-danger btn-xs">✕</button>
+                  <div class="info-actions">
+                    <button @click="editBooking(booking)" class="btn-mini" title="Éditer">✏️</button>
+                    <button @click="cancelBooking(booking.booking_id)" class="btn-mini btn-danger-mini" title="Annuler">✕</button>
                   </div>
                 </div>
               </div>
-
-              <button 
-                v-if="upcomingBookings.length > 1"
-                @click="scrollRight" 
-                class="scroll-btn scroll-btn-right"
-                :disabled="isScrolledToEnd"
-              >
-                ›
-              </button>
+              <div v-if="upcomingBookings.length > 5" class="timeline-more">
+                <div class="more-message">+{{ upcomingBookings.length - 5 }} autres cours à venir</div>
+              </div>
             </div>
           </div>
         </div>
@@ -251,8 +235,6 @@ export default {
     const showModal = ref(false)
     const editingBooking = ref(null)
     const weekdays = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
-    const scrollPosition = ref(0)
-    const scrollContainer = ref(null)
     
     const bookingForm = ref({
       title: '',
@@ -354,12 +336,6 @@ export default {
         .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
     })
 
-    const isScrolledToEnd = computed(() => {
-      if (!scrollContainer.value) return true
-      const container = scrollContainer.value
-      return container.scrollLeft >= container.scrollWidth - container.clientWidth - 10
-    })
-
     // Methods
     const loadBookings = async () => {
       try {
@@ -445,22 +421,6 @@ export default {
       return labels[status] || status
     }
 
-    const createNewBooking = () => {
-      editingBooking.value = null
-      bookingForm.value = {
-        title: '',
-        description: '',
-        subject: '',
-        start_time: '',
-        end_time: '',
-        tutor_name: '',
-        price: null,
-        status: 'pending',
-        notes: ''
-      }
-      showModal.value = true
-    }
-
     const editBooking = (booking) => {
       editingBooking.value = booking
       bookingForm.value = {
@@ -543,20 +503,6 @@ export default {
       }
     }
 
-    const scrollLeft = () => {
-      if (scrollContainer.value) {
-        scrollContainer.value.scrollBy({ left: -300, behavior: 'smooth' })
-        scrollPosition.value = scrollContainer.value.scrollLeft
-      }
-    }
-
-    const scrollRight = () => {
-      if (scrollContainer.value) {
-        scrollContainer.value.scrollBy({ left: 300, behavior: 'smooth' })
-        scrollPosition.value = scrollContainer.value.scrollLeft
-      }
-    }
-
     onMounted(() => {
       loadBookings()
     })
@@ -573,9 +519,6 @@ export default {
       showModal,
       editingBooking,
       bookingForm,
-      scrollPosition,
-      scrollContainer,
-      isScrolledToEnd,
       previousMonth,
       nextMonth,
       selectDay,
@@ -584,13 +527,10 @@ export default {
       formatSelectedDate,
       formatDuration,
       getStatusLabel,
-      createNewBooking,
       editBooking,
       closeModal,
       saveBooking,
-      cancelBooking,
-      scrollLeft,
-      scrollRight
+      cancelBooking
     }
   }
 }
@@ -814,7 +754,7 @@ export default {
   background: white;
 }
 
-/* UPCOMING SECTION */
+/* UPCOMING SECTION - REWORKED */
 .upcoming-section {
   background: white;
   border-radius: 15px;
@@ -826,76 +766,124 @@ export default {
 }
 
 .upcoming-section.is-empty {
-  min-height: auto;
-  max-height: 200px;
+  justify-content: center;
+  align-items: center;
 }
 
-.upcoming-header {
+.upcoming-header-new {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
   flex-shrink: 0;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f4ff;
 }
 
-.upcoming-header h2 {
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.upcoming-header-new h2 {
   color: #1e293b;
   margin: 0;
   font-size: 1.5em;
+  flex: 1;
 }
 
 .course-count {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 0.4rem 0.8rem;
+  padding: 0.5rem 1rem;
   border-radius: 20px;
   font-weight: 700;
-  font-size: 0.9em;
+  font-size: 0.95em;
+  white-space: nowrap;
 }
 
-.empty-state {
+.empty-state-new {
   text-align: center;
   padding: 3rem 1.5rem;
   color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.empty-state p {
+.empty-icon {
+  font-size: 4em;
+  margin-bottom: 1rem;
+}
+
+.empty-state-new h3 {
+  color: #1e293b;
+  margin: 0.5rem 0;
+  font-size: 1.2em;
+}
+
+.empty-state-new p {
+  color: #94a3b8;
   margin: 0.5rem 0;
 }
 
-.empty-subtext {
-  font-size: 0.95em;
-  color: #94a3b8;
-}
-
-.bookings-container {
+.courses-main-content {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  gap: 1.5rem;
 }
 
-.selected-date-section {
-  flex-shrink: 0;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-}
-
-.selected-date-title {
-  color: #667eea;
-  font-size: 1.1em;
-  margin: 0 0 1rem 0;
-  text-transform: capitalize;
-}
-
-.bookings-list {
+.courses-section {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #f0f4ff;
+}
+
+.section-title {
+  color: #1e293b;
+  font-size: 1.1em;
+  margin: 0;
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.section-badge {
+  background: #f0f4ff;
+  color: #667eea;
+  padding: 0.35rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(to right, #f0f4ff, transparent);
+  margin: 0.5rem 0;
+}
+
+/* COURSES GRID (pour jour sélectionné) */
+.courses-grid {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 0.8rem;
 }
 
-.booking-card {
+/* COURSE CARD */
+.course-card {
   background: linear-gradient(135deg, #f8fafc 0%, #f0f4ff 100%);
   border: 2px solid #e2e8f0;
   border-radius: 10px;
@@ -903,265 +891,329 @@ export default {
   transition: all 0.3s;
 }
 
-.booking-card:hover {
+.course-card:hover {
   border-color: #667eea;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
 }
 
-.booking-card.status-pending {
+.course-card.status-pending {
   border-left: 4px solid #f59e0b;
 }
 
-.booking-card.status-confirmed {
+.course-card.status-confirmed {
   border-left: 4px solid #10b981;
 }
 
-.booking-card.status-completed {
+.course-card.status-completed {
   border-left: 4px solid #6366f1;
 }
 
-.booking-card.status-cancelled {
+.course-card.status-cancelled {
   border-left: 4px solid #ef4444;
   opacity: 0.6;
 }
 
-.booking-header {
+.card-time {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
-.booking-time-large {
-  font-weight: 700;
-  font-size: 1.1em;
-  color: #667eea;
-}
-
-.status-badge {
-  padding: 0.3rem 0.6rem;
+.time-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.4rem 0.75rem;
   border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.9em;
+}
+
+.status-tag {
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
   font-size: 0.75em;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.status-badge.status-pending {
+.status-tag.status-pending {
   background: #fef3c7;
   color: #92400e;
 }
 
-.status-badge.status-confirmed {
+.status-tag.status-confirmed {
   background: #d1fae5;
   color: #065f46;
 }
 
-.status-badge.status-completed {
+.status-tag.status-completed {
   background: #e0e7ff;
   color: #3730a3;
 }
 
-.status-badge.status-cancelled {
+.status-tag.status-cancelled {
   background: #fee2e2;
   color: #7f1d1d;
 }
 
-.booking-title {
+.card-title {
   color: #1e293b;
   font-size: 1em;
-  margin: 0.3rem 0;
+  margin: 0.5rem 0;
   font-weight: 600;
 }
 
-.booking-date {
+.card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   font-size: 0.85em;
   color: #64748b;
-  margin-bottom: 0.5rem;
+  margin: 0.75rem 0;
 }
 
-.booking-info, .booking-info-compact {
-  font-size: 0.85em;
-  color: #475569;
-  margin: 0.4rem 0;
-}
-
-.booking-info p, .booking-info-compact p {
-  margin: 0.3rem 0;
+.meta-item {
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
-.booking-description {
+.meta-item .emoji {
+  font-size: 1.1em;
+}
+
+.card-description {
   font-size: 0.85em;
   color: #64748b;
   font-style: italic;
-  margin: 0.5rem 0;
+  margin: 0.75rem 0;
   padding: 0.5rem;
   background: white;
   border-radius: 6px;
 }
 
-.booking-actions {
+.card-actions {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
 
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9em;
-  font-weight: 600;
-  transition: all 0.3s;
-  text-decoration: none;
-  display: inline-block;
+/* TIMELINE - Cours à venir */
+.courses-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
 }
 
-.btn-primary {
+.courses-timeline::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 30px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #667eea 0%, transparent 100%);
+}
+
+.timeline-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 0 0.75rem 2.5rem;
+  position: relative;
+}
+
+.timeline-item.is-first {
+  padding-top: 0;
+}
+
+.timeline-item:last-of-type {
+  padding-bottom: 0;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  width: 24px;
+  height: 24px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+.course-info {
+  flex: 1;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f0f4ff 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.3s;
 }
 
-.btn-secondary {
+.timeline-item:hover .course-info {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.info-title {
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 0.95em;
+  flex: 1;
+}
+
+.info-status {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.info-status.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.info-status.status-confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.info-status.status-completed {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.info-status.status-cancelled {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.info-date {
+  font-size: 0.8em;
+  color: #667eea;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.info-details {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.detail-tag {
+  background: white;
+  color: #667eea;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.detail-instructor {
+  color: #64748b;
+  font-size: 0.8em;
+  padding: 0.2rem 0;
+}
+
+.info-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.timeline-more {
+  padding: 1rem 0 0 2.5rem;
+  text-align: center;
+}
+
+.more-message {
+  color: #667eea;
+  font-size: 0.85em;
+  font-weight: 600;
+  padding: 0.5rem;
+}
+
+/* ACTION BUTTONS */
+.btn-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 1em;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-edit {
   background: #e2e8f0;
   color: #1e293b;
+  flex: 1;
 }
 
-.btn-secondary:hover {
+.btn-edit:hover {
   background: #cbd5e1;
+  transform: scale(1.05);
 }
 
-.btn-danger {
+.btn-cancel {
+  background: #fecaca;
+  color: #991b1b;
+  flex: 1;
+}
+
+.btn-cancel:hover {
+  background: #fca5a5;
+  transform: scale(1.05);
+}
+
+.btn-mini {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: #e2e8f0;
+  color: #1e293b;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-mini:hover {
+  background: #cbd5e1;
+  transform: scale(1.1);
+}
+
+.btn-danger-mini {
   background: #fecaca;
   color: #991b1b;
 }
 
-.btn-danger:hover {
+.btn-danger-mini:hover {
   background: #fca5a5;
-}
-
-.btn-sm {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.8em;
-  flex: 1;
-}
-
-.btn-xs {
-  padding: 0.3rem 0.5rem;
-  font-size: 0.75em;
-}
-
-.full-width {
-  width: 100%;
-}
-
-/* UPCOMING LIST WITH SCROLL */
-.upcoming-list {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.upcoming-list.with-selected {
-  margin-top: 1rem;
-}
-
-.divider {
-  height: 1px;
-  background: #e2e8f0;
-  margin-bottom: 1rem;
-}
-
-.upcoming-label {
-  flex-shrink: 0;
-  margin-bottom: 0.75rem;
-}
-
-.upcoming-label h3 {
-  color: #1e293b;
-  margin: 0;
-  font-size: 1em;
-}
-
-.scroll-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  min-height: 0;
-}
-
-.scroll-btn {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid #e2e8f0;
-  background: white;
-  color: #667eea;
-  cursor: pointer;
-  font-size: 1.2em;
-  transition: all 0.3s;
-}
-
-.scroll-btn:hover:not(:disabled) {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
-}
-
-.scroll-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.bookings-scroll-container {
-  display: flex;
-  gap: 0.8rem;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  flex: 1;
-  padding: 0.5rem 0;
-  min-width: 0;
-}
-
-.bookings-scroll-container::-webkit-scrollbar {
-  height: 4px;
-}
-
-.bookings-scroll-container::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 10px;
-}
-
-.bookings-scroll-container::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-}
-
-.bookings-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.booking-card.upcoming-card {
-  flex: 0 0 250px;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.booking-card.upcoming-card .booking-actions {
-  margin-top: auto;
 }
 
 /* MODAL */
@@ -1204,15 +1256,9 @@ export default {
 .close-btn {
   background: none;
   border: none;
-  font-size: 2rem;
-  color: #94a3b8;
+  font-size: 1.5em;
+  color: #64748b;
   cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: color 0.3s;
 }
 
@@ -1225,7 +1271,7 @@ export default {
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .form-group label {
@@ -1237,23 +1283,21 @@ export default {
 }
 
 .form-group input,
-.form-group textarea,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   padding: 0.75rem;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.95em;
-  font-family: inherit;
   transition: border-color 0.3s;
 }
 
 .form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .form-row {
@@ -1262,51 +1306,84 @@ export default {
   gap: 1rem;
 }
 
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
 .modal-actions {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
   border-top: 2px solid #e2e8f0;
 }
 
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 600;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.btn-secondary:hover {
+  background: #cbd5e1;
+}
+
 /* RESPONSIVE */
-@media (max-width: 1200px) {
+@media (max-width: 1024px) {
   .main-layout {
     grid-template-columns: 1fr;
     height: auto;
-    gap: 1.5rem;
   }
-  
-  .calendar-section, .upcoming-section {
-    min-height: 400px;
+
+  .upcoming-section {
+    max-height: 500px;
   }
 }
 
-@media (max-width: 768px) {
-  .agenda-container {
-    padding: 1rem;
-  }
-  
+@media (max-width: 640px) {
   .agenda-header h1 {
     font-size: 2em;
   }
-  
-  .main-layout {
-    gap: 1rem;
+
+  .upcoming-header-new {
+    flex-direction: column;
+    align-items: flex-start;
   }
-  
-  .calendar-section, .upcoming-section {
-    padding: 1rem;
+
+  .course-count {
+    align-self: flex-end;
   }
-  
-  .calendar-day {
-    min-height: 50px;
-  }
-  
+
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .card-time {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

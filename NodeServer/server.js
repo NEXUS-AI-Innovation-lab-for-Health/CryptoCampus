@@ -1841,6 +1841,25 @@ app.get('/api/favorites', authGuard({ mustBeLogged: true }), async (req, res) =>
   }
 });
 
+// GET user's interests
+app.get('/api/interests', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Listings'] */
+  try {
+    const result = await pool.query(
+      `SELECT listing_id
+       FROM listing_interests
+       WHERE student_user_id = $1
+       ORDER BY created_at DESC`,
+      [req.session.userId]
+    );
+
+    const listingIds = result.rows.map((row) => Number(row.listing_id));
+    res.json({ success: true, listingIds });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ========================================
    ROUTES API - ANALYSE CV (IA)
    ======================================== */
