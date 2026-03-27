@@ -1,3 +1,5 @@
 .DS_Store
 node_modules/
 NodeServer/swagger-output.json
+NodeServer/qdrant_data/
+postgres_data/

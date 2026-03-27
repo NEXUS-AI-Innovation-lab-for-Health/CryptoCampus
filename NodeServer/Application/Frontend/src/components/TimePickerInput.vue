@@ -150,12 +150,23 @@ const props = defineProps({
   lockedMinute: {
     type: Number,
     default: null
+  },
+  isOpen: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:isOpen'])
 
-const showPicker = ref(false)
+const showPicker = computed({
+  get() {
+    return props.isOpen
+  },
+  set(value) {
+    emit('update:isOpen', value)
+  }
+})
 const localDate = ref('')
 const localHour = ref(0)
 const localMinute = ref(0)
@@ -192,6 +203,13 @@ watch(() => props.lockedMinute, (newVal) => {
 watch(() => props.disabled, (newVal) => {
   if (newVal) {
     closePicker()
+  }
+})
+
+// Initialize when picker opens
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen) {
+    initializeToNextHour()
   }
 })
 
@@ -247,13 +265,40 @@ const validateHour = () => {
   if (localHour.value > 23) localHour.value = 23
 }
 
+const getNextFullHour = () => {
+  const now = new Date()
+  const nextHour = new Date(now)
+  nextHour.setHours(nextHour.getHours() + 1)
+  nextHour.setMinutes(0)
+  nextHour.setSeconds(0)
+  nextHour.setMilliseconds(0)
+  return nextHour
+}
+
+const initializeToNextHour = () => {
+  // Only initialize if no date is currently set
+  if (!localDate.value) {
+    const nextHour = getNextFullHour()
+    const year = nextHour.getFullYear()
+    const month = String(nextHour.getMonth() + 1).padStart(2, '0')
+    const day = String(nextHour.getDate()).padStart(2, '0')
+    localDate.value = `${year}-${month}-${day}`
+    localHour.value = nextHour.getHours()
+    localMinute.value = 0
+  }
+}
+
 const openPicker = () => {
   if (props.disabled) return
+  initializeToNextHour()
   showPicker.value = true
 }
 
 const togglePicker = () => {
   if (props.disabled) return
+  if (!showPicker.value) {
+    initializeToNextHour()
+  }
   showPicker.value = !showPicker.value
 }
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SERVICE_NAME="app"
+SERVICE_NAME="frontend"
 FRONT_PATH="/app/Application/Frontend"
 
 echo "Build Vue.js dans le service ${SERVICE_NAME}..."

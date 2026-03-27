@@ -56,6 +56,8 @@
             <label>Date et heure de début *</label>
             <TimePickerInput 
               v-model="slotForm.start_time"
+              :is-open="focusedPickerInput === 'start'"
+              @update:is-open="focusedPickerInput = $event ? 'start' : null"
               :min-date-time="minSlotDateTime"
               placeholder="Cliquez pour sélectionner"
               :has-error="timeValidationErrors.start !== ''"
@@ -66,6 +68,8 @@
             <label>Date et heure de fin *</label>
             <TimePickerInput 
               v-model="slotForm.end_time"
+              :is-open="focusedPickerInput === 'end'"
+              @update:is-open="focusedPickerInput = $event ? 'end' : null"
               :min-date-time="slotForm.start_time || minSlotDateTime"
               placeholder="Cliquez pour sélectionner"
               :has-error="timeValidationErrors.end !== ''"
@@ -273,6 +277,7 @@ export default {
     const slotError = ref('');
     const slotForm = ref({ start_time: '', end_time: '' });
     const timeValidationErrors = ref({ start: '', end: '' });
+    const focusedPickerInput = ref(null); // 'start', 'end', or null
 
     const toDateTimeLocalValue = (date) => {
       const year = date.getFullYear();
@@ -310,13 +315,28 @@ export default {
         return;
       }
 
-      const startMinute = new Date(newStart).getMinutes();
-      if (!slotForm.value.end_time) return;
+      // If end_time is empty, automatically set it to 1 hour after start_time
+      if (!slotForm.value.end_time) {
+        const startDate = new Date(newStart);
+        const endDate = new Date(startDate);
+        endDate.setHours(endDate.getHours() + 1);
+        slotForm.value.end_time = toDateTimeLocalValue(endDate);
+        return;
+      }
 
+      // If end_time is set, align its minutes with start_time minutes
+      const startMinute = new Date(newStart).getMinutes();
       const endDate = new Date(slotForm.value.end_time);
       if (endDate.getMinutes() !== startMinute) {
         endDate.setMinutes(startMinute, 0, 0);
         slotForm.value.end_time = toDateTimeLocalValue(endDate);
+      }
+    });
+
+    // Reset focused picker when modal closes
+    watch(() => showSlotModal.value, (isOpen) => {
+      if (!isOpen) {
+        focusedPickerInput.value = null;
       }
     });
 
@@ -583,6 +603,7 @@ export default {
       slotError,
       slotForm,
       timeValidationErrors,
+      focusedPickerInput,
       isSlotFormValid,
       minSlotDateTime,
       lockedEndMinute,
@@ -974,11 +995,15 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .availability-header h2 {
   font-size: 1.4em;
   color: #333;
+  flex: 1;
+  min-width: 200px;
 }
 
 .slots-empty-msg {
@@ -991,6 +1016,36 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .my-slots-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .availability-section {
+    padding: 1rem 1.25rem;
+  }
+  
+  .availability-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .availability-header h2 {
+    min-width: auto;
+  }
+  
+  .my-slots-grid {
+    gap: 0.5rem;
+  }
+  
+  .my-slot-card {
+    padding: 0.6rem 0.75rem;
+    flex-wrap: wrap;
+  }
 }
 
 .my-slot-card {
@@ -1093,10 +1148,22 @@ export default {
   width: 100%;
   max-width: 480px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  margin: 1rem;
 }
 
 .modal-sm {
   max-width: 380px;
+}
+
+@media (max-width: 480px) {
+  .modal {
+    padding: 1.25rem 1.5rem;
+    margin: 0.5rem;
+  }
+  
+  .modal-sm {
+    max-width: 100%;
+  }
 }
 
 .modal-header {
@@ -1139,6 +1206,7 @@ export default {
   border-radius: 8px;
   font-size: 0.95em;
   box-sizing: border-box;
+  text-align: center;
 }
 
 .modal-form input:focus {
