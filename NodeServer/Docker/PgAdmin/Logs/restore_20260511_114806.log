@@ -1,0 +1,142 @@
+SET
+SET
+SET
+SET
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+SET
+SET
+SET
+SET
+CREATE EXTENSION
+COMMENT
+ERROR:  type "participation_status" already exists
+ALTER TYPE
+ERROR:  type "tx_status" already exists
+ALTER TYPE
+ALTER TYPE
+ERROR:  type "tx_type" already exists
+ERROR:  type "user_role" already exists
+ALTER TYPE
+SET
+SET
+ERROR:  relation "admin_actions" already exists
+ALTER TABLE
+ERROR:  relation "admin_actions_action_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "api_keys" already exists
+ALTER TABLE
+ERROR:  relation "api_keys_api_key_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "bookings" already exists
+ALTER TABLE
+ERROR:  relation "conversations" already exists
+ALTER TABLE
+ERROR:  relation "conversations_conversation_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "messages" already exists
+ALTER TABLE
+ERROR:  relation "messages_message_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "service_participations" already exists
+ALTER TABLE
+ERROR:  relation "service_participations_participation_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "services" already exists
+ALTER TABLE
+ERROR:  relation "transactions" already exists
+ALTER TABLE
+ERROR:  relation "transactions_transaction_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "tutor_availability" already exists
+ALTER TABLE
+ERROR:  relation "users" already exists
+ALTER TABLE
+ERROR:  relation "wallets" already exists
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 2
+COPY 2
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ERROR:  multiple primary keys for table "admin_actions" are not allowed
+ERROR:  multiple primary keys for table "api_keys" are not allowed
+ERROR:  multiple primary keys for table "bookings" are not allowed
+ERROR:  multiple primary keys for table "conversations" are not allowed
+ERROR:  multiple primary keys for table "messages" are not allowed
+ERROR:  multiple primary keys for table "service_participations" are not allowed
+ERROR:  multiple primary keys for table "services" are not allowed
+ERROR:  multiple primary keys for table "transactions" are not allowed
+ERROR:  multiple primary keys for table "tutor_availability" are not allowed
+ERROR:  relation "unique_dm" already exists
+ERROR:  relation "users_email_key" already exists
+ERROR:  multiple primary keys for table "users" are not allowed
+ERROR:  multiple primary keys for table "wallets" are not allowed
+ERROR:  constraint "admin_actions_admin_id_fkey" for relation "admin_actions" already exists
+ERROR:  constraint "bookings_slot_id_fkey" for relation "bookings" already exists
+ERROR:  constraint "bookings_user_id_fkey" for relation "bookings" already exists
+ERROR:  constraint "conversations_user1_id_fkey" for relation "conversations" already exists
+ERROR:  constraint "conversations_user2_id_fkey" for relation "conversations" already exists
+ERROR:  constraint "messages_conversation_id_fkey" for relation "messages" already exists
+ERROR:  constraint "messages_receiver_id_fkey" for relation "messages" already exists
+ERROR:  constraint "messages_sender_id_fkey" for relation "messages" already exists
+ERROR:  constraint "service_participations_service_id_fkey" for relation "service_participations" already exists
+ERROR:  constraint "service_participations_user_id_fkey" for relation "service_participations" already exists
+ERROR:  constraint "service_participations_validated_by_fkey" for relation "service_participations" already exists
+ERROR:  constraint "services_created_by_fkey" for relation "services" already exists
+ERROR:  constraint "transactions_from_wallet_fkey" for relation "transactions" already exists
+ERROR:  constraint "transactions_to_wallet_fkey" for relation "transactions" already exists
+ERROR:  constraint "tutor_availability_tutor_user_id_fkey" for relation "tutor_availability" already exists
+ERROR:  constraint "wallets_user_id_fkey" for relation "wallets" already exists

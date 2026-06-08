@@ -12,6 +12,7 @@ import { dirname, join } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import session from 'express-session';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import cors from 'cors';
 import multer from 'multer';
 import swaggerUi from 'swagger-ui-express';
@@ -23,6 +24,7 @@ import { Server } from 'socket.io';
 import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './Api/blockchain.js';
 import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './Api/qdrant-service.js';
 import { analyzeCVAndGenerateSuggestions } from './Api/cv-analyzer.js';
+import { getLinkedInAuthorizationUrl, exchangeCodeForToken, fetchLinkedInProfile } from './Api/linkedin-auth.js';
 
 /* ========================================
    CONFIGURATION DE BASE
@@ -490,6 +492,138 @@ app.post('/api/register', async (req, res) => {
 
   } catch (err) {
     console.error('Register error:', err);
+    res.status(500).json({ error: 'Erreur lors de la création du compte' });
+  }
+});
+
+// LinkedIn OAuth - démarrage du flux d'autorisation
+app.get('/api/auth/linkedin', (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.linkedinOAuthState = state;
+  res.redirect(getLinkedInAuthorizationUrl(state));
+});
+
+// LinkedIn OAuth - retour depuis LinkedIn
+app.get('/api/auth/linkedin/callback', async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    const { code, state } = req.query;
+
+    if (!code || !state || state !== req.session.linkedinOAuthState) {
+      return res.redirect('/login?linkedin=error');
+    }
+
+    delete req.session.linkedinOAuthState;
+
+    const accessToken = await exchangeCodeForToken(code);
+    const profile = await fetchLinkedInProfile(accessToken);
+
+    if (!profile.email) {
+      return res.redirect('/login?linkedin=error');
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [profile.email]
+    );
+    const existingUser = result.rows[0];
+
+    if (existingUser) {
+      req.session.userId = existingUser.user_id;
+      await pool.query(
+        'UPDATE users SET last_login = NOW() WHERE user_id = $1',
+        [existingUser.user_id]
+      );
+      return res.redirect('/login?linkedin=connected');
+    }
+
+    // Compte inexistant : il manque le rôle (étudiant/tuteur), pas fourni par LinkedIn
+    req.session.pendingLinkedInProfile = {
+      email: profile.email,
+      emailVerified: profile.emailVerified,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+    };
+    res.redirect('/login?linkedin=complete-profile');
+
+  } catch (err) {
+    console.error('LinkedIn OAuth callback error:', err);
+    res.redirect('/login?linkedin=error');
+  }
+});
+
+// LinkedIn OAuth - finalisation de la création de compte (rôle choisi par l'utilisateur)
+app.post('/api/auth/linkedin/complete-profile', async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    const pendingProfile = req.session.pendingLinkedInProfile;
+
+    if (!pendingProfile) {
+      return res.status(400).json({ error: 'Aucune connexion LinkedIn en attente' });
+    }
+
+    const { role, lesson_mode, visio_tool, lesson_places } = req.body;
+
+    const normalizedRole = (role || 'student').toUpperCase();
+    const validRoles = ['STUDENT', 'TUTOR', 'ADMIN'];
+    if (!validRoles.includes(normalizedRole)) {
+      return res.status(400).json({ error: 'Rôle invalide' });
+    }
+
+    const normalizedLessonMode = normalizeLessonMode(lesson_mode);
+    const normalizedVisioTool = normalizeVisioTool(visio_tool);
+    const normalizedLessonPlaces = normalizeTutorPlaces(lesson_places);
+
+    // Vérifier qu'un compte n'a pas été créé entre-temps avec cet email
+    const existing = await pool.query(
+      'SELECT user_id FROM users WHERE email = $1',
+      [pendingProfile.email]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+    }
+
+    // Mot de passe aléatoire : le compte est créé via LinkedIn, jamais utilisé pour se connecter par mot de passe
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    const hashedPassword = await bcrypt.hash(randomPassword, 12);
+
+    const result = await pool.query(
+      `INSERT INTO users
+      (email, password_hash, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, is_verified, created_at)
+      VALUES ($1, $2, $3, $4, $5::user_role, $6, $7, $8, $9, NOW())
+      RETURNING user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, created_at`,
+      [
+        pendingProfile.email,
+        hashedPassword,
+        pendingProfile.firstName,
+        pendingProfile.lastName,
+        normalizedRole,
+        normalizedLessonMode,
+        normalizedVisioTool,
+        normalizedLessonPlaces,
+        pendingProfile.emailVerified,
+      ]
+    );
+
+    const newUser = result.rows[0];
+
+    try {
+      await assignBlockchainAddress(newUser.user_id);
+    } catch (walletError) {
+      console.error('Erreur assignation wallet:', walletError);
+    }
+
+    delete req.session.pendingLinkedInProfile;
+    req.session.userId = newUser.user_id;
+
+    res.status(201).json({
+      message: 'Compte créé avec succès',
+      user: newUser
+    });
+
+  } catch (err) {
+    console.error('LinkedIn complete-profile error:', err);
     res.status(500).json({ error: 'Erreur lors de la création du compte' });
   }
 });

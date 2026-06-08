@@ -5,6 +5,59 @@
       <p class="subtitle">Plateforme d'entraide étudiante</p>
 
       <div class="form-container">
+        <!-- Étape de complétion du profil après connexion LinkedIn -->
+        <div v-if="linkedinStep" class="form active linkedin-step">
+          <div v-if="error" class="error-message">{{ error }}</div>
+          <p class="linkedin-step-intro">
+            🔗 Votre profil LinkedIn a été récupéré ! Plus qu'une étape : dites-nous si vous êtes étudiant(e) ou tuteur/tutrice pour finaliser la création de votre compte.
+          </p>
+
+          <div class="form-group">
+            <label for="linkedinRole">Je suis un(e) *</label>
+            <select v-model="linkedinForm.role" id="linkedinRole" required>
+              <option value="student">Étudiant(e)</option>
+              <option value="tutor">Tuteur/Tutrice</option>
+            </select>
+          </div>
+
+          <div v-if="linkedinForm.role === 'tutor'" class="tutor-location-fields">
+            <div class="form-group">
+              <label for="linkedinLessonMode">Mode principal des cours *</label>
+              <select v-model="linkedinForm.lesson_mode" id="linkedinLessonMode" required>
+                <option value="Visio">Visio</option>
+                <option value="Presentiel">Presentiel</option>
+                <option value="Hybride">Hybride</option>
+              </select>
+            </div>
+
+            <div class="form-group" v-if="linkedinForm.lesson_mode === 'Visio' || linkedinForm.lesson_mode === 'Hybride'">
+              <label for="linkedinVisioTool">Outil visio *</label>
+              <select v-model="linkedinForm.visio_tool" id="linkedinVisioTool" required>
+                <option value="Zoom">Zoom</option>
+                <option value="Teams">Teams</option>
+                <option value="Google Meet">Google Meet</option>
+                <option value="Discord">Discord</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="linkedinPlaces">Lieux (separes par des virgules)</label>
+              <input
+                v-model="linkedinForm.lesson_places_raw"
+                type="text"
+                id="linkedinPlaces"
+                placeholder="Visio, Bibliotheque, Domicile..."
+              />
+            </div>
+          </div>
+
+          <button type="button" class="btn-primary" :disabled="isLoading" @click="completeLinkedInProfile">
+            {{ isLoading ? 'Création en cours...' : 'Finaliser mon compte' }}
+          </button>
+        </div>
+
+        <template v-else>
         <div class="tabs">
           <button
             class="tab"
@@ -157,26 +210,35 @@
           <button type="submit" class="btn-primary" :disabled="isLoading">
             {{ isLoading ? 'Création en cours...' : 'Créer mon compte' }}
           </button>
+
+          <div class="divider"><span>ou</span></div>
+
+          <button type="button" class="btn-linkedin" @click="continueWithLinkedIn">
+            🔗 Continuer avec LinkedIn
+          </button>
         </form>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 export default {
   name: 'Login',
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const activeTab = ref('login')
     const isLoading = ref(false)
     const error = ref('')
     const successMessage = ref('')
     const showLoginPassword = ref(false)
     const showRegisterPassword = ref(false)
+    const linkedinStep = ref(false)
 
     const loginForm = ref({
       email: '',
@@ -193,6 +255,55 @@ export default {
       visio_tool: 'Zoom',
       lesson_places_raw: 'Visio',
     })
+
+    const linkedinForm = ref({
+      role: 'student',
+      lesson_mode: 'Visio',
+      visio_tool: 'Zoom',
+      lesson_places_raw: 'Visio',
+    })
+
+    const continueWithLinkedIn = () => {
+      window.location.href = '/api/auth/linkedin'
+    }
+
+    const completeLinkedInProfile = async () => {
+      error.value = ''
+      successMessage.value = ''
+      isLoading.value = true
+
+      try {
+        const response = await fetch('/api/auth/linkedin/complete-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            role: linkedinForm.value.role,
+            lesson_mode: linkedinForm.value.lesson_mode,
+            visio_tool: linkedinForm.value.visio_tool,
+            lesson_places: linkedinForm.value.lesson_places_raw
+              .split(',')
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0),
+          }),
+          credentials: 'include',
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          router.push('/home')
+        } else {
+          error.value = data.error || 'Création du compte échouée'
+        }
+      } catch (err) {
+        error.value = 'Erreur lors de la création du compte'
+        console.error(err)
+      } finally {
+        isLoading.value = false
+      }
+    }
 
     const handleLogin = async () => {
       error.value = ''
@@ -287,6 +398,20 @@ export default {
       }
     }
 
+    onMounted(() => {
+      const linkedinStatus = route.query.linkedin
+
+      if (linkedinStatus === 'connected') {
+        router.replace('/home')
+      } else if (linkedinStatus === 'complete-profile') {
+        linkedinStep.value = true
+        router.replace('/login')
+      } else if (linkedinStatus === 'error') {
+        error.value = 'Connexion LinkedIn impossible, réessayez ou utilisez le formulaire classique'
+        router.replace('/login')
+      }
+    })
+
     return {
       activeTab,
       isLoading,
@@ -298,6 +423,10 @@ export default {
       handleRegister,
       showLoginPassword,
       showRegisterPassword,
+      linkedinStep,
+      linkedinForm,
+      continueWithLinkedIn,
+      completeLinkedInProfile,
     }
   }
 }
@@ -413,6 +542,48 @@ export default {
 .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #95a5a6;
+  margin: 1.25rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.divider span {
+  padding: 0 0.75rem;
+  font-size: 0.9rem;
+}
+
+.btn-linkedin {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #0A66C2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-linkedin:hover {
+  background-color: #084e96;
+}
+
+.linkedin-step-intro {
+  color: #34495e;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
 }
 
 .error-message {
