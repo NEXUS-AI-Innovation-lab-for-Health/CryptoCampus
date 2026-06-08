@@ -75,6 +75,11 @@
           </button>
         </div>
 
+        <button type="button" class="btn-linkedin" @click="continueWithLinkedIn">
+          🔗 Continuer avec LinkedIn
+        </button>
+        <div class="divider"><span>ou</span></div>
+
         <!-- Login Form -->
         <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="form active">
           <div v-if="error" class="error-message">{{ error }}</div>
@@ -209,12 +214,6 @@
           
           <button type="submit" class="btn-primary" :disabled="isLoading">
             {{ isLoading ? 'Création en cours...' : 'Créer mon compte' }}
-          </button>
-
-          <div class="divider"><span>ou</span></div>
-
-          <button type="button" class="btn-linkedin" @click="continueWithLinkedIn">
-            🔗 Continuer avec LinkedIn
           </button>
         </form>
         </template>
