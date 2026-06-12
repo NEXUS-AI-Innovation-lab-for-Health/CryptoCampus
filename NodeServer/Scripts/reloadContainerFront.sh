@@ -1,19 +1,20 @@
 #!/bin/bash
 
 SERVICE_NAME="frontend"
-FRONT_PATH="/app/Application/Frontend"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_DIR="${SCRIPT_DIR}/.."
 
-echo "Build Vue.js dans le service ${SERVICE_NAME}..."
+echo "Rebuild de l'image et redémarrage du service ${SERVICE_NAME}..."
 
-docker compose exec ${SERVICE_NAME} sh -c "
-  cd ${FRONT_PATH} &&
-  npm install &&
-  npm run build
-"
+# Le conteneur frontend est une image nginx multi-stage : le code Vue est
+# buildé pendant la construction de l'image (cf. Dockerfile), il n'y a pas
+# de sources/node_modules dans le conteneur final. On reconstruit donc
+# l'image puis on redémarre le conteneur.
+docker compose -f "${COMPOSE_DIR}/docker-compose.yml" up -d --build ${SERVICE_NAME}
 
 if [ $? -eq 0 ]; then
-  echo "Build terminé avec succès"
+  echo "Frontend reconstruit et redémarré avec succès"
 else
-  echo "Erreur pendant le build"
+  echo "Erreur pendant le rebuild du frontend"
   exit 1
 fi

@@ -1,4 +1,12 @@
 <template>
+  <transition name="fade">
+    <div v-if="isLoading" class="loading-overlay">
+      <img :src="logo" alt="CryptoCampus" class="loading-logo" />
+      <div class="loading-progress">
+        <div class="loading-progress-bar"></div>
+      </div>
+    </div>
+  </transition>
   <div class="home">
     <!-- Hero Section -->
     <section class="hero">
@@ -105,13 +113,15 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import logo from '@/assets/vrai_logo.png'
 
 export default {
   name: 'Home',
   setup() {
     const isLogged = ref(null)
     const userRole = ref('')
-    
+    const isLoading = ref(true)
+
     const isTutor = computed(() => userRole.value === 'TUTOR')
 
     const checkAuth = async () => {
@@ -130,17 +140,86 @@ export default {
 
     onMounted(() => {
       checkAuth()
+      setTimeout(() => {
+        isLoading.value = false
+      }, 3000)
     })
 
     return {
       isLogged,
       isTutor,
+      isLoading,
+      logo,
     }
   }
 }
 </script>
 
 <style scoped>
+.fade-leave-active {
+  transition: opacity 0.6s ease;
+}
+
+.fade-leave-to {
+  opacity: 0;
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.loading-logo {
+  width: 340px;
+  max-width: 80vw;
+  height: auto;
+  animation: loading-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%, 100% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.7;
+  }
+}
+
+.loading-progress {
+  width: 240px;
+  max-width: 60vw;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.loading-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: white;
+  border-radius: 3px;
+  animation: loading-fill 3s linear forwards;
+}
+
+@keyframes loading-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
 .home {
   width: 100%;
 }
