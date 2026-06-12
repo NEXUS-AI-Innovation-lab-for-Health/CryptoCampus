@@ -142,7 +142,7 @@ export default {
       checkAuth()
       setTimeout(() => {
         isLoading.value = false
-      }, 3000)
+      }, 2000)
     })
 
     return {
@@ -208,7 +208,7 @@ export default {
   width: 0%;
   background: white;
   border-radius: 3px;
-  animation: loading-fill 3s linear forwards;
+  animation: loading-fill 2s linear forwards;
 }
 
 @keyframes loading-fill {
