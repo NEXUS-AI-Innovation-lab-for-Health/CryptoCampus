@@ -85,18 +85,22 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting global sur l'API (anti-abus)
+// Rate limiting global sur l'API (anti-abus). Configurable (voir authLimiter plus bas)
+// pour ne pas gêner la suite de tests automatisés, qui envoie beaucoup de requêtes
+// en parallèle sans que ce soit un abus réel.
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 300,
+  limit: process.env.API_RATE_LIMIT ? Number(process.env.API_RATE_LIMIT) : 300,
   standardHeaders: true,
   legacyHeaders: false,
 }));
 
 // Rate limiting strict sur les routes sensibles (anti brute-force / anti-spam)
+// Limite configurable (utile pour les tests automatisés, qui créent beaucoup de
+// comptes en peu de temps) : reste à 20/15min par défaut en production.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: process.env.AUTH_RATE_LIMIT ? Number(process.env.AUTH_RATE_LIMIT) : 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Trop de tentatives, veuillez réessayer plus tard' },
@@ -1400,14 +1404,14 @@ app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) =
     
     console.log(`✅ Compte ${userEmail} supprimé avec succès`);
 
-    // Détruire la session
+    // Détruire la session (on répond une fois que c'est réellement fait : sinon un
+    // appel /api/check-auth juste après pourrait encore lire l'ancienne session).
     req.session.destroy((err) => {
       if (err) {
         console.error('Erreur destruction session:', err);
       }
+      res.json({ message: 'Compte supprimé avec succès' });
     });
-
-    res.json({ message: 'Compte supprimé avec succès' });
 
   } catch (err) {
     await client.query('ROLLBACK');

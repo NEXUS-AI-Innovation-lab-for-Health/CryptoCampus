@@ -8,7 +8,10 @@
     "start": "node server.js",
     "dev": "node server.js",
     "seed-qdrant": "node Api/seed-qdrant.js",
-    "gen-swagger": "node swagger.js"
+    "gen-swagger": "node swagger.js",
+    "test": "vitest run",
+    "test:up": "docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build api",
+    "test:down": "docker compose up -d --build api"
   },
   "keywords": [
     "express",
@@ -38,7 +41,8 @@
     "web3": "^4.15.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=18.0.0"
