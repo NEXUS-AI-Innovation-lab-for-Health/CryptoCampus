@@ -2,58 +2,87 @@
   <div class="login-container">
     <div class="card">
       <h1>CryptoCampus</h1>
-      <p class="subtitle">Plateforme d'entraide étudiante</p>
+      <p class="subtitle">{{ t('login.subtitle') }}</p>
 
       <div class="form-container">
         <!-- Étape de complétion du profil après connexion LinkedIn -->
         <div v-if="linkedinStep" class="form active linkedin-step">
           <div v-if="error" class="error-message">{{ error }}</div>
           <p class="linkedin-step-intro">
-            🔗 Votre profil LinkedIn a été récupéré ! Plus qu'une étape : dites-nous si vous êtes étudiant(e) ou tuteur/tutrice pour finaliser la création de votre compte.
+            🔗 {{ t('login.linkedinIntro') }}
           </p>
 
           <div class="form-group">
-            <label for="linkedinRole">Je suis un(e) *</label>
-            <select v-model="linkedinForm.role" id="linkedinRole" required>
-              <option value="student">Étudiant(e)</option>
-              <option value="tutor">Tuteur/Tutrice</option>
-            </select>
+            <label>{{ t('login.roleChoice.label') }}</label>
+            <div class="role-choice">
+              <button
+                type="button"
+                class="role-btn"
+                :class="{ active: linkedinForm.desired_role === 'student' }"
+                @click="linkedinForm.desired_role = 'student'"
+              >🎓 {{ t('login.roleChoice.student') }}</button>
+              <button
+                type="button"
+                class="role-btn"
+                :class="{ active: linkedinForm.desired_role === 'tutor' }"
+                @click="linkedinForm.desired_role = 'tutor'"
+              >👨‍🏫 {{ t('login.roleChoice.tutor') }}</button>
+            </div>
           </div>
 
-          <div v-if="linkedinForm.role === 'tutor'" class="tutor-location-fields">
+          <div v-if="linkedinForm.desired_role === 'student'" class="form-group">
+            <label for="linkedinReferralCode">{{ t('login.referralCode.label') }}</label>
+            <input
+              v-model="linkedinForm.referral_code"
+              type="text"
+              id="linkedinReferralCode"
+              :placeholder="t('login.referralCode.placeholder')"
+              maxlength="20"
+              style="text-transform: uppercase;"
+              required
+            />
+            <small class="password-hint">{{ t('login.referralCode.hint') }}</small>
+          </div>
+
+          <div v-if="linkedinForm.desired_role === 'tutor'" class="tutor-location-fields">
             <div class="form-group">
-              <label for="linkedinLessonMode">Mode principal des cours *</label>
+              <label for="linkedinLessonMode">{{ t('login.tutorFields.lessonMode') }}</label>
               <select v-model="linkedinForm.lesson_mode" id="linkedinLessonMode" required>
-                <option value="Visio">Visio</option>
-                <option value="Presentiel">Presentiel</option>
-                <option value="Hybride">Hybride</option>
+                <option value="Visio">{{ t('login.tutorFields.visio') }}</option>
+                <option value="Presentiel">{{ t('login.tutorFields.presentiel') }}</option>
+                <option value="Hybride">{{ t('login.tutorFields.hybride') }}</option>
               </select>
             </div>
 
             <div class="form-group" v-if="linkedinForm.lesson_mode === 'Visio' || linkedinForm.lesson_mode === 'Hybride'">
-              <label for="linkedinVisioTool">Outil visio *</label>
+              <label for="linkedinVisioTool">{{ t('login.tutorFields.visioTool') }}</label>
               <select v-model="linkedinForm.visio_tool" id="linkedinVisioTool" required>
                 <option value="Zoom">Zoom</option>
                 <option value="Teams">Teams</option>
                 <option value="Google Meet">Google Meet</option>
                 <option value="Discord">Discord</option>
-                <option value="Autre">Autre</option>
+                <option value="Autre">{{ t('login.tutorFields.autre') }}</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label for="linkedinPlaces">Lieux (separes par des virgules)</label>
+              <label for="linkedinPlaces">{{ t('login.tutorFields.places') }}</label>
               <input
                 v-model="linkedinForm.lesson_places_raw"
                 type="text"
                 id="linkedinPlaces"
-                placeholder="Visio, Bibliotheque, Domicile..."
+                :placeholder="t('login.tutorFields.placesPlaceholder')"
               />
             </div>
           </div>
 
-          <button type="button" class="btn-primary" :disabled="isLoading" @click="completeLinkedInProfile">
-            {{ isLoading ? 'Création en cours...' : 'Finaliser mon compte' }}
+          <button
+            type="button"
+            class="btn-primary"
+            :disabled="isLoading || !linkedinForm.desired_role || (linkedinForm.desired_role === 'student' && !linkedinForm.referral_code.trim())"
+            @click="completeLinkedInProfile"
+          >
+            {{ isLoading ? t('login.finalize.submitting') : t('login.finalize.submit') }}
           </button>
         </div>
 
@@ -64,14 +93,14 @@
             :class="{ active: activeTab === 'login' }"
             @click="activeTab = 'login'"
           >
-            Connexion
+            {{ t('login.tabs.login') }}
           </button>
           <button
             class="tab"
             :class="{ active: activeTab === 'register' }"
             @click="activeTab = 'register'"
           >
-            Créer un compte
+            {{ t('login.tabs.register') }}
           </button>
         </div>
 
@@ -79,15 +108,15 @@
           <svg class="linkedin-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124zM7.114 20.452H3.56V9h3.554v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
           </svg>
-          Continuer avec LinkedIn
+          {{ t('login.continueWithLinkedIn') }}
         </button>
-        <div class="divider"><span>ou</span></div>
+        <div class="divider"><span>{{ t('login.or') }}</span></div>
 
         <!-- Login Form -->
         <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="form active">
           <div v-if="error" class="error-message">{{ error }}</div>
           <div class="form-group">
-            <label for="loginEmail">Email</label>
+            <label for="loginEmail">{{ t('login.loginForm.email') }}</label>
             <input
               v-model="loginForm.email"
               type="email"
@@ -97,23 +126,23 @@
             />
           </div>
           <div class="form-group">
-            <label for="loginPassword">Mot de passe</label>
+            <label for="loginPassword">{{ t('login.loginForm.password') }}</label>
             <div class="password-wrapper">
               <input
                 v-model="loginForm.password"
                 :type="showLoginPassword ? 'text' : 'password'"
                 id="loginPassword"
-                placeholder="Votre mot de passe"
+                :placeholder="t('login.loginForm.passwordPlaceholder')"
                 required
               />
-              <button type="button" class="toggle-password" @click="showLoginPassword = !showLoginPassword" :aria-label="showLoginPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+              <button type="button" class="toggle-password" @click="showLoginPassword = !showLoginPassword" :aria-label="showLoginPassword ? t('login.hidePassword') : t('login.showPassword')">
                 <svg v-if="!showLoginPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               </button>
             </div>
           </div>
           <button type="submit" class="btn-primary" :disabled="isLoading">
-            {{ isLoading ? 'Connexion en cours...' : 'Se connecter' }}
+            {{ isLoading ? t('login.loginForm.submitting') : t('login.loginForm.submit') }}
           </button>
         </form>
 
@@ -121,32 +150,32 @@
         <form v-if="activeTab === 'register'" @submit.prevent="handleRegister" class="form active">
           <div v-if="error" class="error-message">{{ error }}</div>
           <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
-          
+
           <div class="form-row">
             <div class="form-group">
-              <label for="registerFirstName">Prénom *</label>
+              <label for="registerFirstName">{{ t('login.registerForm.firstName') }}</label>
               <input
                 v-model="registerForm.first_name"
                 type="text"
                 id="registerFirstName"
-                placeholder="Votre prénom"
+                :placeholder="t('login.registerForm.firstNamePlaceholder')"
                 required
               />
             </div>
             <div class="form-group">
-              <label for="registerLastName">Nom *</label>
+              <label for="registerLastName">{{ t('login.registerForm.lastName') }}</label>
               <input
                 v-model="registerForm.last_name"
                 type="text"
                 id="registerLastName"
-                placeholder="Votre nom"
+                :placeholder="t('login.registerForm.lastNamePlaceholder')"
                 required
               />
             </div>
           </div>
-          
+
           <div class="form-group">
-            <label for="registerEmail">Email *</label>
+            <label for="registerEmail">{{ t('login.registerForm.email') }}</label>
             <input
               v-model="registerForm.email"
               type="email"
@@ -155,68 +184,96 @@
               required
             />
           </div>
-          
+
           <div class="form-group">
-            <label for="registerPassword">Mot de passe *</label>
+            <label for="registerPassword">{{ t('login.registerForm.password') }}</label>
             <div class="password-wrapper">
               <input
                 v-model="registerForm.password"
                 :type="showRegisterPassword ? 'text' : 'password'"
                 id="registerPassword"
-                placeholder="Minimum 8 caractères"
+                :placeholder="t('login.registerForm.passwordPlaceholder')"
                 minlength="8"
                 required
               />
-              <button type="button" class="toggle-password" @click="showRegisterPassword = !showRegisterPassword" :aria-label="showRegisterPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+              <button type="button" class="toggle-password" @click="showRegisterPassword = !showRegisterPassword" :aria-label="showRegisterPassword ? t('login.hidePassword') : t('login.showPassword')">
                 <svg v-if="!showRegisterPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               </button>
             </div>
-            <small class="password-hint">Au moins 8 caractères</small>
-          </div>
-          
-          <div class="form-group">
-            <label for="registerRole">Je suis un(e) *</label>
-            <select v-model="registerForm.role" id="registerRole" required>
-              <option value="student">Étudiant(e)</option>
-              <option value="tutor">Tuteur/Tutrice</option>
-            </select>
+            <small class="password-hint">{{ t('login.registerForm.passwordHint') }}</small>
           </div>
 
-          <div v-if="registerForm.role === 'tutor'" class="tutor-location-fields">
+          <div class="form-group">
+            <label>{{ t('login.roleChoice.label') }}</label>
+            <div class="role-choice">
+              <button
+                type="button"
+                class="role-btn"
+                :class="{ active: registerForm.desired_role === 'student' }"
+                @click="registerForm.desired_role = 'student'"
+              >🎓 {{ t('login.roleChoice.student') }}</button>
+              <button
+                type="button"
+                class="role-btn"
+                :class="{ active: registerForm.desired_role === 'tutor' }"
+                @click="registerForm.desired_role = 'tutor'"
+              >👨‍🏫 {{ t('login.roleChoice.tutor') }}</button>
+            </div>
+          </div>
+
+          <div v-if="registerForm.desired_role === 'student'" class="form-group">
+            <label for="registerReferralCode">{{ t('login.referralCode.label') }}</label>
+            <input
+              v-model="registerForm.referral_code"
+              type="text"
+              id="registerReferralCode"
+              :placeholder="t('login.referralCode.placeholder')"
+              maxlength="20"
+              style="text-transform: uppercase;"
+              required
+            />
+            <small class="password-hint">{{ t('login.referralCode.hint') }}</small>
+          </div>
+
+          <div v-if="registerForm.desired_role === 'tutor'" class="tutor-location-fields">
             <div class="form-group">
-              <label for="registerLessonMode">Mode principal des cours *</label>
+              <label for="registerLessonMode">{{ t('login.tutorFields.lessonMode') }}</label>
               <select v-model="registerForm.lesson_mode" id="registerLessonMode" required>
-                <option value="Visio">Visio</option>
-                <option value="Presentiel">Presentiel</option>
-                <option value="Hybride">Hybride</option>
+                <option value="Visio">{{ t('login.tutorFields.visio') }}</option>
+                <option value="Presentiel">{{ t('login.tutorFields.presentiel') }}</option>
+                <option value="Hybride">{{ t('login.tutorFields.hybride') }}</option>
               </select>
             </div>
 
             <div class="form-group" v-if="registerForm.lesson_mode === 'Visio' || registerForm.lesson_mode === 'Hybride'">
-              <label for="registerVisioTool">Outil visio *</label>
+              <label for="registerVisioTool">{{ t('login.tutorFields.visioTool') }}</label>
               <select v-model="registerForm.visio_tool" id="registerVisioTool" required>
                 <option value="Zoom">Zoom</option>
                 <option value="Teams">Teams</option>
                 <option value="Google Meet">Google Meet</option>
                 <option value="Discord">Discord</option>
-                <option value="Autre">Autre</option>
+                <option value="Autre">{{ t('login.tutorFields.autre') }}</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label for="registerPlaces">Lieux (separes par des virgules)</label>
+              <label for="registerPlaces">{{ t('login.tutorFields.places') }}</label>
               <input
                 v-model="registerForm.lesson_places_raw"
                 type="text"
                 id="registerPlaces"
-                placeholder="Visio, Bibliotheque, Domicile..."
+                :placeholder="t('login.tutorFields.placesPlaceholder')"
               />
             </div>
           </div>
-          
-          <button type="submit" class="btn-primary" :disabled="isLoading">
-            {{ isLoading ? 'Création en cours...' : 'Créer mon compte' }}
+
+          <button
+            type="submit"
+            class="btn-primary"
+            :disabled="isLoading || !registerForm.desired_role || (registerForm.desired_role === 'student' && !registerForm.referral_code.trim())"
+          >
+            {{ isLoading ? t('login.registerForm.submitting') : t('login.registerForm.submit') }}
           </button>
         </form>
         </template>
@@ -228,12 +285,14 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 export default {
   name: 'Login',
   setup() {
     const router = useRouter()
     const route = useRoute()
+    const { t } = useI18n()
     const activeTab = ref('login')
     const isLoading = ref(false)
     const error = ref('')
@@ -247,19 +306,24 @@ export default {
       password: '',
     })
 
+    // Le rôle est choisi explicitement ('student' ou 'tutor') avant d'afficher le
+    // reste du formulaire. Un code de parrainage valide est obligatoire pour un
+    // compte étudiant ; le rôle est toujours re-vérifié côté serveur.
     const registerForm = ref({
       first_name: '',
       last_name: '',
       email: '',
       password: '',
-      role: 'student',
+      desired_role: '',
+      referral_code: '',
       lesson_mode: 'Visio',
       visio_tool: 'Zoom',
       lesson_places_raw: 'Visio',
     })
 
     const linkedinForm = ref({
-      role: 'student',
+      desired_role: '',
+      referral_code: '',
       lesson_mode: 'Visio',
       visio_tool: 'Zoom',
       lesson_places_raw: 'Visio',
@@ -281,7 +345,8 @@ export default {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            role: linkedinForm.value.role,
+            desired_role: linkedinForm.value.desired_role,
+            referral_code: linkedinForm.value.referral_code,
             lesson_mode: linkedinForm.value.lesson_mode,
             visio_tool: linkedinForm.value.visio_tool,
             lesson_places: linkedinForm.value.lesson_places_raw
@@ -377,7 +442,8 @@ export default {
             last_name: '',
             email: '',
             password: '',
-            role: 'student',
+            desired_role: '',
+            referral_code: '',
             lesson_mode: 'Visio',
             visio_tool: 'Zoom',
             lesson_places_raw: 'Visio',
@@ -415,6 +481,7 @@ export default {
     })
 
     return {
+      t,
       activeTab,
       isLoading,
       error,
@@ -498,6 +565,35 @@ export default {
 
 .form.active {
   display: block;
+}
+
+.role-choice {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.role-btn {
+  flex: 1;
+  padding: 0.9rem;
+  border: 2px solid #ecf0f1;
+  border-radius: 8px;
+  background: white;
+  color: #7f8c8d;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.role-btn.active {
+  border-color: #667eea;
+  background: #667eea;
+  color: white;
 }
 
 .form-group {

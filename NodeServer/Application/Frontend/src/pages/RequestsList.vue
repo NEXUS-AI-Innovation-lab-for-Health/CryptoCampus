@@ -3,44 +3,44 @@
     <div class="container">
       <!-- Header Section -->
       <header class="page-header">
-        <h1>🎓 Annonces d'Aide aux Devoirs</h1>
-        <p class="subtitle">Recherchez parmi nos annonces grâce à la recherche sémantique</p>
-        
+        <h1>🎓 {{ t('requestsList.title') }}</h1>
+        <p class="subtitle">{{ t('requestsList.subtitle') }}</p>
+
         <!-- Search Section -->
         <div class="search-section">
-          <input 
+          <input
             v-model="searchQuery"
-            type="text" 
-            class="search-input" 
-            placeholder="Rechercher par matière, niveau, mots-clés... (ex: 'mathématiques lycée', 'anglais conversation')"
+            type="text"
+            class="search-input"
+            :placeholder="t('requestsList.searchPlaceholder')"
             @keypress.enter="searchListings"
             autocomplete="off"
           />
           <button class="btn btn-primary" @click="searchListings">
-            🔍 Rechercher
+            🔍 {{ t('requestsList.search') }}
           </button>
           <button class="btn btn-secondary" @click="loadAllListings">
-            📋 Tout afficher
+            📋 {{ t('requestsList.showAll') }}
           </button>
           <button class="btn btn-filter" @click="showFilters = !showFilters">
-            {{ showFilters ? '❌ Masquer les filtres' : '🛠️ Filtres & Tri' }}
+            {{ showFilters ? '❌ ' + t('requestsList.hideFilters') : '🛠️ ' + t('requestsList.filtersAndSort') }}
           </button>
         </div>
 
         <!-- Filters & Sort Section -->
         <div v-if="showFilters" class="filters-section">
           <div class="filter-group">
-            <label class="filter-label">📚 Matière :</label>
+            <label class="filter-label">📚 {{ t('requestsList.subjectLabel') }}</label>
             <div class="filter-buttons">
-              <button 
+              <button
                 class="filter-btn"
                 :class="{ active: subjectFilter === '' }"
                 @click="subjectFilter = ''"
               >
-                Toutes
+                {{ t('requestsList.allSubjects') }}
               </button>
-              <button 
-                v-for="subject in availableSubjects" 
+              <button
+                v-for="subject in availableSubjects"
                 :key="subject.value"
                 class="filter-btn"
                 :class="{ active: subjectFilter === subject.value }"
@@ -52,17 +52,17 @@
           </div>
 
           <div class="filter-group">
-            <label class="filter-label">🎯 Niveau :</label>
+            <label class="filter-label">🎯 {{ t('requestsList.levelLabel') }}</label>
             <div class="filter-buttons">
-              <button 
+              <button
                 class="filter-btn"
                 :class="{ active: levelFilter === '' }"
                 @click="levelFilter = ''"
               >
-                Tous
+                {{ t('requestsList.allLevels') }}
               </button>
-              <button 
-                v-for="level in availableLevels" 
+              <button
+                v-for="level in availableLevels"
                 :key="level.value"
                 class="filter-btn"
                 :class="{ active: levelFilter === level.value }"
@@ -74,19 +74,19 @@
           </div>
 
           <div class="sort-group">
-            <label class="filter-label">🔀 Trier par :</label>
+            <label class="filter-label">🔀 {{ t('requestsList.sortBy') }}</label>
             <select v-model="sortBy" class="sort-select">
-              <option value="">Par défaut</option>
-              <option value="price-asc">Prix croissant</option>
-              <option value="price-desc">Prix décroissant</option>
-              <option value="title">Titre (A-Z)</option>
+              <option value="">{{ t('requestsList.sortDefault') }}</option>
+              <option value="price-asc">{{ t('requestsList.sortPriceAsc') }}</option>
+              <option value="price-desc">{{ t('requestsList.sortPriceDesc') }}</option>
+              <option value="title">{{ t('requestsList.sortTitle') }}</option>
             </select>
           </div>
         </div>
 
         <!-- Stats Section -->
         <div class="stats">
-          <span class="stat-badge">{{ filteredListings.length }} annonces affichées</span>
+          <span class="stat-badge">{{ t('requestsList.listingsShown', { count: filteredListings.length }) }}</span>
           <span class="stat-badge">{{ searchStatus }}</span>
         </div>
       </header>
@@ -100,7 +100,7 @@
 
       <!-- Loading Container -->
       <div v-if="isLoading" class="loading-container">
-        <div class="loading">⏳ Chargement...</div>
+        <div class="loading">⏳ {{ t('common.loading') }}</div>
       </div>
 
       <!-- Listings Grid -->
@@ -108,12 +108,12 @@
         <!-- Empty State -->
         <div v-if="filteredListings.length === 0" class="empty-state">
           <div class="empty-state-icon">🔍</div>
-          <h2 class="empty-state-title">Aucune annonce trouvée</h2>
+          <h2 class="empty-state-title">{{ t('requestsList.noListingsFound') }}</h2>
           <p class="empty-state-text">
-            {{ currentQuery ? `Aucun résultat pour "${currentQuery}"` : 'La base de données est vide' }}
+            {{ currentQuery ? t('requestsList.noResultsFor', { query: currentQuery }) : t('requestsList.emptyDatabase') }}
           </p>
           <button v-if="currentQuery" class="btn btn-secondary" @click="loadAllListings">
-            Afficher toutes les annonces
+            {{ t('requestsList.showAllListings') }}
           </button>
         </div>
 
@@ -125,20 +125,20 @@
           @click="openListingDetails(listing)"
         >
           <div class="listing-header">
-            <h3 class="listing-title">{{ listing.title }}</h3>
+            <h3 class="listing-title">{{ localizedTitle(listing) }}</h3>
             <div class="listing-meta">
               <span class="badge badge-subject">📚 {{ listing.subject }}</span>
               <span class="badge badge-level">🎯 {{ listing.level }}</span>
               <span class="badge badge-price">💰 {{ listing.price }} CCT/h</span>
             </div>
           </div>
-          <p class="listing-description">{{ listing.description }}</p>
+          <p class="listing-description">{{ localizedDescription(listing) }}</p>
           <div class="listing-footer">
             <span class="tutor-name">👨‍🏫 {{ listing.tutor_name }}</span>
-            <span class="engagement">⭐ {{ favoriteCounts[listing.id] || 0 }} favoris</span>
-            <span class="engagement">🙋 {{ interestCounts[listing.id] || 0 }} interesses</span>
+            <span class="engagement">⭐ {{ t('requestsList.favoritesCount', { count: favoriteCounts[listing.id] || 0 }) }}</span>
+            <span class="engagement">🙋 {{ t('requestsList.interestedCount', { count: interestCounts[listing.id] || 0 }) }}</span>
             <span v-if="showScores && listing.score !== undefined" class="score-badge">
-              Score: {{ Math.round(listing.score * 100) }}%
+              {{ t('requestsList.score') }}: {{ Math.round(listing.score * 100) }}%
             </span>
           </div>
 
@@ -148,7 +148,7 @@
               :class="{ active: isFavorite(listing.id) }"
               @click="toggleFavorite(listing.id)"
             >
-              {{ isFavorite(listing.id) ? '❤️ Favori' : '🤍 Favori' }}
+              {{ isFavorite(listing.id) ? '❤️' : '🤍' }} {{ t('requestsList.favorite') }}
             </button>
 
             <button
@@ -157,7 +157,7 @@
               :class="{ active: isInterested(listing.id) }"
               @click="toggleInterest(listing.id)"
             >
-              {{ isInterested(listing.id) ? '🙋 Interesse' : '🙋 Montrer mon interet' }}
+              🙋 {{ isInterested(listing.id) ? t('requestsList.interested') : t('requestsList.showInterest') }}
             </button>
           </div>
         </div>
@@ -167,28 +167,28 @@
       <div v-if="showModal && selectedListing" class="modal-overlay" @click.self="closeModal">
         <div class="modal">
           <div class="modal-header">
-            <h2>{{ selectedListing.title }}</h2>
+            <h2>{{ localizedTitle(selectedListing) }}</h2>
             <button @click="closeModal" class="close-btn">×</button>
           </div>
           
           <div class="modal-body">
             <!-- Info du tuteur -->
             <div class="tutor-info">
-              <h3>👨‍🏫 Tuteur</h3>
+              <h3>👨‍🏫 {{ t('requestsList.modal.tutor') }}</h3>
               <p class="tutor-name-large">{{ selectedListing.tutor_name }}</p>
               <p class="tutor-email">{{ selectedListing.tutor_email }}</p>
-              <p class="tutor-email"><strong>Mode:</strong> {{ selectedListing.tutor_lesson_mode || 'Visio' }}</p>
+              <p class="tutor-email"><strong>{{ t('requestsList.modal.mode') }}:</strong> {{ selectedListing.tutor_lesson_mode || 'Visio' }}</p>
               <p class="tutor-email" v-if="selectedListing.tutor_lesson_mode === 'Visio' || selectedListing.tutor_lesson_mode === 'Hybride'">
-                <strong>Outil:</strong> {{ selectedListing.tutor_visio_tool || 'Zoom' }}
+                <strong>{{ t('requestsList.modal.tool') }}:</strong> {{ selectedListing.tutor_visio_tool || 'Zoom' }}
               </p>
-              <p class="tutor-email"><strong>Lieux:</strong> {{ formatPlaces(selectedListing.tutor_places) }}</p>
+              <p class="tutor-email"><strong>{{ t('requestsList.modal.places') }}:</strong> {{ formatPlaces(selectedListing.tutor_places) }}</p>
             </div>
 
             <div class="course-details" style="margin-top: 1rem;">
-              <h3>🙋 Interet pour ce cours</h3>
-              <p><strong>{{ selectedListingInterestCount }}</strong> personne(s) interessee(s)</p>
+              <h3>🙋 {{ t('requestsList.modal.interestTitle') }}</h3>
+              <p>{{ t('requestsList.modal.interestedPeople', { count: selectedListingInterestCount }) }}</p>
               <div v-if="isCurrentUserListingOwner && selectedListingInterestPeople.length > 0" class="interest-emails">
-                <p><strong>Etudiants interesses (emails):</strong></p>
+                <p><strong>{{ t('requestsList.modal.interestedEmails') }}:</strong></p>
                 <ul>
                   <li v-for="mail in selectedListingInterestPeople" :key="mail">{{ mail }}</li>
                 </ul>
@@ -199,51 +199,60 @@
                 :class="{ active: isInterested(selectedListing.id) }"
                 @click="toggleInterest(selectedListing.id)"
               >
-                {{ isInterested(selectedListing.id) ? 'Retirer mon interet' : 'Montrer mon interet' }}
+                {{ isInterested(selectedListing.id) ? t('requestsList.removeInterest') : t('requestsList.showInterest') }}
               </button>
             </div>
 
             <!-- Détails du cours -->
             <div class="course-details">
-              <h3>📋 Détails du cours</h3>
+              <h3>📋 {{ t('requestsList.modal.courseDetails') }}</h3>
               <div class="detail-grid">
                 <div class="detail-item">
-                  <span class="detail-label">📚 Matière :</span>
+                  <span class="detail-label">📚 {{ t('requestsList.subjectLabel') }}</span>
                   <span class="detail-value">{{ selectedListing.subject }}</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">🎯 Niveau :</span>
+                  <span class="detail-label">🎯 {{ t('requestsList.levelLabel') }}</span>
                   <span class="detail-value">{{ selectedListing.level }}</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">💰 Prix :</span>
-                  <span class="detail-value">{{ selectedListing.price }} CCT/heure</span>
+                  <span class="detail-label">💰 {{ t('requestsList.modal.price') }}:</span>
+                  <span class="detail-value">{{ selectedListing.price }} CCT/{{ t('requestsList.modal.perHour') }}</span>
                 </div>
               </div>
-              
+
               <div class="description-section">
-                <h4>Description</h4>
-                <p>{{ selectedListing.description }}</p>
+                <h4>{{ t('requestsList.modal.description') }}</h4>
+                <p>{{ localizedDescription(selectedListing) }}</p>
+              </div>
+            </div>
+
+            <!-- Connexion requise pour réserver -->
+            <div v-if="!bookingSuccess && !currentUserId" class="booking-form">
+              <h3>📅 {{ t('requestsList.booking.title') }}</h3>
+              <div class="slots-empty">
+                <p>🔒 {{ t('requestsList.booking.mustBeLoggedIn') }}</p>
+                <router-link to="/login" class="btn btn-primary" @click="closeModal">{{ t('nav.login') }}</router-link>
               </div>
             </div>
 
             <!-- Formulaire de réservation -->
-            <div v-if="!bookingSuccess" class="booking-form">
-              <h3>📅 Réserver ce cours</h3>
+            <div v-if="!bookingSuccess && currentUserId" class="booking-form">
+              <h3>📅 {{ t('requestsList.booking.title') }}</h3>
               <div v-if="bookingError" class="error-message">{{ bookingError }}</div>
 
               <!-- Loading slots -->
-              <div v-if="loadingSlots" class="slots-loading">⏳ Chargement des disponibilités...</div>
+              <div v-if="loadingSlots" class="slots-loading">⏳ {{ t('requestsList.booking.loadingSlots') }}</div>
 
               <!-- No slots available -->
               <div v-else-if="availableSlots.length === 0" class="slots-empty">
-                <p>😕 Aucun créneau disponible pour ce tuteur pour le moment.</p>
-                <p>Revenez plus tard ou contactez le tuteur directement.</p>
+                <p>😕 {{ t('requestsList.booking.noSlots') }}</p>
+                <p>{{ t('requestsList.booking.comeBackLater') }}</p>
               </div>
 
               <!-- Slot picker -->
               <div v-else class="slots-section">
-                <p class="slots-hint">Sélectionnez un ou plusieurs créneaux d'1 heure :</p>
+                <p class="slots-hint">{{ t('requestsList.booking.selectSlots') }}</p>
                 <div class="slots-grid">
                   <div
                     v-for="slot in availableSlots"
@@ -255,46 +264,47 @@
                     <div class="slot-time">
                       {{ formatSlotTime(slot.start_time) }} – {{ formatSlotTime(slot.end_time) }}
                     </div>
-                    <div class="slot-duration">1 heure</div>
+                    <div class="slot-duration">{{ t('requestsList.booking.oneHour') }}</div>
                   </div>
                 </div>
               </div>
 
               <div class="form-group" style="margin-top:1rem;">
-                <label>Notes (optionnel)</label>
-                <textarea 
-                  v-model="bookingForm.notes" 
+                <label>{{ t('requestsList.booking.notes') }}</label>
+                <textarea
+                  v-model="bookingForm.notes"
                   rows="3"
-                  placeholder="Ajoutez des informations supplémentaires..."
+                  :placeholder="t('requestsList.booking.notesPlaceholder')"
                 ></textarea>
               </div>
 
               <div v-if="selectedSlotIds.length > 0" class="booking-summary">
-                <p><strong>Créneaux sélectionnés :</strong> {{ selectedSlotIds.length }}</p>
-                <p><strong>Durée totale :</strong> {{ totalSelectedDuration }}</p>
-                <p><strong>Prix total estimé :</strong> {{ totalSelectedPrice }} CCT</p>
+                <p><strong>{{ t('requestsList.booking.selectedSlots') }}:</strong> {{ selectedSlotIds.length }}</p>
+                <p><strong>{{ t('requestsList.booking.totalDuration') }}:</strong> {{ totalSelectedDuration }}</p>
+                <p><strong>{{ t('requestsList.booking.estimatedPrice') }}:</strong> {{ totalSelectedPrice }} CCT</p>
               </div>
             </div>
 
             <!-- Message de succès -->
             <div v-if="bookingSuccess" class="success-message">
               <div class="success-icon">✅</div>
-              <h3>Réservation confirmée !</h3>
-              <p>Votre réservation a été enregistrée avec succès.</p>
+              <h3>{{ t('requestsList.booking.confirmed') }}</h3>
+              <p>{{ t('requestsList.booking.confirmedText') }}</p>
               <router-link to="/agenda" class="btn btn-primary">
-                Voir dans l'agenda
+                {{ t('requestsList.booking.viewInAgenda') }}
               </router-link>
             </div>
           </div>
 
           <div v-if="!bookingSuccess" class="modal-footer">
-            <button @click="closeModal" class="btn btn-secondary">Annuler</button>
-            <button 
-              @click="createBooking" 
+            <button @click="closeModal" class="btn btn-secondary">{{ t('common.cancel') }}</button>
+            <button
+              v-if="currentUserId"
+              @click="createBooking"
               class="btn btn-primary"
               :disabled="isBooking || selectedSlotIds.length === 0 || availableSlots.length === 0"
             >
-              {{ isBooking ? 'Réservation...' : `Confirmer (${selectedSlotIds.length} créneau${selectedSlotIds.length > 1 ? 'x' : ''})` }}
+              {{ isBooking ? t('requestsList.booking.booking') : t('requestsList.booking.confirm', { count: selectedSlotIds.length }) }}
             </button>
           </div>
         </div>
@@ -305,6 +315,23 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useAuth } from '@/composables/useAuth'
+
+const { t, locale } = useI18n()
+
+// Les annonces sont traduites automatiquement à la création/modification (voir
+// server.js). On affiche la version dans la langue active du site, avec repli sur
+// le français si la traduction n'est pas disponible (ex : IA indisponible au moment
+// de la création de l'annonce).
+const localizedTitle = (listing) => {
+  if (!listing) return ''
+  return listing[`title_${locale.value}`] || listing.title
+}
+const localizedDescription = (listing) => {
+  if (!listing) return ''
+  return listing[`description_${locale.value}`] || listing.description
+}
 
 // State
 const searchQuery = ref('')
@@ -317,8 +344,7 @@ const showFilters = ref(false)
 const subjectFilter = ref('')
 const levelFilter = ref('')
 const sortBy = ref('')
-const userRole = ref('')
-const currentUserId = ref('')
+const { userRole, userId: currentUserId, checkAuth } = useAuth()
 
 // Modal & Booking state
 const showModal = ref(false)
@@ -387,9 +413,9 @@ const filteredListings = computed(() => {
 })
 
 const searchStatus = computed(() => {
-  if (isLoading.value) return 'Chargement...'
-  if (currentQuery.value) return `Recherche: "${currentQuery.value}"`
-  return 'Toutes les annonces'
+  if (isLoading.value) return t('common.loading')
+  if (currentQuery.value) return t('requestsList.searchingFor', { query: currentQuery.value })
+  return t('requestsList.allListings')
 })
 
 const isCurrentUserListingOwner = computed(() => {
@@ -463,15 +489,7 @@ const isFavorite = (listingId) => {
 }
 
 const loadAuthData = async () => {
-  try {
-    const response = await fetch('/api/check-auth', { credentials: 'include' })
-    if (!response.ok) return
-    const data = await response.json()
-    userRole.value = data.role || ''
-    currentUserId.value = data.userId || ''
-  } catch (error) {
-    console.error('Erreur auth:', error)
-  }
+  await checkAuth()
 }
 
 const loadEngagement = async () => {
@@ -683,6 +701,11 @@ const toggleSlot = (slotId) => {
 }
 
 const createBooking = async () => {
+  if (!currentUserId.value) {
+    bookingError.value = 'Vous devez être connecté(e) pour réserver un cours'
+    return
+  }
+
   if (selectedSlotIds.value.length === 0) {
     bookingError.value = 'Veuillez sélectionner au moins un créneau'
     return

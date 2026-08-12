@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "requests": "Requêtes",
+    "reservations": "Réservations",
+    "agenda": "Agenda",
+    "favorites": "Cours favoris",
+    "myCourses": "Mes cours",
+    "createRequest": "Créer une requête",
+    "login": "Connexion",
+    "chooseLanguage": "Choisir la langue"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "remove": "Retirer",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "back": "Retour",
+    "yes": "Oui",
+    "no": "Non",
+    "loading": "Chargement...",
+    "student": "Étudiant(e)",
+    "tutor": "Tuteur/Tutrice",
+    "admin": "Administrateur"
+  },
+  "home": {
+    "hero": {
+      "title": "Bienvenue sur CryptoCampus",
+      "subtitle": "La plateforme d'entraide académique basée sur la blockchain",
+      "browse": "Parcourir les requêtes",
+      "login": "Se connecter",
+      "createRequest": "Créer une requête"
+    },
+    "features": {
+      "title": "Nos fonctionnalités",
+      "mutualHelp": {
+        "title": "Entraide entre étudiants",
+        "description": "Demandez de l'aide à la communauté et rémunérez les tuteurs pour leur assistance."
+      },
+      "rewards": {
+        "title": "Système de récompenses",
+        "description": "Gagnez des coins en aidant les autres et dépensez-les dans notre boutique exclusive."
+      },
+      "secure": {
+        "title": "Sécurisé et transparent",
+        "description": "Toutes les transactions sont enregistrées sur la blockchain pour plus de transparence."
+      },
+      "subjects": {
+        "title": "Large gamme de sujets",
+        "description": "Mathématiques, physique, chimie, programmation, langues et bien d'autres domaines."
+      },
+      "fast": {
+        "title": "Rapide et efficace",
+        "description": "Trouvez rapidement un tuteur et résolvez vos problèmes en peu de temps."
+      },
+      "quality": {
+        "title": "Qualité garantie",
+        "description": "Évaluations des utilisateurs et système de notation pour garantir une qualité élevée."
+      }
+    },
+    "howItWorks": {
+      "title": "Comment ça marche",
+      "step1": { "title": "Créez une requête", "description": "Décrivez votre besoin d'aide et proposez une récompense en coins." },
+      "step2": { "title": "Recevez des offres", "description": "Les tuteurs disponibles consultent votre requête et vous contactent." },
+      "step3": { "title": "Collaborez", "description": "Travaillez ensemble pour résoudre le problème ou apprendre le sujet." },
+      "step4": { "title": "Validez et payez", "description": "Validez la réponse et transférez les coins au tuteur via la blockchain." }
+    },
+    "stats": {
+      "activeStudents": "Étudiants actifs",
+      "resolvedRequests": "Requêtes résolues",
+      "subjects": "Sujets disponibles"
+    },
+    "finalCta": {
+      "title": "Prêt à commencer ?",
+      "subtitle": "Rejoignez notre communauté d'étudiants passionnés par l'apprentissage collaboratif",
+      "register": "S'inscrire maintenant",
+      "browse": "Voir les requêtes"
+    }
+  },
+  "login": {
+    "subtitle": "Plateforme d'entraide étudiante",
+    "linkedinIntro": "Votre profil LinkedIn a été récupéré ! Plus qu'une étape : dites-nous si vous êtes étudiant(e) ou tuteur/tutrice pour finaliser la création de votre compte.",
+    "tabs": { "login": "Connexion", "register": "Créer un compte" },
+    "continueWithLinkedIn": "Continuer avec LinkedIn",
+    "or": "ou",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "roleChoice": {
+      "label": "Je souhaite créer un compte *",
+      "student": "Étudiant(e)",
+      "tutor": "Tuteur/Tutrice"
+    },
+    "referralCode": {
+      "label": "Code de parrainage *",
+      "placeholder": "Code reçu de votre parrain/marraine",
+      "hint": "Un code de parrainage valide est obligatoire pour créer un compte étudiant."
+    },
+    "tutorFields": {
+      "lessonMode": "Mode principal des cours *",
+      "visio": "Visio",
+      "presentiel": "Présentiel",
+      "hybride": "Hybride",
+      "visioTool": "Outil visio *",
+      "autre": "Autre",
+      "places": "Lieux (séparés par des virgules)",
+      "placesPlaceholder": "Visio, Bibliothèque, Domicile..."
+    },
+    "finalize": {
+      "submitting": "Création en cours...",
+      "submit": "Finaliser mon compte"
+    },
+    "loginForm": {
+      "email": "Email",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Votre mot de passe",
+      "submitting": "Connexion en cours...",
+      "submit": "Se connecter"
+    },
+    "registerForm": {
+      "firstName": "Prénom *",
+      "firstNamePlaceholder": "Votre prénom",
+      "lastName": "Nom *",
+      "lastNamePlaceholder": "Votre nom",
+      "email": "Email *",
+      "password": "Mot de passe *",
+      "passwordPlaceholder": "Minimum 8 caractères",
+      "passwordHint": "Au moins 8 caractères",
+      "submitting": "Création en cours...",
+      "submit": "Créer mon compte"
+    }
+  },
+  "requestsList": {
+    "title": "Annonces d'aide aux devoirs",
+    "subtitle": "Recherchez parmi nos annonces grâce à la recherche sémantique",
+    "searchPlaceholder": "Rechercher par matière, niveau, mots-clés... (ex : \"mathématiques lycée\", \"anglais conversation\")",
+    "search": "Rechercher",
+    "showAll": "Tout afficher",
+    "hideFilters": "Masquer les filtres",
+    "filtersAndSort": "Filtres & Tri",
+    "subjectLabel": "Matière :",
+    "allSubjects": "Toutes",
+    "levelLabel": "Niveau :",
+    "allLevels": "Tous",
+    "sortBy": "Trier par :",
+    "sortDefault": "Par défaut",
+    "sortPriceAsc": "Prix croissant",
+    "sortPriceDesc": "Prix décroissant",
+    "sortTitle": "Titre (A-Z)",
+    "listingsShown": "{count} annonce(s) affichée(s)",
+    "noListingsFound": "Aucune annonce trouvée",
+    "noResultsFor": "Aucun résultat pour \"{query}\"",
+    "emptyDatabase": "La base de données est vide",
+    "showAllListings": "Afficher toutes les annonces",
+    "favoritesCount": "{count} favori(s)",
+    "interestedCount": "{count} intéressé(s)",
+    "score": "Score",
+    "favorite": "Favori",
+    "interested": "Intéressé",
+    "showInterest": "Montrer mon intérêt",
+    "removeInterest": "Retirer mon intérêt",
+    "searchingFor": "Recherche : \"{query}\"",
+    "allListings": "Toutes les annonces",
+    "modal": {
+      "tutor": "Tuteur",
+      "mode": "Mode",
+      "tool": "Outil",
+      "places": "Lieux",
+      "interestTitle": "Intérêt pour ce cours",
+      "interestedPeople": "{count} personne(s) intéressée(s)",
+      "interestedEmails": "Étudiants intéressés (emails)",
+      "courseDetails": "Détails du cours",
+      "price": "Prix",
+      "perHour": "heure",
+      "description": "Description"
+    },
+    "booking": {
+      "title": "Réserver ce cours",
+      "mustBeLoggedIn": "Vous devez être connecté(e) pour réserver ce cours.",
+      "loadingSlots": "Chargement des disponibilités...",
+      "noSlots": "Aucun créneau disponible pour ce tuteur pour le moment.",
+      "comeBackLater": "Revenez plus tard ou contactez le tuteur directement.",
+      "selectSlots": "Sélectionnez un ou plusieurs créneaux d'1 heure :",
+      "oneHour": "1 heure",
+      "notes": "Notes (optionnel)",
+      "notesPlaceholder": "Ajoutez des informations supplémentaires...",
+      "selectedSlots": "Créneaux sélectionnés",
+      "totalDuration": "Durée totale",
+      "estimatedPrice": "Prix total estimé",
+      "confirmed": "Réservation confirmée !",
+      "confirmedText": "Votre réservation a été enregistrée avec succès.",
+      "viewInAgenda": "Voir dans l'agenda",
+      "booking": "Réservation...",
+      "confirm": "Confirmer ({count})"
+    }
+  },
+  "profile": {
+    "changeAvatar": "Changer ma photo de profil",
+    "status": "Statut",
+    "memberSince": "Membre depuis {date}",
+    "removeAvatar": "Retirer ma photo de profil",
+    "balanceAndStats": "Solde & Statistiques",
+    "myBalance": "Mon solde de StudyCoins",
+    "blockchainAddress": "Adresse blockchain",
+    "myReferralCode": "Mon code de parrainage",
+    "copied": "Copié !",
+    "copy": "Copier",
+    "referralHint": "Partagez ce code : il permet à un(e) étudiant(e) de créer son compte.",
+    "beneficiaries": "Bénéficiaires",
+    "amountCct": "Montant CCT",
+    "sending": "Envoi...",
+    "send": "Envoyer",
+    "noBeneficiaries": "Aucun bénéficiaire enregistré pour le moment.",
+    "beneficiaryName": "Nom du bénéficiaire",
+    "beneficiaryNamePlaceholder": "Ex : Marie Dupont",
+    "adding": "Ajout...",
+    "addBeneficiary": "+ Ajouter un bénéficiaire",
+    "stats": {
+      "helped": "Étudiants aidés",
+      "earned": "Coins gagnés",
+      "created": "Requêtes créées"
+    },
+    "securityAndAccount": "Sécurité & Compte",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "currentPasswordPlaceholder": "Entrez votre mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "newPasswordPlaceholder": "Entrez votre nouveau mot de passe",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "confirmPasswordPlaceholder": "Confirmez votre nouveau mot de passe",
+    "updating": "Mise à jour en cours...",
+    "updatePassword": "Mettre à jour le mot de passe",
+    "lessonLocations": "Lieux et modalités de cours",
+    "saving": "Enregistrement...",
+    "saveLocations": "Enregistrer les lieux de cours",
+    "linkedinAccount": "Compte LinkedIn",
+    "linkedinLinkedTo": "Lié à",
+    "linkedinNotLinked": "Aucun compte LinkedIn lié pour le moment.",
+    "linkLinkedin": "Lier mon compte LinkedIn",
+    "unlinkLinkedin": "Délier mon compte LinkedIn",
+    "becomeTutor": "Devenir tuteur / tutrice",
+    "becomeTutorIntro": "Vous souhaitez donner des cours à votre tour ? Vous pouvez transformer votre compte étudiant en compte tuteur.",
+    "becomeTutorPermanent": "Cette action est définitive.",
+    "becomingTutor": "Conversion en cours...",
+    "confirmBecomeTutor": "⚠️ Confirmer : devenir tuteur définitivement",
+    "logout": "Déconnexion",
+    "logoutDescription": "Se déconnecter de votre compte CryptoCampus",
+    "deleteAccount": "Supprimer mon compte",
+    "deleteAccountWarning": "Cette action est irréversible. Toutes vos données seront définitivement supprimées."
+  }
+}

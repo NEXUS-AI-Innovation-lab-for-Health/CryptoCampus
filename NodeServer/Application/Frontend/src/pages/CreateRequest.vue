@@ -20,6 +20,12 @@
           ❌ {{ errorMessage }}
         </div>
 
+        <!-- Suggestion de liaison LinkedIn (tuteurs sans compte lié) -->
+        <div v-if="showLinkedInBanner" class="info-box linkedin-banner">
+          <span>💡 Astuce : liez votre compte LinkedIn pour renforcer la crédibilité de vos annonces.</span>
+          <button type="button" class="btn btn-secondary" @click="linkLinkedIn">🔗 Lier LinkedIn</button>
+        </div>
+
         <!-- Upload Section -->
         <div 
           v-if="!isAnalyzing && !showResults && !showSuccess" 
@@ -141,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -157,6 +163,25 @@ const errorMessage = ref('')
 const extractedSkills = ref([])
 const suggestions = ref([])
 const fileInput = ref(null)
+const showLinkedInBanner = ref(false)
+
+// Suggère de lier LinkedIn uniquement aux tuteurs qui ne l'ont pas encore fait
+const checkLinkedInStatus = async () => {
+  try {
+    const response = await fetch('/api/profile', { credentials: 'include' })
+    if (!response.ok) return
+    const data = await response.json()
+    showLinkedInBanner.value = data.role === 'TUTOR' && !data.linkedin_email
+  } catch (error) {
+    console.error('Erreur vérification LinkedIn:', error)
+  }
+}
+
+const linkLinkedIn = () => {
+  window.location.href = '/api/auth/linkedin/link?returnTo=/create_request'
+}
+
+onMounted(checkLinkedInStatus)
 
 // Computed
 const selectedCount = computed(() => {
@@ -343,6 +368,20 @@ h1 {
 
 .info-box strong {
   color: #856404;
+}
+
+.linkedin-banner {
+  background: #e8f0fe;
+  border-color: #0a66c2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.linkedin-banner .btn-secondary {
+  white-space: nowrap;
 }
 
 /* Error Message */

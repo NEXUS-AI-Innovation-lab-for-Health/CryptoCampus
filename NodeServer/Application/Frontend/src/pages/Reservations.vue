@@ -307,17 +307,18 @@
 <script>
 import { ref, computed, onMounted, watch } from 'vue';
 import TimePickerInput from '../components/TimePickerInput.vue';
+import { useAuth } from '@/composables/useAuth';
 
 export default {
   name: 'Reservations',
   components: { TimePickerInput },
   setup() {
+    const { userRole, checkAuth } = useAuth();
     const bookings = ref([]);
     const loading = ref(true);
     const error = ref(null);
     const statusFilter = ref('all');
     const updating = ref(null);
-    const userRole = ref('');
 
     // ── Availability state ──────────────────────────────────────────
     const mySlots = ref([]);
@@ -580,14 +581,11 @@ export default {
 
       try {
         // Get user role first
-        const authRes = await fetch('/api/check-auth', { credentials: 'include' });
-        if (!authRes.ok) throw new Error('Non authentifié');
-        const authData = await authRes.json();
+        const authData = await checkAuth();
         const userId = authData.userId;
-        if (!userId) {
+        if (!authData.isAuthenticated || !userId) {
           throw new Error('Utilisateur non authentifié');
         }
-        userRole.value = authData.role || 'STUDENT';
 
         if (userRole.value === 'TUTOR') {
           await fetchMySlots();

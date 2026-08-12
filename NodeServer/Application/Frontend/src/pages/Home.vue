@@ -11,76 +11,76 @@
     <!-- Hero Section -->
     <section class="hero">
       <div class="hero-content">
-        <h1>Bienvenue sur CryptoCampus</h1>
-        <p class="subtitle">La plateforme d'entraide académique basée sur la blockchain</p>
+        <h1>{{ t('home.hero.title') }}</h1>
+        <p class="subtitle">{{ t('home.hero.subtitle') }}</p>
         <div class="cta-buttons">
-          <router-link to="/requetes" class="btn btn-primary">Parcourir les requêtes</router-link>
-          <router-link to="/login" v-if="!isLogged" class="btn btn-secondary">Se connecter</router-link>
-          <router-link to="/create_request" v-if="isLogged && isTutor" class="btn btn-secondary">Créer une requête</router-link>
+          <router-link to="/requetes" class="btn btn-primary">{{ t('home.hero.browse') }}</router-link>
+          <router-link to="/login" v-if="!isLogged" class="btn btn-secondary">{{ t('home.hero.login') }}</router-link>
+          <router-link to="/create_request" v-if="isLogged && isTutor" class="btn btn-secondary">{{ t('home.hero.createRequest') }}</router-link>
         </div>
       </div>
     </section>
 
     <!-- Features Section -->
     <section class="features">
-      <h2>Nos fonctionnalités</h2>
+      <h2>{{ t('home.features.title') }}</h2>
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">🤝</div>
-          <h3>Entraide entre étudiants</h3>
-          <p>Demandez de l'aide à la communauté et rémunérez les tuteurs pour leur assistance.</p>
+          <h3>{{ t('home.features.mutualHelp.title') }}</h3>
+          <p>{{ t('home.features.mutualHelp.description') }}</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">💰</div>
-          <h3>Système de récompenses</h3>
-          <p>Gagnez des coins en aidant les autres et dépensez-les dans notre boutique exclusive.</p>
+          <h3>{{ t('home.features.rewards.title') }}</h3>
+          <p>{{ t('home.features.rewards.description') }}</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🔐</div>
-          <h3>Sécurisé et transparent</h3>
-          <p>Toutes les transactions sont enregistrées sur la blockchain pour plus de transparence.</p>
+          <h3>{{ t('home.features.secure.title') }}</h3>
+          <p>{{ t('home.features.secure.description') }}</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">📚</div>
-          <h3>Large gamme de sujets</h3>
-          <p>Mathématiques, physique, chimie, programmation, langues et bien d'autres domaines.</p>
+          <h3>{{ t('home.features.subjects.title') }}</h3>
+          <p>{{ t('home.features.subjects.description') }}</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">⚡</div>
-          <h3>Rapide et efficace</h3>
-          <p>Trouvez rapidement un tuteur et résolvez vos problèmes en peu de temps.</p>
+          <h3>{{ t('home.features.fast.title') }}</h3>
+          <p>{{ t('home.features.fast.description') }}</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🎯</div>
-          <h3>Qualité garantie</h3>
-          <p>Évaluations des utilisateurs et système de notation pour garantir une qualité élevée.</p>
+          <h3>{{ t('home.features.quality.title') }}</h3>
+          <p>{{ t('home.features.quality.description') }}</p>
         </div>
       </div>
     </section>
 
     <!-- How It Works Section -->
     <section class="how-it-works">
-      <h2>Comment ça marche</h2>
+      <h2>{{ t('home.howItWorks.title') }}</h2>
       <div class="steps">
         <div class="step">
           <div class="step-number">1</div>
-          <h3>Créez une requête</h3>
-          <p>Décrivez votre besoin d'aide et proposez une récompense en coins.</p>
+          <h3>{{ t('home.howItWorks.step1.title') }}</h3>
+          <p>{{ t('home.howItWorks.step1.description') }}</p>
         </div>
         <div class="step">
           <div class="step-number">2</div>
-          <h3>Recevez des offres</h3>
-          <p>Les tuteurs disponibles consultent votre requête et vous contactent.</p>
+          <h3>{{ t('home.howItWorks.step2.title') }}</h3>
+          <p>{{ t('home.howItWorks.step2.description') }}</p>
         </div>
         <div class="step">
           <div class="step-number">3</div>
-          <h3>Collaborez</h3>
-          <p>Travaillez ensemble pour résoudre le problème ou apprendre le sujet.</p>
+          <h3>{{ t('home.howItWorks.step3.title') }}</h3>
+          <p>{{ t('home.howItWorks.step3.description') }}</p>
         </div>
         <div class="step">
           <div class="step-number">4</div>
-          <h3>Validez et payez</h3>
-          <p>Validez la réponse et transférez les coins au tuteur via la blockchain.</p>
+          <h3>{{ t('home.howItWorks.step4.title') }}</h3>
+          <p>{{ t('home.howItWorks.step4.description') }}</p>
         </div>
       </div>
     </section>
@@ -89,31 +89,33 @@
     <section class="stats">
       <div class="stat">
         <h3>1000+</h3>
-        <p>Étudiants actifs</p>
+        <p>{{ t('home.stats.activeStudents') }}</p>
       </div>
       <div class="stat">
         <h3>5000+</h3>
-        <p>Requêtes résolues</p>
+        <p>{{ t('home.stats.resolvedRequests') }}</p>
       </div>
       <div class="stat">
         <h3>50+</h3>
-        <p>Sujets disponibles</p>
+        <p>{{ t('home.stats.subjects') }}</p>
       </div>
     </section>
 
     <!-- CTA Section -->
     <section class="final-cta">
-      <h2>Prêt à commencer ?</h2>
-      <p>Rejoignez notre communauté d'étudiants passionnés par l'apprentissage collaboratif</p>
-      <router-link to="/login" v-if="!isLogged" class="btn btn-primary btn-large">S'inscrire maintenant</router-link>
-      <router-link to="/requetes" v-else class="btn btn-primary btn-large">Voir les requêtes</router-link>
+      <h2>{{ t('home.finalCta.title') }}</h2>
+      <p>{{ t('home.finalCta.subtitle') }}</p>
+      <router-link to="/login" v-if="!isLogged" class="btn btn-primary btn-large">{{ t('home.finalCta.register') }}</router-link>
+      <router-link to="/requetes" v-else class="btn btn-primary btn-large">{{ t('home.finalCta.browse') }}</router-link>
     </section>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { useAuth } from '@/composables/useAuth'
 import logo from '@/assets/vrai_logo.png'
 
 const MIN_SPLASH_DURATION = 2000
@@ -122,30 +124,14 @@ export default {
   name: 'Home',
   setup() {
     const route = useRoute()
-    const isLogged = ref(null)
-    const userRole = ref('')
+    const { t } = useI18n()
+    const { isLogged, isTutor, checkAuth } = useAuth()
     // La bannière de bienvenue ne s'affiche que lors d'une arrivée depuis
     // l'extérieur du site (URL tapée, lien externe, rafraîchissement) : voir
     // le flag `isFreshEntry` posé dans router.js. En navigation interne
     // (clic sur un lien depuis une autre page de la SPA), on charge la page
     // instantanément, sans écran de chargement.
     const isLoading = ref(route.meta.isFreshEntry === true)
-
-    const isTutor = computed(() => userRole.value === 'TUTOR')
-
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/check-auth')
-        const data = await response.json()
-        isLogged.value = data.isAuthenticated
-        if (data.isAuthenticated && data.role) {
-          userRole.value = data.role
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        isLogged.value = false
-      }
-    }
 
     onMounted(async () => {
       if (!isLoading.value) {
@@ -164,6 +150,7 @@ export default {
     })
 
     return {
+      t,
       isLogged,
       isTutor,
       isLoading,

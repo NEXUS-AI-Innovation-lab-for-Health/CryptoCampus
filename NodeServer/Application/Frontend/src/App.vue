@@ -8,52 +8,46 @@
             to="/requetes"
             class="nav-link"
             :class="{ active: currentPage === 'requetes' }"
-            >Requêtes</router-link
+            >{{ t('nav.requests') }}</router-link
           >
           <router-link
             to="/reservations"
             class="nav-link"
             :class="{ active: currentPage === 'reservations' }"
             v-if="isLogged == true"
-            >Réservations</router-link
+            >{{ t('nav.reservations') }}</router-link
           >
           <router-link
             to="/agenda"
             class="nav-link"
             :class="{ active: currentPage === 'agenda' }"
             v-if="isLogged == true"
-            >Agenda</router-link
+            >{{ t('nav.agenda') }}</router-link
           >
-          <!-- <router-link
-            to="/balance"
-            class="nav-link"
-            :class="{ active: currentPage === 'balance' }"
-            v-if="isLogged == true"
-            >Mon solde</router-link
-          > -->
           <router-link
             to="/favoris"
             class="nav-link"
             :class="{ active: currentPage === 'favoris' }"
             v-if="isLogged == true"
-            >Cours favoris</router-link
+            >{{ t('nav.favorites') }}</router-link
           >
           <router-link
             to="/mes-cours"
             class="nav-link"
             :class="{ active: currentPage === 'mes-cours' }"
             v-if="isLogged == true && isTutor"
-            >Mes cours</router-link
+            >{{ t('nav.myCourses') }}</router-link
           >
           <router-link
             to="/create_request"
             class="nav-link btn-create"
             :class="{ active: currentPage === 'create_request' }"
             v-if="isLogged == true && isTutor"
-            >Créer une requête</router-link
+            >{{ t('nav.createRequest') }}</router-link
           >
+          <LanguageSwitcher />
           <div v-if="isLogged" class="profile-button" @click="handleLoginClick">
-            <img src="@/assets/utilisateur.png" alt="Profil" class="profile-icon" />
+            <img :src="userAvatarUrl || defaultAvatar" alt="Profil" class="profile-icon" />
             <span class="profile-email">{{ userEmail }}</span>
           </div>
           <button
@@ -62,7 +56,7 @@
             class="btn-login"
             @click="handleLoginClick"
           >
-            Connexion
+            {{ t('nav.login') }}
           </button>
         </div>
       </div>
@@ -73,39 +67,25 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { useAuth } from "@/composables/useAuth";
+import defaultAvatar from "@/assets/utilisateur.png";
+import LanguageSwitcher from "@/components/LanguageSwitcher.vue";
 
 export default {
   name: "App",
+  components: { LanguageSwitcher },
   setup() {
     const router = useRouter();
     const route = useRoute();
-    const isLogged = ref(null);
-    const userEmail = ref("");
-    const userRole = ref("");
+    const { t } = useI18n();
+    const { isLogged, userEmail, userAvatarUrl, isTutor, checkAuth } = useAuth();
     const currentPage = computed(() => {
       const path = route.path;
       return path.replace("/", "");
     });
-    const isTutor = computed(() => userRole.value === 'TUTOR');
-
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/check-auth");
-        const data = await response.json();
-        isLogged.value = data.isAuthenticated;
-        if (data.isAuthenticated && data.email) {
-          userEmail.value = data.email;
-        }
-        if (data.isAuthenticated && data.role) {
-          userRole.value = data.role;
-        }
-      } catch (error) {
-        console.error("Auth check failed:", error);
-        isLogged.value = false;
-      }
-    };
 
     const handleLoginClick = () => {
       if (isLogged.value) {
@@ -128,9 +108,11 @@ export default {
     );
 
     return {
+      t,
       isLogged,
       userEmail,
-      userRole,
+      userAvatarUrl,
+      defaultAvatar,
       isTutor,
       currentPage,
       handleLoginClick,

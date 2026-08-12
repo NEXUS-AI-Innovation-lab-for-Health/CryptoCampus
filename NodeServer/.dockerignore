@@ -1,3 +1,7 @@
 ./Scripts
 node_modules
 qdrant_data
+uploads
+.env
+*.env
+!.env.example

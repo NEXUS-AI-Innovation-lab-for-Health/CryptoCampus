@@ -1,0 +1,10 @@
+# Override à utiliser UNIQUEMENT pour lancer la suite de tests automatisés en local :
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build api
+# Désactive la limite de débit sur /api/login, /api/register, etc. le temps des tests
+# (qui créent beaucoup de comptes en quelques secondes). Ne jamais utiliser ce fichier
+# pour un déploiement réel : docker-compose.yml seul garde la limite de production.
+services:
+  api:
+    environment:
+      AUTH_RATE_LIMIT: "100000"
+      API_RATE_LIMIT: "100000"

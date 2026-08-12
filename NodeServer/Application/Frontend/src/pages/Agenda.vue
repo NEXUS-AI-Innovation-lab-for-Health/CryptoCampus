@@ -241,10 +241,12 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
 export default {
   name: 'Agenda',
   setup() {
+    const { checkAuth } = useAuth()
     const bookings = ref([])
     const currentDate = ref(new Date())
     const selectedDate = ref(null)
@@ -360,12 +362,9 @@ export default {
     // Methods
     const loadBookings = async () => {
       try {
-        const authRes = await fetch('/api/check-auth', { credentials: 'include' })
-        if (!authRes.ok) return
-
-        const authData = await authRes.json()
+        const authData = await checkAuth()
         const userId = authData.userId
-        if (!userId) return
+        if (!authData.isAuthenticated || !userId) return
 
         const response = await fetch(`/api/bookings?user_id=${encodeURIComponent(userId)}`, {
           credentials: 'include'
@@ -668,6 +667,8 @@ export default {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* Évite que les cases du calendrier ne touchent la barre de défilement */
+  padding-right: 0.75rem;
 }
 
 .calendar-weekdays {
