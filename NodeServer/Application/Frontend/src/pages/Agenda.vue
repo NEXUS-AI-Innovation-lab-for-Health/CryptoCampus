@@ -360,9 +360,16 @@ export default {
     // Methods
     const loadBookings = async () => {
       try {
-        const userId = localStorage.getItem('user_id')
-        const url = userId ? `/api/bookings?user_id=${userId}` : '/api/bookings'
-        const response = await fetch(url)
+        const authRes = await fetch('/api/check-auth', { credentials: 'include' })
+        if (!authRes.ok) return
+
+        const authData = await authRes.json()
+        const userId = authData.userId
+        if (!userId) return
+
+        const response = await fetch(`/api/bookings?user_id=${encodeURIComponent(userId)}`, {
+          credentials: 'include'
+        })
         
         if (response.ok) {
           bookings.value = await response.json()

@@ -138,11 +138,9 @@ export default {
       }
     }
 
-    onMounted(() => {
-      checkAuth()
-      setTimeout(() => {
-        isLoading.value = false
-      }, 2000)
+    onMounted(async () => {
+      await checkAuth()
+      isLoading.value = false
     })
 
     return {
@@ -205,18 +203,18 @@ export default {
 
 .loading-progress-bar {
   height: 100%;
-  width: 0%;
+  width: 40%;
   background: white;
   border-radius: 3px;
-  animation: loading-fill 2s linear forwards;
+  animation: loading-indeterminate 1s ease-in-out infinite;
 }
 
-@keyframes loading-fill {
-  from {
-    width: 0%;
+@keyframes loading-indeterminate {
+  0% {
+    transform: translateX(-100%);
   }
-  to {
-    width: 100%;
+  100% {
+    transform: translateX(250%);
   }
 }
 

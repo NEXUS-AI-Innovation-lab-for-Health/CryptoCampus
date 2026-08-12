@@ -583,6 +583,10 @@ export default {
         const authRes = await fetch('/api/check-auth', { credentials: 'include' });
         if (!authRes.ok) throw new Error('Non authentifié');
         const authData = await authRes.json();
+        const userId = authData.userId;
+        if (!userId) {
+          throw new Error('Utilisateur non authentifié');
+        }
         userRole.value = authData.role || 'STUDENT';
 
         if (userRole.value === 'TUTOR') {
@@ -590,7 +594,7 @@ export default {
         }
 
         // Fetch bookings
-        const response = await fetch('/api/bookings', {
+        const response = await fetch(`/api/bookings?user_id=${encodeURIComponent(userId)}`, {
           credentials: 'include'
         });
 
