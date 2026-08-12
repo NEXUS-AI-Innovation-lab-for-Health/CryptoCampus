@@ -113,14 +113,23 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import logo from '@/assets/vrai_logo.png'
+
+const MIN_SPLASH_DURATION = 2000
 
 export default {
   name: 'Home',
   setup() {
+    const route = useRoute()
     const isLogged = ref(null)
     const userRole = ref('')
-    const isLoading = ref(true)
+    // La bannière de bienvenue ne s'affiche que lors d'une arrivée depuis
+    // l'extérieur du site (URL tapée, lien externe, rafraîchissement) : voir
+    // le flag `isFreshEntry` posé dans router.js. En navigation interne
+    // (clic sur un lien depuis une autre page de la SPA), on charge la page
+    // instantanément, sans écran de chargement.
+    const isLoading = ref(route.meta.isFreshEntry === true)
 
     const isTutor = computed(() => userRole.value === 'TUTOR')
 
@@ -139,7 +148,18 @@ export default {
     }
 
     onMounted(async () => {
+      if (!isLoading.value) {
+        // Navigation interne : pas d'écran de chargement, juste la donnée en tâche de fond.
+        checkAuth()
+        return
+      }
+
+      const start = Date.now()
       await checkAuth()
+      const remaining = MIN_SPLASH_DURATION - (Date.now() - start)
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining))
+      }
       isLoading.value = false
     })
 
@@ -203,18 +223,18 @@ export default {
 
 .loading-progress-bar {
   height: 100%;
-  width: 40%;
+  width: 0%;
   background: white;
   border-radius: 3px;
-  animation: loading-indeterminate 1s ease-in-out infinite;
+  animation: loading-fill 2s linear forwards;
 }
 
-@keyframes loading-indeterminate {
-  0% {
-    transform: translateX(-100%);
+@keyframes loading-fill {
+  from {
+    width: 0%;
   }
-  100% {
-    transform: translateX(250%);
+  to {
+    width: 100%;
   }
 }
 

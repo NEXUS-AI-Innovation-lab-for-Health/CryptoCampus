@@ -32,4 +32,23 @@ const router = createRouter({
   routes,
 })
 
+// Marque chaque route traversée par la toute première navigation résolue par
+// le routeur (celle déclenchée par le chargement réel du navigateur : URL
+// tapée, lien externe, rafraîchissement...). Les navigations suivantes sont
+// des changements de route internes à la SPA (clic sur un <router-link>) et
+// ne doivent pas être considérées comme une arrivée "depuis l'extérieur".
+// On flippe le flag dans afterEach (pas beforeEach) pour que les redirections
+// internes (ex: '/' -> '/home') qui font partie de cette première navigation
+// restent bien marquées comme fraîches.
+let hasCompletedNavigation = false
+
+router.beforeEach((to, from, next) => {
+  to.meta.isFreshEntry = !hasCompletedNavigation
+  next()
+})
+
+router.afterEach(() => {
+  hasCompletedNavigation = true
+})
+
 export default router
