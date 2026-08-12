@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "requests": "Requests",
+    "reservations": "Bookings",
+    "agenda": "Calendar",
+    "favorites": "Favorite courses",
+    "myCourses": "My courses",
+    "createRequest": "Create a listing",
+    "login": "Log in",
+    "chooseLanguage": "Choose language"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "remove": "Remove",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading...",
+    "student": "Student",
+    "tutor": "Tutor",
+    "admin": "Administrator"
+  },
+  "home": {
+    "hero": {
+      "title": "Welcome to CryptoCampus",
+      "subtitle": "The blockchain-based academic peer-help platform",
+      "browse": "Browse requests",
+      "login": "Log in",
+      "createRequest": "Create a request"
+    },
+    "features": {
+      "title": "Our features",
+      "mutualHelp": {
+        "title": "Peer support between students",
+        "description": "Ask the community for help and reward tutors for their assistance."
+      },
+      "rewards": {
+        "title": "Rewards system",
+        "description": "Earn coins by helping others and spend them in our exclusive shop."
+      },
+      "secure": {
+        "title": "Secure and transparent",
+        "description": "All transactions are recorded on the blockchain for full transparency."
+      },
+      "subjects": {
+        "title": "Wide range of subjects",
+        "description": "Math, physics, chemistry, programming, languages, and many other fields."
+      },
+      "fast": {
+        "title": "Fast and efficient",
+        "description": "Quickly find a tutor and solve your problems in no time."
+      },
+      "quality": {
+        "title": "Guaranteed quality",
+        "description": "User reviews and a rating system to ensure high quality."
+      }
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "step1": { "title": "Create a request", "description": "Describe what you need help with and offer a reward in coins." },
+      "step2": { "title": "Receive offers", "description": "Available tutors review your request and reach out to you." },
+      "step3": { "title": "Collaborate", "description": "Work together to solve the problem or learn the subject." },
+      "step4": { "title": "Validate and pay", "description": "Confirm the answer and transfer the coins to the tutor via the blockchain." }
+    },
+    "stats": {
+      "activeStudents": "Active students",
+      "resolvedRequests": "Resolved requests",
+      "subjects": "Available subjects"
+    },
+    "finalCta": {
+      "title": "Ready to get started?",
+      "subtitle": "Join our community of students passionate about collaborative learning",
+      "register": "Sign up now",
+      "browse": "View requests"
+    }
+  },
+  "login": {
+    "subtitle": "The student peer-help platform",
+    "linkedinIntro": "Your LinkedIn profile has been retrieved! One more step: tell us whether you're a student or a tutor to finish creating your account.",
+    "tabs": { "login": "Log in", "register": "Create an account" },
+    "continueWithLinkedIn": "Continue with LinkedIn",
+    "or": "or",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "roleChoice": {
+      "label": "I want to create an account as *",
+      "student": "Student",
+      "tutor": "Tutor"
+    },
+    "referralCode": {
+      "label": "Referral code *",
+      "placeholder": "Code you received from your referrer",
+      "hint": "A valid referral code is required to create a student account."
+    },
+    "tutorFields": {
+      "lessonMode": "Main teaching mode *",
+      "visio": "Video call",
+      "presentiel": "In person",
+      "hybride": "Hybrid",
+      "visioTool": "Video call tool *",
+      "autre": "Other",
+      "places": "Locations (comma-separated)",
+      "placesPlaceholder": "Video call, Library, Home..."
+    },
+    "finalize": {
+      "submitting": "Creating account...",
+      "submit": "Finish creating my account"
+    },
+    "loginForm": {
+      "email": "Email",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "submitting": "Logging in...",
+      "submit": "Log in"
+    },
+    "registerForm": {
+      "firstName": "First name *",
+      "firstNamePlaceholder": "Your first name",
+      "lastName": "Last name *",
+      "lastNamePlaceholder": "Your last name",
+      "email": "Email *",
+      "password": "Password *",
+      "passwordPlaceholder": "Minimum 8 characters",
+      "passwordHint": "At least 8 characters",
+      "submitting": "Creating account...",
+      "submit": "Create my account"
+    }
+  },
+  "requestsList": {
+    "title": "Homework help listings",
+    "subtitle": "Search our listings using semantic search",
+    "searchPlaceholder": "Search by subject, level, keywords... (e.g. \"high school math\", \"English conversation\")",
+    "search": "Search",
+    "showAll": "Show all",
+    "hideFilters": "Hide filters",
+    "filtersAndSort": "Filters & Sort",
+    "subjectLabel": "Subject:",
+    "allSubjects": "All",
+    "levelLabel": "Level:",
+    "allLevels": "All",
+    "sortBy": "Sort by:",
+    "sortDefault": "Default",
+    "sortPriceAsc": "Price: low to high",
+    "sortPriceDesc": "Price: high to low",
+    "sortTitle": "Title (A-Z)",
+    "listingsShown": "{count} listing(s) shown",
+    "noListingsFound": "No listings found",
+    "noResultsFor": "No results for \"{query}\"",
+    "emptyDatabase": "The database is empty",
+    "showAllListings": "Show all listings",
+    "favoritesCount": "{count} favorite(s)",
+    "interestedCount": "{count} interested",
+    "score": "Score",
+    "favorite": "Favorite",
+    "interested": "Interested",
+    "showInterest": "Show interest",
+    "removeInterest": "Remove interest",
+    "searchingFor": "Search: \"{query}\"",
+    "allListings": "All listings",
+    "modal": {
+      "tutor": "Tutor",
+      "mode": "Mode",
+      "tool": "Tool",
+      "places": "Locations",
+      "interestTitle": "Interest in this course",
+      "interestedPeople": "{count} interested people",
+      "interestedEmails": "Interested students (emails)",
+      "courseDetails": "Course details",
+      "price": "Price",
+      "perHour": "hour",
+      "description": "Description"
+    },
+    "booking": {
+      "title": "Book this course",
+      "mustBeLoggedIn": "You must be logged in to book this course.",
+      "loadingSlots": "Loading availability...",
+      "noSlots": "No time slot available for this tutor right now.",
+      "comeBackLater": "Check back later or contact the tutor directly.",
+      "selectSlots": "Select one or more 1-hour time slots:",
+      "oneHour": "1 hour",
+      "notes": "Notes (optional)",
+      "notesPlaceholder": "Add any extra information...",
+      "selectedSlots": "Selected slots",
+      "totalDuration": "Total duration",
+      "estimatedPrice": "Estimated total price",
+      "confirmed": "Booking confirmed!",
+      "confirmedText": "Your booking has been saved successfully.",
+      "viewInAgenda": "View in calendar",
+      "booking": "Booking...",
+      "confirm": "Confirm ({count})"
+    }
+  },
+  "profile": {
+    "changeAvatar": "Change my profile picture",
+    "status": "Status",
+    "memberSince": "Member since {date}",
+    "removeAvatar": "Remove my profile picture",
+    "balanceAndStats": "Balance & Statistics",
+    "myBalance": "My StudyCoins balance",
+    "blockchainAddress": "Blockchain address",
+    "myReferralCode": "My referral code",
+    "copied": "Copied!",
+    "copy": "Copy",
+    "referralHint": "Share this code: it lets a student create their account.",
+    "beneficiaries": "Beneficiaries",
+    "amountCct": "Amount in CCT",
+    "sending": "Sending...",
+    "send": "Send",
+    "noBeneficiaries": "No beneficiaries saved yet.",
+    "beneficiaryName": "Beneficiary name",
+    "beneficiaryNamePlaceholder": "E.g. Marie Dupont",
+    "adding": "Adding...",
+    "addBeneficiary": "+ Add a beneficiary",
+    "stats": {
+      "helped": "Students helped",
+      "earned": "Coins earned",
+      "created": "Requests created"
+    },
+    "securityAndAccount": "Security & Account",
+    "resetPassword": "Reset password",
+    "currentPassword": "Current password",
+    "currentPasswordPlaceholder": "Enter your current password",
+    "newPassword": "New password",
+    "newPasswordPlaceholder": "Enter your new password",
+    "confirmPassword": "Confirm new password",
+    "confirmPasswordPlaceholder": "Confirm your new password",
+    "updating": "Updating...",
+    "updatePassword": "Update password",
+    "lessonLocations": "Lesson locations and format",
+    "saving": "Saving...",
+    "saveLocations": "Save lesson locations",
+    "linkedinAccount": "LinkedIn account",
+    "linkedinLinkedTo": "Linked to",
+    "linkedinNotLinked": "No LinkedIn account linked yet.",
+    "linkLinkedin": "Link my LinkedIn account",
+    "unlinkLinkedin": "Unlink my LinkedIn account",
+    "becomeTutor": "Become a tutor",
+    "becomeTutorIntro": "Want to start tutoring yourself? You can turn your student account into a tutor account.",
+    "becomeTutorPermanent": "This action is permanent.",
+    "becomingTutor": "Converting...",
+    "confirmBecomeTutor": "⚠️ Confirm: permanently become a tutor",
+    "logout": "Log out",
+    "logoutDescription": "Log out of your CryptoCampus account",
+    "deleteAccount": "Delete my account",
+    "deleteAccountWarning": "This action is irreversible. All your data will be permanently deleted."
+  }
+}

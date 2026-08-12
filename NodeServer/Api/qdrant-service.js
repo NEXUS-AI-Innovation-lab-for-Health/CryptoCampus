@@ -51,6 +51,9 @@ function createSimpleEmbedding(text, size = 384) {
 }
 
 // Indexer une annonce dans Qdrant
+// `translations` (optionnel) : { en: {title, description}, es: {...}, ... } — permet
+// d'afficher l'annonce dans la langue de l'utilisateur et de la retrouver en recherche
+// sémantique quelle que soit la langue de la requête (voir createSimpleEmbedding plus bas).
 export async function indexListing(listing) {
   try {
     const {
@@ -66,36 +69,51 @@ export async function indexListing(listing) {
       tutor_lesson_mode,
       tutor_visio_tool,
       tutor_places,
+      translations,
     } = listing;
-    
-    // Créer un texte combiné pour l'embedding
-    const combinedText = `${title} ${description} ${subject} ${level} ${tutor_name}`;
+
+    // Texte combiné pour l'embedding : le français + toutes les traductions disponibles,
+    // pour qu'une recherche dans n'importe quelle langue supportée trouve l'annonce.
+    const translatedText = translations
+      ? Object.values(translations).map((t) => `${t.title} ${t.description}`).join(' ')
+      : '';
+    const combinedText = `${title} ${description} ${subject} ${level} ${tutor_name} ${translatedText}`;
     const vector = createSimpleEmbedding(combinedText);
-    
+
+    const payload = {
+      title,
+      description,
+      subject,
+      level,
+      price,
+      tutor_name,
+      tutor_email,
+      tutor_user_id,
+      tutor_lesson_mode: tutor_lesson_mode || 'Visio',
+      tutor_visio_tool: tutor_visio_tool || 'Zoom',
+      tutor_places: Array.isArray(tutor_places) && tutor_places.length > 0 ? tutor_places : ['Visio'],
+      created_at: listing.created_at || new Date().toISOString()
+    };
+
+    // Aplati les traductions en title_en/description_en, title_es/description_es, etc.
+    if (translations) {
+      for (const [langCode, text] of Object.entries(translations)) {
+        payload[`title_${langCode}`] = text.title;
+        payload[`description_${langCode}`] = text.description;
+      }
+    }
+
     await client.upsert(COLLECTION_NAME, {
       wait: true,
       points: [
         {
           id: id,
           vector: vector,
-          payload: {
-            title,
-            description,
-            subject,
-            level,
-            price,
-            tutor_name,
-            tutor_email,
-            tutor_user_id,
-            tutor_lesson_mode: tutor_lesson_mode || 'Visio',
-            tutor_visio_tool: tutor_visio_tool || 'Zoom',
-            tutor_places: Array.isArray(tutor_places) && tutor_places.length > 0 ? tutor_places : ['Visio'],
-            created_at: listing.created_at || new Date().toISOString()
-          }
+          payload
         }
       ]
     });
-    
+
     console.log(`✅ Annonce #${id} indexée dans Qdrant`);
     return true;
   } catch (error) {

@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "requests": "Pedidos",
+    "reservations": "Reservas",
+    "agenda": "Agenda",
+    "favorites": "Cursos favoritos",
+    "myCourses": "Meus cursos",
+    "createRequest": "Criar um anúncio",
+    "login": "Entrar",
+    "chooseLanguage": "Escolher idioma"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Excluir",
+    "remove": "Remover",
+    "confirm": "Confirmar",
+    "close": "Fechar",
+    "back": "Voltar",
+    "yes": "Sim",
+    "no": "Não",
+    "loading": "Carregando...",
+    "student": "Estudante",
+    "tutor": "Tutor/a",
+    "admin": "Administrador"
+  },
+  "home": {
+    "hero": {
+      "title": "Bem-vindo(a) ao CryptoCampus",
+      "subtitle": "A plataforma de entreajuda acadêmica baseada em blockchain",
+      "browse": "Explorar pedidos",
+      "login": "Entrar",
+      "createRequest": "Criar um pedido"
+    },
+    "features": {
+      "title": "Nossas funcionalidades",
+      "mutualHelp": {
+        "title": "Entreajuda entre estudantes",
+        "description": "Peça ajuda à comunidade e recompense os tutores pela assistência."
+      },
+      "rewards": {
+        "title": "Sistema de recompensas",
+        "description": "Ganhe moedas ajudando outras pessoas e gaste-as em nossa loja exclusiva."
+      },
+      "secure": {
+        "title": "Seguro e transparente",
+        "description": "Todas as transações são registradas na blockchain para maior transparência."
+      },
+      "subjects": {
+        "title": "Ampla variedade de matérias",
+        "description": "Matemática, física, química, programação, idiomas e muitas outras áreas."
+      },
+      "fast": {
+        "title": "Rápido e eficiente",
+        "description": "Encontre um tutor rapidamente e resolva seus problemas em pouco tempo."
+      },
+      "quality": {
+        "title": "Qualidade garantida",
+        "description": "Avaliações de usuários e sistema de classificação para garantir alta qualidade."
+      }
+    },
+    "howItWorks": {
+      "title": "Como funciona",
+      "step1": { "title": "Crie um pedido", "description": "Descreva sua necessidade e ofereça uma recompensa em moedas." },
+      "step2": { "title": "Receba propostas", "description": "Os tutores disponíveis consultam seu pedido e entram em contato." },
+      "step3": { "title": "Colabore", "description": "Trabalhem juntos para resolver o problema ou aprender o assunto." },
+      "step4": { "title": "Valide e pague", "description": "Confirme a resposta e transfira as moedas ao tutor via blockchain." }
+    },
+    "stats": {
+      "activeStudents": "Estudantes ativos",
+      "resolvedRequests": "Pedidos resolvidos",
+      "subjects": "Matérias disponíveis"
+    },
+    "finalCta": {
+      "title": "Pronto(a) para começar?",
+      "subtitle": "Junte-se à nossa comunidade de estudantes apaixonados por aprendizagem colaborativa",
+      "register": "Cadastre-se agora",
+      "browse": "Ver pedidos"
+    }
+  },
+  "login": {
+    "subtitle": "A plataforma de entreajuda entre estudantes",
+    "linkedinIntro": "Seu perfil do LinkedIn foi obtido! Falta apenas uma etapa: diga-nos se você é estudante ou tutor(a) para finalizar a criação da sua conta.",
+    "tabs": { "login": "Entrar", "register": "Criar uma conta" },
+    "continueWithLinkedIn": "Continuar com o LinkedIn",
+    "or": "ou",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
+    "roleChoice": {
+      "label": "Quero criar uma conta de *",
+      "student": "Estudante",
+      "tutor": "Tutor/a"
+    },
+    "referralCode": {
+      "label": "Código de indicação *",
+      "placeholder": "Código recebido de quem te indicou",
+      "hint": "É necessário um código de indicação válido para criar uma conta de estudante."
+    },
+    "tutorFields": {
+      "lessonMode": "Modalidade principal das aulas *",
+      "visio": "Videochamada",
+      "presentiel": "Presencial",
+      "hybride": "Híbrida",
+      "visioTool": "Ferramenta de videochamada *",
+      "autre": "Outra",
+      "places": "Locais (separados por vírgulas)",
+      "placesPlaceholder": "Videochamada, Biblioteca, Casa..."
+    },
+    "finalize": {
+      "submitting": "Criando conta...",
+      "submit": "Finalizar minha conta"
+    },
+    "loginForm": {
+      "email": "E-mail",
+      "password": "Senha",
+      "passwordPlaceholder": "Sua senha",
+      "submitting": "Entrando...",
+      "submit": "Entrar"
+    },
+    "registerForm": {
+      "firstName": "Nome *",
+      "firstNamePlaceholder": "Seu nome",
+      "lastName": "Sobrenome *",
+      "lastNamePlaceholder": "Seu sobrenome",
+      "email": "E-mail *",
+      "password": "Senha *",
+      "passwordPlaceholder": "Mínimo de 8 caracteres",
+      "passwordHint": "Pelo menos 8 caracteres",
+      "submitting": "Criando conta...",
+      "submit": "Criar minha conta"
+    }
+  },
+  "requestsList": {
+    "title": "Anúncios de ajuda com os estudos",
+    "subtitle": "Pesquise nossos anúncios com busca semântica",
+    "searchPlaceholder": "Pesquise por matéria, nível, palavras-chave... (ex.: \"matemática ensino médio\", \"conversação em inglês\")",
+    "search": "Pesquisar",
+    "showAll": "Mostrar tudo",
+    "hideFilters": "Ocultar filtros",
+    "filtersAndSort": "Filtros e ordenação",
+    "subjectLabel": "Matéria:",
+    "allSubjects": "Todas",
+    "levelLabel": "Nível:",
+    "allLevels": "Todos",
+    "sortBy": "Ordenar por:",
+    "sortDefault": "Padrão",
+    "sortPriceAsc": "Preço crescente",
+    "sortPriceDesc": "Preço decrescente",
+    "sortTitle": "Título (A-Z)",
+    "listingsShown": "{count} anúncio(s) exibido(s)",
+    "noListingsFound": "Nenhum anúncio encontrado",
+    "noResultsFor": "Nenhum resultado para \"{query}\"",
+    "emptyDatabase": "O banco de dados está vazio",
+    "showAllListings": "Mostrar todos os anúncios",
+    "favoritesCount": "{count} favorito(s)",
+    "interestedCount": "{count} interessado(s)",
+    "score": "Pontuação",
+    "favorite": "Favorito",
+    "interested": "Interessado",
+    "showInterest": "Mostrar meu interesse",
+    "removeInterest": "Remover meu interesse",
+    "searchingFor": "Pesquisa: \"{query}\"",
+    "allListings": "Todos os anúncios",
+    "modal": {
+      "tutor": "Tutor/a",
+      "mode": "Modalidade",
+      "tool": "Ferramenta",
+      "places": "Locais",
+      "interestTitle": "Interesse neste curso",
+      "interestedPeople": "{count} pessoa(s) interessada(s)",
+      "interestedEmails": "Estudantes interessados (e-mails)",
+      "courseDetails": "Detalhes do curso",
+      "price": "Preço",
+      "perHour": "hora",
+      "description": "Descrição"
+    },
+    "booking": {
+      "title": "Reservar este curso",
+      "mustBeLoggedIn": "Você precisa estar conectado(a) para reservar este curso.",
+      "loadingSlots": "Carregando disponibilidade...",
+      "noSlots": "Nenhum horário disponível para este tutor no momento.",
+      "comeBackLater": "Volte mais tarde ou contate o tutor diretamente.",
+      "selectSlots": "Selecione um ou mais horários de 1 hora:",
+      "oneHour": "1 hora",
+      "notes": "Observações (opcional)",
+      "notesPlaceholder": "Adicione informações extras...",
+      "selectedSlots": "Horários selecionados",
+      "totalDuration": "Duração total",
+      "estimatedPrice": "Preço total estimado",
+      "confirmed": "Reserva confirmada!",
+      "confirmedText": "Sua reserva foi registrada com sucesso.",
+      "viewInAgenda": "Ver na agenda",
+      "booking": "Reservando...",
+      "confirm": "Confirmar ({count})"
+    }
+  },
+  "profile": {
+    "changeAvatar": "Alterar minha foto de perfil",
+    "status": "Status",
+    "memberSince": "Membro desde {date}",
+    "removeAvatar": "Remover minha foto de perfil",
+    "balanceAndStats": "Saldo e estatísticas",
+    "myBalance": "Meu saldo de StudyCoins",
+    "blockchainAddress": "Endereço blockchain",
+    "myReferralCode": "Meu código de indicação",
+    "copied": "Copiado!",
+    "copy": "Copiar",
+    "referralHint": "Compartilhe este código: ele permite que um(a) estudante crie a conta dele(a).",
+    "beneficiaries": "Beneficiários",
+    "amountCct": "Valor em CCT",
+    "sending": "Enviando...",
+    "send": "Enviar",
+    "noBeneficiaries": "Nenhum beneficiário cadastrado no momento.",
+    "beneficiaryName": "Nome do beneficiário",
+    "beneficiaryNamePlaceholder": "Ex.: Marie Dupont",
+    "adding": "Adicionando...",
+    "addBeneficiary": "+ Adicionar beneficiário",
+    "stats": {
+      "helped": "Estudantes ajudados",
+      "earned": "Moedas ganhas",
+      "created": "Pedidos criados"
+    },
+    "securityAndAccount": "Segurança e conta",
+    "resetPassword": "Redefinir senha",
+    "currentPassword": "Senha atual",
+    "currentPasswordPlaceholder": "Digite sua senha atual",
+    "newPassword": "Nova senha",
+    "newPasswordPlaceholder": "Digite sua nova senha",
+    "confirmPassword": "Confirmar nova senha",
+    "confirmPasswordPlaceholder": "Confirme sua nova senha",
+    "updating": "Atualizando...",
+    "updatePassword": "Atualizar senha",
+    "lessonLocations": "Locais e modalidades das aulas",
+    "saving": "Salvando...",
+    "saveLocations": "Salvar locais das aulas",
+    "linkedinAccount": "Conta do LinkedIn",
+    "linkedinLinkedTo": "Vinculada a",
+    "linkedinNotLinked": "Nenhuma conta do LinkedIn vinculada no momento.",
+    "linkLinkedin": "Vincular minha conta do LinkedIn",
+    "unlinkLinkedin": "Desvincular minha conta do LinkedIn",
+    "becomeTutor": "Tornar-se tutor(a)",
+    "becomeTutorIntro": "Quer também dar aulas? Você pode transformar sua conta de estudante em conta de tutor(a).",
+    "becomeTutorPermanent": "Esta ação é definitiva.",
+    "becomingTutor": "Convertendo...",
+    "confirmBecomeTutor": "⚠️ Confirmar: tornar-se tutor(a) definitivamente",
+    "logout": "Sair",
+    "logoutDescription": "Sair da sua conta CryptoCampus",
+    "deleteAccount": "Excluir minha conta",
+    "deleteAccountWarning": "Esta ação é irreversível. Todos os seus dados serão excluídos permanentemente."
+  }
+}

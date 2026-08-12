@@ -8,50 +8,44 @@
             to="/requetes"
             class="nav-link"
             :class="{ active: currentPage === 'requetes' }"
-            >Requêtes</router-link
+            >{{ t('nav.requests') }}</router-link
           >
           <router-link
             to="/reservations"
             class="nav-link"
             :class="{ active: currentPage === 'reservations' }"
             v-if="isLogged == true"
-            >Réservations</router-link
+            >{{ t('nav.reservations') }}</router-link
           >
           <router-link
             to="/agenda"
             class="nav-link"
             :class="{ active: currentPage === 'agenda' }"
             v-if="isLogged == true"
-            >Agenda</router-link
+            >{{ t('nav.agenda') }}</router-link
           >
-          <!-- <router-link
-            to="/balance"
-            class="nav-link"
-            :class="{ active: currentPage === 'balance' }"
-            v-if="isLogged == true"
-            >Mon solde</router-link
-          > -->
           <router-link
             to="/favoris"
             class="nav-link"
             :class="{ active: currentPage === 'favoris' }"
             v-if="isLogged == true"
-            >Cours favoris</router-link
+            >{{ t('nav.favorites') }}</router-link
           >
           <router-link
             to="/mes-cours"
             class="nav-link"
             :class="{ active: currentPage === 'mes-cours' }"
             v-if="isLogged == true && isTutor"
-            >Mes cours</router-link
+            >{{ t('nav.myCourses') }}</router-link
           >
           <router-link
             to="/create_request"
             class="nav-link btn-create"
             :class="{ active: currentPage === 'create_request' }"
             v-if="isLogged == true && isTutor"
-            >Créer une requête</router-link
+            >{{ t('nav.createRequest') }}</router-link
           >
+          <LanguageSwitcher />
           <div v-if="isLogged" class="profile-button" @click="handleLoginClick">
             <img :src="userAvatarUrl || defaultAvatar" alt="Profil" class="profile-icon" />
             <span class="profile-email">{{ userEmail }}</span>
@@ -62,7 +56,7 @@
             class="btn-login"
             @click="handleLoginClick"
           >
-            Connexion
+            {{ t('nav.login') }}
           </button>
         </div>
       </div>
@@ -75,14 +69,18 @@
 <script>
 import { computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAuth } from "@/composables/useAuth";
 import defaultAvatar from "@/assets/utilisateur.png";
+import LanguageSwitcher from "@/components/LanguageSwitcher.vue";
 
 export default {
   name: "App",
+  components: { LanguageSwitcher },
   setup() {
     const router = useRouter();
     const route = useRoute();
+    const { t } = useI18n();
     const { isLogged, userEmail, userAvatarUrl, isTutor, checkAuth } = useAuth();
     const currentPage = computed(() => {
       const path = route.path;
@@ -110,6 +108,7 @@ export default {
     );
 
     return {
+      t,
       isLogged,
       userEmail,
       userAvatarUrl,

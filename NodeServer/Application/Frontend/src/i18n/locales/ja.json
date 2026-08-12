@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "requests": "リクエスト",
+    "reservations": "予約",
+    "agenda": "カレンダー",
+    "favorites": "お気に入りの講座",
+    "myCourses": "マイ講座",
+    "createRequest": "講座を作成",
+    "login": "ログイン",
+    "chooseLanguage": "言語を選択"
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "remove": "削除",
+    "confirm": "確認",
+    "close": "閉じる",
+    "back": "戻る",
+    "yes": "はい",
+    "no": "いいえ",
+    "loading": "読み込み中...",
+    "student": "生徒",
+    "tutor": "講師",
+    "admin": "管理者"
+  },
+  "home": {
+    "hero": {
+      "title": "CryptoCampusへようこそ",
+      "subtitle": "ブロックチェーンを活用した学生同士の学び合いプラットフォーム",
+      "browse": "リクエストを見る",
+      "login": "ログイン",
+      "createRequest": "リクエストを作成"
+    },
+    "features": {
+      "title": "主な機能",
+      "mutualHelp": {
+        "title": "学生同士の助け合い",
+        "description": "コミュニティに助けを求め、サポートしてくれた講師に報酬を支払いましょう。"
+      },
+      "rewards": {
+        "title": "報酬システム",
+        "description": "他の人を助けてコインを獲得し、限定ショップで利用できます。"
+      },
+      "secure": {
+        "title": "安全で透明性が高い",
+        "description": "すべての取引はブロックチェーンに記録され、高い透明性を確保しています。"
+      },
+      "subjects": {
+        "title": "幅広い科目に対応",
+        "description": "数学、物理、化学、プログラミング、語学など多彩な分野に対応しています。"
+      },
+      "fast": {
+        "title": "スピーディーで効率的",
+        "description": "すぐに講師を見つけて、短時間で問題を解決できます。"
+      },
+      "quality": {
+        "title": "品質を保証",
+        "description": "ユーザーレビューと評価システムで高い品質を維持しています。"
+      }
+    },
+    "howItWorks": {
+      "title": "利用の流れ",
+      "step1": { "title": "リクエストを作成", "description": "必要なサポート内容を説明し、コインで報酬を提示します。" },
+      "step2": { "title": "提案を受け取る", "description": "対応可能な講師がリクエストを確認し、連絡してくれます。" },
+      "step3": { "title": "一緒に取り組む", "description": "協力して問題を解決したり、学習を進めたりします。" },
+      "step4": { "title": "承認して支払う", "description": "回答を確認し、ブロックチェーン経由で講師にコインを送金します。" }
+    },
+    "stats": {
+      "activeStudents": "アクティブな生徒数",
+      "resolvedRequests": "解決したリクエスト数",
+      "subjects": "対応科目数"
+    },
+    "finalCta": {
+      "title": "始める準備はできましたか？",
+      "subtitle": "協働学習に情熱を持つ学生コミュニティに参加しましょう",
+      "register": "今すぐ登録",
+      "browse": "リクエストを見る"
+    }
+  },
+  "login": {
+    "subtitle": "学生同士の助け合いプラットフォーム",
+    "linkedinIntro": "LinkedInのプロフィールを取得しました！最後のステップとして、生徒か講師かを教えてください。",
+    "tabs": { "login": "ログイン", "register": "アカウントを作成" },
+    "continueWithLinkedIn": "LinkedInで続ける",
+    "or": "または",
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを隠す",
+    "roleChoice": {
+      "label": "作成するアカウントの種類 *",
+      "student": "生徒",
+      "tutor": "講師"
+    },
+    "referralCode": {
+      "label": "紹介コード *",
+      "placeholder": "紹介者から受け取ったコード",
+      "hint": "生徒アカウントを作成するには有効な紹介コードが必要です。"
+    },
+    "tutorFields": {
+      "lessonMode": "主な授業形式 *",
+      "visio": "ビデオ通話",
+      "presentiel": "対面",
+      "hybride": "ハイブリッド",
+      "visioTool": "ビデオ通話ツール *",
+      "autre": "その他",
+      "places": "場所（カンマ区切り）",
+      "placesPlaceholder": "ビデオ通話、図書館、自宅..."
+    },
+    "finalize": {
+      "submitting": "アカウント作成中...",
+      "submit": "アカウントを完成させる"
+    },
+    "loginForm": {
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "passwordPlaceholder": "パスワードを入力",
+      "submitting": "ログイン中...",
+      "submit": "ログイン"
+    },
+    "registerForm": {
+      "firstName": "名 *",
+      "firstNamePlaceholder": "名を入力",
+      "lastName": "姓 *",
+      "lastNamePlaceholder": "姓を入力",
+      "email": "メールアドレス *",
+      "password": "パスワード *",
+      "passwordPlaceholder": "8文字以上",
+      "passwordHint": "8文字以上で入力してください",
+      "submitting": "アカウント作成中...",
+      "submit": "アカウントを作成"
+    }
+  },
+  "requestsList": {
+    "title": "宿題サポートのリクエスト一覧",
+    "subtitle": "セマンティック検索でリクエストを探せます",
+    "searchPlaceholder": "科目、レベル、キーワードで検索...（例：「高校数学」「英会話」）",
+    "search": "検索",
+    "showAll": "すべて表示",
+    "hideFilters": "フィルターを隠す",
+    "filtersAndSort": "フィルター・並び替え",
+    "subjectLabel": "科目：",
+    "allSubjects": "すべて",
+    "levelLabel": "レベル：",
+    "allLevels": "すべて",
+    "sortBy": "並び替え：",
+    "sortDefault": "デフォルト",
+    "sortPriceAsc": "価格が安い順",
+    "sortPriceDesc": "価格が高い順",
+    "sortTitle": "タイトル（A-Z）",
+    "listingsShown": "{count}件のリクエストを表示中",
+    "noListingsFound": "リクエストが見つかりません",
+    "noResultsFor": "「{query}」に一致する結果はありません",
+    "emptyDatabase": "データベースが空です",
+    "showAllListings": "すべてのリクエストを表示",
+    "favoritesCount": "お気に入り {count} 件",
+    "interestedCount": "興味あり {count} 件",
+    "score": "スコア",
+    "favorite": "お気に入り",
+    "interested": "興味あり",
+    "showInterest": "興味を示す",
+    "removeInterest": "興味を取り消す",
+    "searchingFor": "検索：「{query}」",
+    "allListings": "すべてのリクエスト",
+    "modal": {
+      "tutor": "講師",
+      "mode": "形式",
+      "tool": "ツール",
+      "places": "場所",
+      "interestTitle": "この講座への関心",
+      "interestedPeople": "興味を持っている人：{count}人",
+      "interestedEmails": "興味を持っている生徒（メール）",
+      "courseDetails": "講座の詳細",
+      "price": "料金",
+      "perHour": "時間",
+      "description": "説明"
+    },
+    "booking": {
+      "title": "この講座を予約する",
+      "mustBeLoggedIn": "この講座を予約するにはログインが必要です。",
+      "loadingSlots": "空き状況を読み込み中...",
+      "noSlots": "現在この講師の空き枠はありません。",
+      "comeBackLater": "後でもう一度確認するか、講師に直接連絡してください。",
+      "selectSlots": "1時間の枠を1つ以上選択してください：",
+      "oneHour": "1時間",
+      "notes": "メモ（任意）",
+      "notesPlaceholder": "追加情報を入力してください...",
+      "selectedSlots": "選択した枠",
+      "totalDuration": "合計時間",
+      "estimatedPrice": "見積もり合計金額",
+      "confirmed": "予約が確定しました！",
+      "confirmedText": "予約が正常に登録されました。",
+      "viewInAgenda": "カレンダーで見る",
+      "booking": "予約中...",
+      "confirm": "確定する（{count}）"
+    }
+  },
+  "profile": {
+    "changeAvatar": "プロフィール写真を変更",
+    "status": "ステータス",
+    "memberSince": "登録日：{date}",
+    "removeAvatar": "プロフィール写真を削除",
+    "balanceAndStats": "残高・統計",
+    "myBalance": "StudyCoins残高",
+    "blockchainAddress": "ブロックチェーンアドレス",
+    "myReferralCode": "紹介コード",
+    "copied": "コピーしました！",
+    "copy": "コピー",
+    "referralHint": "このコードを共有すると、生徒がアカウントを作成できます。",
+    "beneficiaries": "受取人",
+    "amountCct": "金額（CCT）",
+    "sending": "送金中...",
+    "send": "送金",
+    "noBeneficiaries": "登録されている受取人はまだありません。",
+    "beneficiaryName": "受取人の名前",
+    "beneficiaryNamePlaceholder": "例：山田太郎",
+    "adding": "追加中...",
+    "addBeneficiary": "＋ 受取人を追加",
+    "stats": {
+      "helped": "サポートした生徒数",
+      "earned": "獲得コイン",
+      "created": "作成したリクエスト数"
+    },
+    "securityAndAccount": "セキュリティ・アカウント",
+    "resetPassword": "パスワードを再設定",
+    "currentPassword": "現在のパスワード",
+    "currentPasswordPlaceholder": "現在のパスワードを入力",
+    "newPassword": "新しいパスワード",
+    "newPasswordPlaceholder": "新しいパスワードを入力",
+    "confirmPassword": "新しいパスワード（確認）",
+    "confirmPasswordPlaceholder": "新しいパスワードを再入力",
+    "updating": "更新中...",
+    "updatePassword": "パスワードを更新",
+    "lessonLocations": "授業の場所と形式",
+    "saving": "保存中...",
+    "saveLocations": "授業の場所を保存",
+    "linkedinAccount": "LinkedInアカウント",
+    "linkedinLinkedTo": "連携先：",
+    "linkedinNotLinked": "現在LinkedInアカウントは連携されていません。",
+    "linkLinkedin": "LinkedInアカウントを連携する",
+    "unlinkLinkedin": "LinkedIn連携を解除する",
+    "becomeTutor": "講師になる",
+    "becomeTutorIntro": "あなたも講師として教えてみませんか？生徒アカウントを講師アカウントに変更できます。",
+    "becomeTutorPermanent": "この操作は取り消せません。",
+    "becomingTutor": "変更中...",
+    "confirmBecomeTutor": "⚠️ 確認：講師に完全に切り替える",
+    "logout": "ログアウト",
+    "logoutDescription": "CryptoCampusアカウントからログアウトします",
+    "deleteAccount": "アカウントを削除",
+    "deleteAccountWarning": "この操作は取り消せません。すべてのデータが完全に削除されます。"
+  }
+}

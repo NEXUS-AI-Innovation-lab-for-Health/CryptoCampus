@@ -150,3 +150,73 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans \`\`\`json) a
         throw error;
     }
 }
+
+// Langues (hors français) dans lesquelles chaque annonce est automatiquement traduite
+export const LISTING_TRANSLATION_LANGUAGES = {
+    en: 'anglais',
+    es: 'espagnol',
+    pt: 'portugais',
+    de: 'allemand',
+    ja: 'japonais',
+    zh: 'chinois (mandarin, caractères simplifiés)',
+};
+
+// Traduit le titre et la description d'une annonce (déjà en français) dans toutes les
+// langues supportées par le site, en une seule requête.
+export async function translateListingText({ title, description }) {
+    try {
+        const languageList = Object.entries(LISTING_TRANSLATION_LANGUAGES)
+            .map(([code, name]) => `"${code}" (${name})`)
+            .join(', ');
+
+        const prompt = `Tu es un traducteur professionnel spécialisé dans les annonces de cours particuliers.
+Traduis fidèlement le titre et la description ci-dessous (rédigés en français) dans chacune des langues suivantes : ${languageList}.
+Garde un ton professionnel et engageant, adapté à une annonce de cours. Ne traduis pas les noms propres ni les prix.
+
+Titre :
+---
+${title || ''}
+---
+
+Description :
+---
+${description || ''}
+---
+
+Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans \`\`\`json) au format exact, une entrée par langue :
+{
+  "en": { "title": "...", "description": "..." },
+  "es": { "title": "...", "description": "..." },
+  "pt": { "title": "...", "description": "..." },
+  "de": { "title": "...", "description": "..." },
+  "ja": { "title": "...", "description": "..." },
+  "zh": { "title": "...", "description": "..." }
+}`;
+
+        const chatResponse = await ensureClient().chat.complete({
+            model: 'mistral-small-latest',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.2,
+            maxTokens: 3000,
+        });
+
+        const responseText = chatResponse.choices[0].message.content.trim();
+        let cleanJson = responseText;
+        if (cleanJson.includes('```')) {
+            cleanJson = cleanJson.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        }
+
+        const result = JSON.parse(cleanJson);
+        const translations = {};
+        for (const code of Object.keys(LISTING_TRANSLATION_LANGUAGES)) {
+            translations[code] = {
+                title: result[code]?.title || title,
+                description: result[code]?.description || description,
+            };
+        }
+        return translations;
+    } catch (error) {
+        console.error('❌ Erreur traduction annonce:', error);
+        throw error;
+    }
+}

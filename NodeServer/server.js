@@ -28,7 +28,7 @@ import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } fr
 import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './Api/qdrant-service.js';
 import { analyzeCVAndGenerateSuggestions } from './Api/cv-analyzer.js';
 import { getLinkedInAuthorizationUrl, exchangeCodeForToken, fetchLinkedInProfile } from './Api/linkedin-auth.js';
-import { correctListingText } from './Api/mistral-service.js';
+import { correctListingText, translateListingText } from './Api/mistral-service.js';
 
 /* ========================================
    CONFIGURATION DE BASE
@@ -227,6 +227,17 @@ async function safeCorrectListingText(title, description) {
   } catch (error) {
     console.warn('⚠️ Correction IA indisponible, texte original conservé:', error.message);
     return { title, description, corrected: false };
+  }
+}
+
+// Traduit une annonce dans toutes les langues du site, sans jamais faire échouer la
+// création/modification si Mistral est indisponible (l'annonce reste alors uniquement en français).
+async function safeTranslateListingText(title, description) {
+  try {
+    return await translateListingText({ title, description });
+  } catch (error) {
+    console.warn('⚠️ Traduction IA indisponible, annonce indexée en français uniquement:', error.message);
+    return null;
   }
 }
 
@@ -2225,6 +2236,9 @@ app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) =>
     const correctedTitle = corrected.title;
     const correctedDescription = corrected.description;
 
+    // Traduction automatique de l'annonce dans toutes les langues du site
+    const translations = await safeTranslateListingText(correctedTitle, correctedDescription);
+
     let tutor_user_id = req.session.userId;
     let tutor_email = null;
     let final_tutor_name = tutor_name || 'Anonymous';
@@ -2262,6 +2276,7 @@ app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) =>
       tutor_lesson_mode: tutorLessonMode,
       tutor_visio_tool: tutorVisioTool,
       tutor_places: tutorPlaces,
+      translations,
     };
 
     await indexListing(listing);
@@ -2302,6 +2317,9 @@ app.put('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, res)
       description ?? existing.description
     );
 
+    // Retraduction automatique de l'annonce dans toutes les langues du site
+    const translations = await safeTranslateListingText(corrected.title, corrected.description);
+
     const updatedListing = {
       ...existing,
       id: existing.id,
@@ -2314,6 +2332,7 @@ app.put('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, res)
       tutor_lesson_mode: normalizeLessonMode(existing.tutor_lesson_mode),
       tutor_visio_tool: normalizeVisioTool(existing.tutor_visio_tool),
       created_at: existing.created_at,
+      translations,
     };
 
     await indexListing(updatedListing);

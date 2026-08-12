@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "requests": "Anfragen",
+    "reservations": "Buchungen",
+    "agenda": "Kalender",
+    "favorites": "Favoriten",
+    "myCourses": "Meine Kurse",
+    "createRequest": "Anzeige erstellen",
+    "login": "Anmelden",
+    "chooseLanguage": "Sprache wählen"
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "remove": "Entfernen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "back": "Zurück",
+    "yes": "Ja",
+    "no": "Nein",
+    "loading": "Wird geladen...",
+    "student": "Student(in)",
+    "tutor": "Nachhilfelehrer(in)",
+    "admin": "Administrator"
+  },
+  "home": {
+    "hero": {
+      "title": "Willkommen bei CryptoCampus",
+      "subtitle": "Die Blockchain-basierte Plattform für akademische Nachbarschaftshilfe",
+      "browse": "Anfragen durchsuchen",
+      "login": "Anmelden",
+      "createRequest": "Anfrage erstellen"
+    },
+    "features": {
+      "title": "Unsere Funktionen",
+      "mutualHelp": {
+        "title": "Gegenseitige Hilfe unter Studierenden",
+        "description": "Bitten Sie die Community um Hilfe und belohnen Sie Nachhilfelehrer für ihre Unterstützung."
+      },
+      "rewards": {
+        "title": "Belohnungssystem",
+        "description": "Verdienen Sie Coins, indem Sie anderen helfen, und geben Sie sie in unserem exklusiven Shop aus."
+      },
+      "secure": {
+        "title": "Sicher und transparent",
+        "description": "Alle Transaktionen werden zur besseren Transparenz auf der Blockchain gespeichert."
+      },
+      "subjects": {
+        "title": "Große Fächerauswahl",
+        "description": "Mathematik, Physik, Chemie, Programmierung, Sprachen und viele weitere Bereiche."
+      },
+      "fast": {
+        "title": "Schnell und effizient",
+        "description": "Finden Sie schnell einen Nachhilfelehrer und lösen Sie Ihre Probleme in kürzester Zeit."
+      },
+      "quality": {
+        "title": "Garantierte Qualität",
+        "description": "Nutzerbewertungen und ein Bewertungssystem sichern eine hohe Qualität."
+      }
+    },
+    "howItWorks": {
+      "title": "So funktioniert's",
+      "step1": { "title": "Anfrage erstellen", "description": "Beschreiben Sie Ihren Hilfebedarf und bieten Sie eine Belohnung in Coins an." },
+      "step2": { "title": "Angebote erhalten", "description": "Verfügbare Nachhilfelehrer prüfen Ihre Anfrage und melden sich bei Ihnen." },
+      "step3": { "title": "Zusammenarbeiten", "description": "Arbeiten Sie gemeinsam am Problem oder am Lernstoff." },
+      "step4": { "title": "Bestätigen und bezahlen", "description": "Bestätigen Sie die Antwort und überweisen Sie die Coins per Blockchain an den Nachhilfelehrer." }
+    },
+    "stats": {
+      "activeStudents": "Aktive Studierende",
+      "resolvedRequests": "Gelöste Anfragen",
+      "subjects": "Verfügbare Fächer"
+    },
+    "finalCta": {
+      "title": "Bereit loszulegen?",
+      "subtitle": "Treten Sie unserer Community von Studierenden bei, die sich für kollaboratives Lernen begeistern",
+      "register": "Jetzt registrieren",
+      "browse": "Anfragen ansehen"
+    }
+  },
+  "login": {
+    "subtitle": "Die Plattform für Nachbarschaftshilfe unter Studierenden",
+    "linkedinIntro": "Ihr LinkedIn-Profil wurde abgerufen! Nur noch ein Schritt: Sagen Sie uns, ob Sie Student(in) oder Nachhilfelehrer(in) sind, um Ihr Konto fertigzustellen.",
+    "tabs": { "login": "Anmelden", "register": "Konto erstellen" },
+    "continueWithLinkedIn": "Mit LinkedIn fortfahren",
+    "or": "oder",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "roleChoice": {
+      "label": "Ich möchte ein Konto erstellen als *",
+      "student": "Student(in)",
+      "tutor": "Nachhilfelehrer(in)"
+    },
+    "referralCode": {
+      "label": "Empfehlungscode *",
+      "placeholder": "Code, den Sie von Ihrer Empfehlung erhalten haben",
+      "hint": "Ein gültiger Empfehlungscode ist erforderlich, um ein Studierendenkonto zu erstellen."
+    },
+    "tutorFields": {
+      "lessonMode": "Hauptunterrichtsform *",
+      "visio": "Videoanruf",
+      "presentiel": "Vor Ort",
+      "hybride": "Hybrid",
+      "visioTool": "Videoanruf-Tool *",
+      "autre": "Andere",
+      "places": "Orte (durch Kommas getrennt)",
+      "placesPlaceholder": "Videoanruf, Bibliothek, Zuhause..."
+    },
+    "finalize": {
+      "submitting": "Konto wird erstellt...",
+      "submit": "Konto fertigstellen"
+    },
+    "loginForm": {
+      "email": "E-Mail",
+      "password": "Passwort",
+      "passwordPlaceholder": "Ihr Passwort",
+      "submitting": "Anmeldung läuft...",
+      "submit": "Anmelden"
+    },
+    "registerForm": {
+      "firstName": "Vorname *",
+      "firstNamePlaceholder": "Ihr Vorname",
+      "lastName": "Nachname *",
+      "lastNamePlaceholder": "Ihr Nachname",
+      "email": "E-Mail *",
+      "password": "Passwort *",
+      "passwordPlaceholder": "Mindestens 8 Zeichen",
+      "passwordHint": "Mindestens 8 Zeichen",
+      "submitting": "Konto wird erstellt...",
+      "submit": "Konto erstellen"
+    }
+  },
+  "requestsList": {
+    "title": "Nachhilfe-Anzeigen",
+    "subtitle": "Durchsuchen Sie unsere Anzeigen mit semantischer Suche",
+    "searchPlaceholder": "Suche nach Fach, Niveau, Stichwörtern... (z. B. \"Mathe Gymnasium\", \"Englisch Konversation\")",
+    "search": "Suchen",
+    "showAll": "Alle anzeigen",
+    "hideFilters": "Filter ausblenden",
+    "filtersAndSort": "Filter & Sortierung",
+    "subjectLabel": "Fach:",
+    "allSubjects": "Alle",
+    "levelLabel": "Niveau:",
+    "allLevels": "Alle",
+    "sortBy": "Sortieren nach:",
+    "sortDefault": "Standard",
+    "sortPriceAsc": "Preis aufsteigend",
+    "sortPriceDesc": "Preis absteigend",
+    "sortTitle": "Titel (A-Z)",
+    "listingsShown": "{count} Anzeige(n) angezeigt",
+    "noListingsFound": "Keine Anzeigen gefunden",
+    "noResultsFor": "Keine Ergebnisse für \"{query}\"",
+    "emptyDatabase": "Die Datenbank ist leer",
+    "showAllListings": "Alle Anzeigen anzeigen",
+    "favoritesCount": "{count} Favorit(en)",
+    "interestedCount": "{count} interessiert",
+    "score": "Punktzahl",
+    "favorite": "Favorit",
+    "interested": "Interessiert",
+    "showInterest": "Interesse zeigen",
+    "removeInterest": "Interesse entfernen",
+    "searchingFor": "Suche: \"{query}\"",
+    "allListings": "Alle Anzeigen",
+    "modal": {
+      "tutor": "Nachhilfelehrer(in)",
+      "mode": "Modus",
+      "tool": "Tool",
+      "places": "Orte",
+      "interestTitle": "Interesse an diesem Kurs",
+      "interestedPeople": "{count} interessierte Person(en)",
+      "interestedEmails": "Interessierte Studierende (E-Mails)",
+      "courseDetails": "Kursdetails",
+      "price": "Preis",
+      "perHour": "Stunde",
+      "description": "Beschreibung"
+    },
+    "booking": {
+      "title": "Diesen Kurs buchen",
+      "mustBeLoggedIn": "Sie müssen angemeldet sein, um diesen Kurs zu buchen.",
+      "loadingSlots": "Verfügbarkeit wird geladen...",
+      "noSlots": "Derzeit sind keine Termine für diesen Nachhilfelehrer verfügbar.",
+      "comeBackLater": "Schauen Sie später wieder vorbei oder kontaktieren Sie den Nachhilfelehrer direkt.",
+      "selectSlots": "Wählen Sie einen oder mehrere 1-Stunden-Termine:",
+      "oneHour": "1 Stunde",
+      "notes": "Notizen (optional)",
+      "notesPlaceholder": "Fügen Sie zusätzliche Informationen hinzu...",
+      "selectedSlots": "Ausgewählte Termine",
+      "totalDuration": "Gesamtdauer",
+      "estimatedPrice": "Geschätzter Gesamtpreis",
+      "confirmed": "Buchung bestätigt!",
+      "confirmedText": "Ihre Buchung wurde erfolgreich gespeichert.",
+      "viewInAgenda": "Im Kalender anzeigen",
+      "booking": "Wird gebucht...",
+      "confirm": "Bestätigen ({count})"
+    }
+  },
+  "profile": {
+    "changeAvatar": "Profilbild ändern",
+    "status": "Status",
+    "memberSince": "Mitglied seit {date}",
+    "removeAvatar": "Profilbild entfernen",
+    "balanceAndStats": "Guthaben & Statistiken",
+    "myBalance": "Mein StudyCoins-Guthaben",
+    "blockchainAddress": "Blockchain-Adresse",
+    "myReferralCode": "Mein Empfehlungscode",
+    "copied": "Kopiert!",
+    "copy": "Kopieren",
+    "referralHint": "Teilen Sie diesen Code: Er ermöglicht einem/einer Studierenden, ein Konto zu erstellen.",
+    "beneficiaries": "Begünstigte",
+    "amountCct": "Betrag in CCT",
+    "sending": "Wird gesendet...",
+    "send": "Senden",
+    "noBeneficiaries": "Noch keine Begünstigten gespeichert.",
+    "beneficiaryName": "Name des/der Begünstigten",
+    "beneficiaryNamePlaceholder": "z. B. Marie Dupont",
+    "adding": "Wird hinzugefügt...",
+    "addBeneficiary": "+ Begünstigte(n) hinzufügen",
+    "stats": {
+      "helped": "Geholfene Studierende",
+      "earned": "Verdiente Coins",
+      "created": "Erstellte Anfragen"
+    },
+    "securityAndAccount": "Sicherheit & Konto",
+    "resetPassword": "Passwort zurücksetzen",
+    "currentPassword": "Aktuelles Passwort",
+    "currentPasswordPlaceholder": "Geben Sie Ihr aktuelles Passwort ein",
+    "newPassword": "Neues Passwort",
+    "newPasswordPlaceholder": "Geben Sie Ihr neues Passwort ein",
+    "confirmPassword": "Neues Passwort bestätigen",
+    "confirmPasswordPlaceholder": "Bestätigen Sie Ihr neues Passwort",
+    "updating": "Wird aktualisiert...",
+    "updatePassword": "Passwort aktualisieren",
+    "lessonLocations": "Unterrichtsorte und -form",
+    "saving": "Wird gespeichert...",
+    "saveLocations": "Unterrichtsorte speichern",
+    "linkedinAccount": "LinkedIn-Konto",
+    "linkedinLinkedTo": "Verknüpft mit",
+    "linkedinNotLinked": "Derzeit ist kein LinkedIn-Konto verknüpft.",
+    "linkLinkedin": "Mein LinkedIn-Konto verknüpfen",
+    "unlinkLinkedin": "LinkedIn-Konto trennen",
+    "becomeTutor": "Nachhilfelehrer(in) werden",
+    "becomeTutorIntro": "Möchten Sie selbst Nachhilfe geben? Sie können Ihr Studierendenkonto in ein Nachhilfelehrer(in)-Konto umwandeln.",
+    "becomeTutorPermanent": "Diese Aktion ist endgültig.",
+    "becomingTutor": "Wird umgewandelt...",
+    "confirmBecomeTutor": "⚠️ Bestätigen: endgültig Nachhilfelehrer(in) werden",
+    "logout": "Abmelden",
+    "logoutDescription": "Von Ihrem CryptoCampus-Konto abmelden",
+    "deleteAccount": "Mein Konto löschen",
+    "deleteAccountWarning": "Diese Aktion ist unwiderruflich. Alle Ihre Daten werden endgültig gelöscht."
+  }
+}

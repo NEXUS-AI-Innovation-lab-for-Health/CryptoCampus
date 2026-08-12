@@ -7,7 +7,7 @@
         <button
           type="button"
           class="avatar-edit-btn"
-          title="Changer ma photo de profil"
+          :title="t('profile.changeAvatar')"
           :disabled="isUploadingAvatar"
           @click="avatarInput?.click()"
         >📷</button>
@@ -22,11 +22,11 @@
       <div class="profile-info">
         <h1>{{ userInfo.first_name }} {{ userInfo.last_name }}</h1>
         <p class="email">{{ userInfo.email }}</p>
-        <p class="status-text">Statut : <strong>{{ getRoleLabel(userInfo.role) }}</strong></p>
-        <p class="join-date">Membre depuis {{ formatDate(userInfo.created_at) }}</p>
+        <p class="status-text">{{ t('profile.status') }} : <strong>{{ getRoleLabel(userInfo.role) }}</strong></p>
+        <p class="join-date">{{ t('profile.memberSince', { date: formatDate(userInfo.created_at) }) }}</p>
         <p v-if="avatarError" class="error-message avatar-error">{{ avatarError }}</p>
         <button v-if="userInfo.avatar_url" type="button" class="avatar-remove-link" @click="removeAvatar">
-          Retirer ma photo de profil
+          {{ t('profile.removeAvatar') }}
         </button>
       </div>
     </div>
@@ -38,13 +38,13 @@
         <div class="balance-stats-section">
           <h2 class="section-title">
             <span class="title-icon">💰</span>
-            Solde & Statistiques
+            {{ t('profile.balanceAndStats') }}
           </h2>
-          
+
           <!-- Balance Card -->
           <div class="balance-card">
             <div class="balance-content">
-              <p class="balance-label">Mon solde de StudyCoins</p>
+              <p class="balance-label">{{ t('profile.myBalance') }}</p>
               <div class="balance-amount">
                 <span class="coin-icon">🪙</span>
                 <span id="balanceValue" class="balance-value">{{ balance.toFixed(4) }}</span>
@@ -57,7 +57,7 @@
           <div v-if="blockchainAddress" class="blockchain-card">
             <div class="blockchain-header">
               <span class="blockchain-icon">🔗</span>
-              <span class="blockchain-label">Adresse Blockchain</span>
+              <span class="blockchain-label">{{ t('profile.blockchainAddress') }}</span>
             </div>
             <div class="blockchain-address">
               <code>{{ blockchainAddress }}</code>
@@ -68,22 +68,22 @@
           <div class="blockchain-card">
             <div class="blockchain-header">
               <span class="blockchain-icon">🎁</span>
-              <span class="blockchain-label">Mon code de parrainage</span>
+              <span class="blockchain-label">{{ t('profile.myReferralCode') }}</span>
             </div>
             <div class="blockchain-address">
               <code>{{ userInfo.referral_code || '...' }}</code>
               <button type="button" class="btn-copy" @click="copyReferralCode">
-                {{ referralCopied ? 'Copié !' : 'Copier' }}
+                {{ referralCopied ? t('profile.copied') : t('profile.copy') }}
               </button>
             </div>
-            <p class="referral-hint">Partagez ce code : il permet à un(e) étudiant(e) de créer son compte.</p>
+            <p class="referral-hint">{{ t('profile.referralHint') }}</p>
           </div>
 
           <!-- Beneficiaries Card -->
           <div class="beneficiaries-section">
             <h2 class="section-title">
               <span class="title-icon">👥</span>
-              Bénéficiaires
+              {{ t('profile.beneficiaries') }}
             </h2>
 
             <div v-if="beneficiaryError" class="error-message">{{ beneficiaryError }}</div>
@@ -101,7 +101,7 @@
                     min="0"
                     step="0.01"
                     v-model="sendAmounts[b.beneficiary_id]"
-                    placeholder="Montant CCT"
+                    :placeholder="t('profile.amountCct')"
                     class="beneficiary-amount"
                   />
                   <button
@@ -110,27 +110,27 @@
                     :disabled="sendingTo === b.beneficiary_id"
                     @click="sendToBeneficiary(b)"
                   >
-                    {{ sendingTo === b.beneficiary_id ? 'Envoi...' : 'Envoyer' }}
+                    {{ sendingTo === b.beneficiary_id ? t('profile.sending') : t('profile.send') }}
                   </button>
                   <button type="button" class="btn-delete-account" @click="removeBeneficiary(b.beneficiary_id)">
-                    Retirer
+                    {{ t('common.remove') }}
                   </button>
                 </div>
               </li>
             </ul>
-            <p v-else class="no-beneficiaries">Aucun bénéficiaire enregistré pour le moment.</p>
+            <p v-else class="no-beneficiaries">{{ t('profile.noBeneficiaries') }}</p>
 
             <div class="password-form">
               <div class="form-group">
-                <label for="beneficiaryLabel">Nom du bénéficiaire</label>
-                <input id="beneficiaryLabel" v-model="newBeneficiary.label" type="text" placeholder="Ex : Marie Dupont" />
+                <label for="beneficiaryLabel">{{ t('profile.beneficiaryName') }}</label>
+                <input id="beneficiaryLabel" v-model="newBeneficiary.label" type="text" :placeholder="t('profile.beneficiaryNamePlaceholder')" />
               </div>
               <div class="form-group">
-                <label for="beneficiaryAddress">Adresse blockchain</label>
+                <label for="beneficiaryAddress">{{ t('profile.blockchainAddress') }}</label>
                 <input id="beneficiaryAddress" v-model="newBeneficiary.address" type="text" placeholder="0x..." />
               </div>
               <button type="button" class="btn-update" :disabled="isAddingBeneficiary" @click="addBeneficiary">
-                {{ isAddingBeneficiary ? 'Ajout...' : '+ Ajouter un bénéficiaire' }}
+                {{ isAddingBeneficiary ? t('profile.adding') : t('profile.addBeneficiary') }}
               </button>
             </div>
           </div>
@@ -141,21 +141,21 @@
               <div class="stat-icon">📚</div>
               <div class="stat-info">
                 <h3>{{ stats.helpedCount }}</h3>
-                <p>Étudiants aidés</p>
+                <p>{{ t('profile.stats.helped') }}</p>
               </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon">⭐</div>
               <div class="stat-info">
                 <h3>{{ stats.totalEarned }}</h3>
-                <p>Coins gagnés</p>
+                <p>{{ t('profile.stats.earned') }}</p>
               </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon">🎯</div>
               <div class="stat-info">
                 <h3>{{ stats.requestsCreated }}</h3>
-                <p>Requêtes créées</p>
+                <p>{{ t('profile.stats.created') }}</p>
               </div>
             </div>
           </div>
@@ -167,43 +167,43 @@
         <div class="security-section">
           <h2 class="section-title">
             <span class="title-icon">🔒</span>
-            Sécurité & Compte
+            {{ t('profile.securityAndAccount') }}
           </h2>
 
           <!-- Password Reset Section -->
           <div class="password-reset-card">
-            <h3 class="card-subtitle">Réinitialiser le mot de passe</h3>
+            <h3 class="card-subtitle">{{ t('profile.resetPassword') }}</h3>
             <div class="password-form">
               <div v-if="passwordError" class="error-message">{{ passwordError }}</div>
               <div v-if="passwordSuccess" class="success-message">{{ passwordSuccess }}</div>
 
               <div class="form-group">
-                <label for="currentPassword">Mot de passe actuel</label>
+                <label for="currentPassword">{{ t('profile.currentPassword') }}</label>
                 <input
                   v-model="passwordForm.currentPassword"
                   type="password"
                   id="currentPassword"
-                  placeholder="Entrez votre mot de passe actuel"
+                  :placeholder="t('profile.currentPasswordPlaceholder')"
                 />
               </div>
 
               <div class="form-group">
-                <label for="newPassword">Nouveau mot de passe</label>
+                <label for="newPassword">{{ t('profile.newPassword') }}</label>
                 <input
                   v-model="passwordForm.newPassword"
                   type="password"
                   id="newPassword"
-                  placeholder="Entrez votre nouveau mot de passe"
+                  :placeholder="t('profile.newPasswordPlaceholder')"
                 />
               </div>
 
               <div class="form-group">
-                <label for="confirmPassword">Confirmer le nouveau mot de passe</label>
+                <label for="confirmPassword">{{ t('profile.confirmPassword') }}</label>
                 <input
                   v-model="passwordForm.confirmPassword"
                   type="password"
                   id="confirmPassword"
-                  placeholder="Confirmez votre nouveau mot de passe"
+                  :placeholder="t('profile.confirmPasswordPlaceholder')"
                 />
               </div>
 
@@ -212,113 +212,112 @@
                 class="btn-update"
                 :disabled="isResettingPassword"
               >
-                {{ isResettingPassword ? 'Mise à jour en cours...' : 'Mettre à jour le mot de passe' }}
+                {{ isResettingPassword ? t('profile.updating') : t('profile.updatePassword') }}
               </button>
             </div>
           </div>
 
           <div v-if="userInfo.role === 'TUTOR'" class="password-reset-card">
-            <h3 class="card-subtitle">Lieux et modalites de cours</h3>
+            <h3 class="card-subtitle">{{ t('profile.lessonLocations') }}</h3>
             <div class="password-form">
               <div v-if="locationError" class="error-message">{{ locationError }}</div>
               <div v-if="locationSuccess" class="success-message">{{ locationSuccess }}</div>
 
               <div class="form-group">
-                <label for="lessonMode">Mode principal</label>
+                <label for="lessonMode">{{ t('login.tutorFields.lessonMode') }}</label>
                 <select id="lessonMode" v-model="locationForm.lesson_mode">
-                  <option value="Visio">Visio</option>
-                  <option value="Presentiel">Presentiel</option>
-                  <option value="Hybride">Hybride</option>
+                  <option value="Visio">{{ t('login.tutorFields.visio') }}</option>
+                  <option value="Presentiel">{{ t('login.tutorFields.presentiel') }}</option>
+                  <option value="Hybride">{{ t('login.tutorFields.hybride') }}</option>
                 </select>
               </div>
 
               <div class="form-group" v-if="locationForm.lesson_mode === 'Visio' || locationForm.lesson_mode === 'Hybride'">
-                <label for="visioTool">Outil visio</label>
+                <label for="visioTool">{{ t('login.tutorFields.visioTool') }}</label>
                 <select id="visioTool" v-model="locationForm.visio_tool">
                   <option value="Zoom">Zoom</option>
                   <option value="Teams">Teams</option>
                   <option value="Google Meet">Google Meet</option>
                   <option value="Discord">Discord</option>
-                  <option value="Autre">Autre</option>
+                  <option value="Autre">{{ t('login.tutorFields.autre') }}</option>
                 </select>
               </div>
 
               <div class="form-group">
-                <label for="lessonPlaces">Lieux (separes par des virgules)</label>
+                <label for="lessonPlaces">{{ t('login.tutorFields.places') }}</label>
                 <input
                   id="lessonPlaces"
                   v-model="locationForm.lesson_places_raw"
                   type="text"
-                  placeholder="Visio, Bibliotheque, Domicile..."
+                  :placeholder="t('login.tutorFields.placesPlaceholder')"
                 />
               </div>
 
               <button @click="saveLessonLocations" class="btn-update" :disabled="isSavingLocations">
-                {{ isSavingLocations ? 'Enregistrement...' : 'Enregistrer les lieux de cours' }}
+                {{ isSavingLocations ? t('profile.saving') : t('profile.saveLocations') }}
               </button>
             </div>
           </div>
 
           <!-- LinkedIn (tuteurs uniquement) -->
           <div v-if="userInfo.role === 'TUTOR'" class="password-reset-card">
-            <h3 class="card-subtitle">Compte LinkedIn</h3>
+            <h3 class="card-subtitle">{{ t('profile.linkedinAccount') }}</h3>
             <div class="password-form">
               <div v-if="linkedinMessage" class="success-message">{{ linkedinMessage }}</div>
               <div v-if="linkedinError" class="error-message">{{ linkedinError }}</div>
 
               <p v-if="userInfo.linkedin_email" class="linkedin-status">
-                ✅ Lié à <strong>{{ userInfo.linkedin_email }}</strong>
+                ✅ {{ t('profile.linkedinLinkedTo') }} <strong>{{ userInfo.linkedin_email }}</strong>
               </p>
-              <p v-else class="linkedin-status">Aucun compte LinkedIn lié pour le moment.</p>
+              <p v-else class="linkedin-status">{{ t('profile.linkedinNotLinked') }}</p>
 
               <button v-if="!userInfo.linkedin_email" @click="linkLinkedIn" class="btn-update">
-                🔗 Lier mon compte LinkedIn
+                🔗 {{ t('profile.linkLinkedin') }}
               </button>
               <button v-else @click="unlinkLinkedIn" class="btn-delete-account">
-                Délier mon compte LinkedIn
+                {{ t('profile.unlinkLinkedin') }}
               </button>
             </div>
           </div>
 
           <!-- Devenir tuteur (étudiants uniquement) -->
           <div v-if="userInfo.role === 'STUDENT'" class="password-reset-card">
-            <h3 class="card-subtitle">Devenir tuteur / tutrice</h3>
+            <h3 class="card-subtitle">{{ t('profile.becomeTutor') }}</h3>
             <div class="password-form">
               <div v-if="becomeTutorError" class="error-message">{{ becomeTutorError }}</div>
               <p class="linkedin-status">
-                Vous souhaitez donner des cours à votre tour ? Vous pouvez transformer votre
-                compte étudiant en compte tuteur. <strong>Cette action est définitive.</strong>
+                {{ t('profile.becomeTutorIntro') }} <strong>{{ t('profile.becomeTutorPermanent') }}</strong>
               </p>
 
               <div v-if="showBecomeTutorForm">
                 <div class="form-group">
-                  <label for="becomeTutorMode">Mode principal des cours</label>
+                  <label for="becomeTutorMode">{{ t('login.tutorFields.lessonMode') }}</label>
                   <select id="becomeTutorMode" v-model="becomeTutorForm.lesson_mode">
-                    <option value="Visio">Visio</option>
-                    <option value="Presentiel">Presentiel</option>
-                    <option value="Hybride">Hybride</option>
+                    <option value="Visio">{{ t('login.tutorFields.visio') }}</option>
+                    <option value="Presentiel">{{ t('login.tutorFields.presentiel') }}</option>
+                    <option value="Hybride">{{ t('login.tutorFields.hybride') }}</option>
                   </select>
                 </div>
                 <div class="form-group" v-if="becomeTutorForm.lesson_mode === 'Visio' || becomeTutorForm.lesson_mode === 'Hybride'">
-                  <label for="becomeTutorVisio">Outil visio</label>
+                  <label for="becomeTutorVisio">{{ t('login.tutorFields.visioTool') }}</label>
                   <select id="becomeTutorVisio" v-model="becomeTutorForm.visio_tool">
                     <option value="Zoom">Zoom</option>
                     <option value="Teams">Teams</option>
                     <option value="Google Meet">Google Meet</option>
                     <option value="Discord">Discord</option>
-                    <option value="Autre">Autre</option>
+                    <option value="Autre">{{ t('login.tutorFields.autre') }}</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="becomeTutorPlaces">Lieux (separes par des virgules)</label>
-                  <input id="becomeTutorPlaces" v-model="becomeTutorForm.lesson_places_raw" type="text" placeholder="Visio, Bibliotheque, Domicile..." />
+                  <label for="becomeTutorPlaces">{{ t('login.tutorFields.places') }}</label>
+                  <input id="becomeTutorPlaces" v-model="becomeTutorForm.lesson_places_raw" type="text" :placeholder="t('login.tutorFields.placesPlaceholder')" />
                 </div>
                 <button @click="confirmBecomeTutor" class="btn-delete-account" :disabled="isBecomingTutor">
-                  {{ isBecomingTutor ? 'Conversion en cours...' : '⚠️ Confirmer : devenir tuteur définitivement' }}
+                  {{ isBecomingTutor ? t('profile.becomingTutor') : t('profile.confirmBecomeTutor') }}
                 </button>
               </div>
               <button v-else @click="showBecomeTutorForm = true" class="btn-update">
-                Devenir tuteur / tutrice
+                {{ t('profile.becomeTutor') }}
               </button>
             </div>
           </div>
@@ -327,12 +326,12 @@
           <div class="logout-card">
             <div class="logout-content">
               <div class="logout-info">
-                <h3 class="card-subtitle">Déconnexion</h3>
-                <p class="logout-description">Se déconnecter de votre compte CryptoCampus</p>
+                <h3 class="card-subtitle">{{ t('profile.logout') }}</h3>
+                <p class="logout-description">{{ t('profile.logoutDescription') }}</p>
               </div>
               <button @click="logout" class="btn-logout">
                 <span class="logout-icon">🚪</span>
-                Déconnexion
+                {{ t('profile.logout') }}
               </button>
             </div>
           </div>
@@ -341,12 +340,12 @@
           <div class="delete-account-card">
             <div class="delete-account-content">
               <div class="delete-account-info">
-                <h3 class="card-subtitle danger">Supprimer mon compte</h3>
-                <p class="delete-account-description">⚠️ Cette action est irréversible. Toutes vos données seront définitivement supprimées.</p>
+                <h3 class="card-subtitle danger">{{ t('profile.deleteAccount') }}</h3>
+                <p class="delete-account-description">⚠️ {{ t('profile.deleteAccountWarning') }}</p>
               </div>
               <button @click="confirmDeleteAccount" class="btn-delete-account">
                 <span class="delete-icon">🗑️</span>
-                Supprimer le compte
+                {{ t('profile.deleteAccount') }}
               </button>
             </div>
           </div>
@@ -359,6 +358,7 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import defaultAvatar from '@/assets/utilisateur.png'
 
 export default {
@@ -367,6 +367,7 @@ export default {
     const userId = localStorage.getItem('token')
     const router = useRouter()
     const route = useRoute()
+    const { t, locale } = useI18n()
     const balance = ref(0)
     const blockchainAddress = ref(null)
     const stats = ref({
@@ -432,16 +433,16 @@ export default {
 
     const getRoleLabel = (role) => {
       const roleLabels = {
-        'STUDENT': 'Étudiant',
-        'TUTOR': 'Tuteur',
-        'ADMIN': 'Administrateur'
+        'STUDENT': t('common.student'),
+        'TUTOR': t('common.tutor'),
+        'ADMIN': t('common.admin')
       }
       return roleLabels[role] || role
     }
 
     const formatDate = (dateString) => {
       const date = new Date(dateString)
-      return date.toLocaleDateString('fr-FR', {
+      return date.toLocaleDateString(locale.value, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -865,6 +866,7 @@ export default {
     })
 
     return {
+      t,
       balance,
       blockchainAddress,
       stats,

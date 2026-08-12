@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "requests": "需求",
+    "reservations": "预约",
+    "agenda": "日程",
+    "favorites": "收藏课程",
+    "myCourses": "我的课程",
+    "createRequest": "发布课程",
+    "login": "登录",
+    "chooseLanguage": "选择语言"
+  },
+  "common": {
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "remove": "移除",
+    "confirm": "确认",
+    "close": "关闭",
+    "back": "返回",
+    "yes": "是",
+    "no": "否",
+    "loading": "加载中...",
+    "student": "学生",
+    "tutor": "导师",
+    "admin": "管理员"
+  },
+  "home": {
+    "hero": {
+      "title": "欢迎来到 CryptoCampus",
+      "subtitle": "基于区块链的学术互助平台",
+      "browse": "浏览需求",
+      "login": "登录",
+      "createRequest": "发布需求"
+    },
+    "features": {
+      "title": "我们的功能",
+      "mutualHelp": {
+        "title": "学生互助",
+        "description": "向社区寻求帮助，并奖励为您提供帮助的导师。"
+      },
+      "rewards": {
+        "title": "奖励系统",
+        "description": "通过帮助他人赚取代币，并在我们的专属商店中使用。"
+      },
+      "secure": {
+        "title": "安全透明",
+        "description": "所有交易都记录在区块链上，确保透明可信。"
+      },
+      "subjects": {
+        "title": "科目丰富",
+        "description": "数学、物理、化学、编程、语言等众多领域应有尽有。"
+      },
+      "fast": {
+        "title": "快速高效",
+        "description": "快速找到导师，短时间内解决您的问题。"
+      },
+      "quality": {
+        "title": "品质保证",
+        "description": "用户评价与评分系统确保服务质量。"
+      }
+    },
+    "howItWorks": {
+      "title": "使用流程",
+      "step1": { "title": "发布需求", "description": "描述您需要的帮助，并提供代币奖励。" },
+      "step2": { "title": "收到回复", "description": "空闲的导师会查看您的需求并与您联系。" },
+      "step3": { "title": "协作学习", "description": "一起解决问题或学习相关知识。" },
+      "step4": { "title": "确认并付款", "description": "确认答复后，通过区块链将代币转给导师。" }
+    },
+    "stats": {
+      "activeStudents": "活跃学生",
+      "resolvedRequests": "已解决需求",
+      "subjects": "可选科目"
+    },
+    "finalCta": {
+      "title": "准备好开始了吗？",
+      "subtitle": "加入我们热爱协作学习的学生社区",
+      "register": "立即注册",
+      "browse": "查看需求"
+    }
+  },
+  "login": {
+    "subtitle": "学生互助平台",
+    "linkedinIntro": "我们已获取您的领英资料！还差一步：请告诉我们您是学生还是导师，以完成账户创建。",
+    "tabs": { "login": "登录", "register": "创建账户" },
+    "continueWithLinkedIn": "使用领英继续",
+    "or": "或",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
+    "roleChoice": {
+      "label": "我想创建的账户类型 *",
+      "student": "学生",
+      "tutor": "导师"
+    },
+    "referralCode": {
+      "label": "邀请码 *",
+      "placeholder": "您从推荐人处获得的邀请码",
+      "hint": "创建学生账户需要提供有效的邀请码。"
+    },
+    "tutorFields": {
+      "lessonMode": "主要授课方式 *",
+      "visio": "视频通话",
+      "presentiel": "线下面对面",
+      "hybride": "混合方式",
+      "visioTool": "视频通话工具 *",
+      "autre": "其他",
+      "places": "地点（用逗号分隔）",
+      "placesPlaceholder": "视频通话、图书馆、家中..."
+    },
+    "finalize": {
+      "submitting": "正在创建账户...",
+      "submit": "完成账户创建"
+    },
+    "loginForm": {
+      "email": "电子邮箱",
+      "password": "密码",
+      "passwordPlaceholder": "请输入密码",
+      "submitting": "正在登录...",
+      "submit": "登录"
+    },
+    "registerForm": {
+      "firstName": "名字 *",
+      "firstNamePlaceholder": "请输入名字",
+      "lastName": "姓氏 *",
+      "lastNamePlaceholder": "请输入姓氏",
+      "email": "电子邮箱 *",
+      "password": "密码 *",
+      "passwordPlaceholder": "至少8个字符",
+      "passwordHint": "至少8个字符",
+      "submitting": "正在创建账户...",
+      "submit": "创建账户"
+    }
+  },
+  "requestsList": {
+    "title": "作业帮助需求列表",
+    "subtitle": "使用语义搜索查找我们的需求",
+    "searchPlaceholder": "按科目、级别、关键词搜索...（例如：「高中数学」「英语口语」）",
+    "search": "搜索",
+    "showAll": "显示全部",
+    "hideFilters": "隐藏筛选",
+    "filtersAndSort": "筛选和排序",
+    "subjectLabel": "科目：",
+    "allSubjects": "全部",
+    "levelLabel": "级别：",
+    "allLevels": "全部",
+    "sortBy": "排序方式：",
+    "sortDefault": "默认",
+    "sortPriceAsc": "价格从低到高",
+    "sortPriceDesc": "价格从高到低",
+    "sortTitle": "标题（A-Z）",
+    "listingsShown": "显示 {count} 条需求",
+    "noListingsFound": "未找到相关需求",
+    "noResultsFor": "未找到与\"{query}\"匹配的结果",
+    "emptyDatabase": "数据库为空",
+    "showAllListings": "显示所有需求",
+    "favoritesCount": "{count} 个收藏",
+    "interestedCount": "{count} 人感兴趣",
+    "score": "匹配度",
+    "favorite": "收藏",
+    "interested": "感兴趣",
+    "showInterest": "表示感兴趣",
+    "removeInterest": "取消感兴趣",
+    "searchingFor": "搜索：\"{query}\"",
+    "allListings": "所有需求",
+    "modal": {
+      "tutor": "导师",
+      "mode": "方式",
+      "tool": "工具",
+      "places": "地点",
+      "interestTitle": "对该课程的兴趣",
+      "interestedPeople": "{count} 人感兴趣",
+      "interestedEmails": "感兴趣的学生（邮箱）",
+      "courseDetails": "课程详情",
+      "price": "价格",
+      "perHour": "小时",
+      "description": "描述"
+    },
+    "booking": {
+      "title": "预约该课程",
+      "mustBeLoggedIn": "您需要登录才能预约该课程。",
+      "loadingSlots": "正在加载可用时间...",
+      "noSlots": "该导师目前没有可用时段。",
+      "comeBackLater": "请稍后再来查看，或直接联系导师。",
+      "selectSlots": "请选择一个或多个1小时时段：",
+      "oneHour": "1小时",
+      "notes": "备注（选填）",
+      "notesPlaceholder": "添加补充信息...",
+      "selectedSlots": "已选时段",
+      "totalDuration": "总时长",
+      "estimatedPrice": "预计总价",
+      "confirmed": "预约已确认！",
+      "confirmedText": "您的预约已成功保存。",
+      "viewInAgenda": "在日程中查看",
+      "booking": "预约中...",
+      "confirm": "确认（{count}）"
+    }
+  },
+  "profile": {
+    "changeAvatar": "更换头像",
+    "status": "状态",
+    "memberSince": "注册于 {date}",
+    "removeAvatar": "移除头像",
+    "balanceAndStats": "余额与统计",
+    "myBalance": "我的 StudyCoins 余额",
+    "blockchainAddress": "区块链地址",
+    "myReferralCode": "我的邀请码",
+    "copied": "已复制！",
+    "copy": "复制",
+    "referralHint": "分享此邀请码：学生可凭此码创建账户。",
+    "beneficiaries": "受益人",
+    "amountCct": "金额（CCT）",
+    "sending": "发送中...",
+    "send": "发送",
+    "noBeneficiaries": "暂无已保存的受益人。",
+    "beneficiaryName": "受益人姓名",
+    "beneficiaryNamePlaceholder": "例如：张三",
+    "adding": "添加中...",
+    "addBeneficiary": "+ 添加受益人",
+    "stats": {
+      "helped": "已帮助学生数",
+      "earned": "已获得代币",
+      "created": "已创建需求数"
+    },
+    "securityAndAccount": "安全与账户",
+    "resetPassword": "重置密码",
+    "currentPassword": "当前密码",
+    "currentPasswordPlaceholder": "请输入当前密码",
+    "newPassword": "新密码",
+    "newPasswordPlaceholder": "请输入新密码",
+    "confirmPassword": "确认新密码",
+    "confirmPasswordPlaceholder": "请再次输入新密码",
+    "updating": "更新中...",
+    "updatePassword": "更新密码",
+    "lessonLocations": "授课地点与方式",
+    "saving": "保存中...",
+    "saveLocations": "保存授课地点",
+    "linkedinAccount": "领英账户",
+    "linkedinLinkedTo": "已关联至",
+    "linkedinNotLinked": "尚未关联领英账户。",
+    "linkLinkedin": "关联我的领英账户",
+    "unlinkLinkedin": "取消关联领英账户",
+    "becomeTutor": "成为导师",
+    "becomeTutorIntro": "您也想成为导师吗？您可以将学生账户转换为导师账户。",
+    "becomeTutorPermanent": "此操作不可撤销。",
+    "becomingTutor": "转换中...",
+    "confirmBecomeTutor": "⚠️ 确认：永久成为导师",
+    "logout": "退出登录",
+    "logoutDescription": "退出您的 CryptoCampus 账户",
+    "deleteAccount": "删除我的账户",
+    "deleteAccountWarning": "此操作不可撤销，您的所有数据将被永久删除。"
+  }
+}
