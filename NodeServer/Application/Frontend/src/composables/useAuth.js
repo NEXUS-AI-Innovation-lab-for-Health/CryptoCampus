@@ -8,6 +8,7 @@ const isLogged = ref(null)
 const userId = ref('')
 const userRole = ref('')
 const userEmail = ref('')
+const userAvatarUrl = ref('')
 
 async function checkAuth() {
   try {
@@ -18,6 +19,7 @@ async function checkAuth() {
     userId.value = data.userId || ''
     userRole.value = data.role || ''
     userEmail.value = data.email || ''
+    userAvatarUrl.value = data.avatarUrl || ''
 
     return data
   } catch (error) {
@@ -26,6 +28,7 @@ async function checkAuth() {
     userId.value = ''
     userRole.value = ''
     userEmail.value = ''
+    userAvatarUrl.value = ''
     return { isAuthenticated: false }
   }
 }
@@ -38,6 +41,7 @@ export function useAuth() {
     userId,
     userRole,
     userEmail,
+    userAvatarUrl,
     isTutor,
     checkAuth,
   }

@@ -667,6 +667,8 @@ export default {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* Évite que les cases du calendrier ne touchent la barre de défilement */
+  padding-right: 0.75rem;
 }
 
 .calendar-weekdays {

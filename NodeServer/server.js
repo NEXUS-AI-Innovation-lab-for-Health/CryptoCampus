@@ -8,8 +8,8 @@
 import express from 'express';
 import { Pool } from 'pg';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { readFileSync, existsSync } from 'fs';
+import { dirname, join, basename } from 'path';
+import { readFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import bcrypt from 'bcrypt';
@@ -258,6 +258,10 @@ async function ensureFeatureSchema() {
      ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`,
     `ALTER TABLE users
      ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES users(user_id)`,
+    `ALTER TABLE users
+     ADD COLUMN IF NOT EXISTS linkedin_email VARCHAR`,
+    `ALTER TABLE users
+     ADD COLUMN IF NOT EXISTS avatar_url TEXT`,
     `CREATE TABLE IF NOT EXISTS beneficiaries (
       beneficiary_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       owner_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -318,25 +322,60 @@ async function generateUniqueReferralCode() {
    - Pas de code => compte TUTEUR
    - ADMIN n'est jamais attribuable via ce mécanisme
    ======================================== */
-async function resolveRoleFromReferral(referralCodeRaw) {
-  const referralCode = typeof referralCodeRaw === 'string' ? referralCodeRaw.trim().toUpperCase() : '';
+async function resolveRoleFromReferral(desiredRoleRaw, referralCodeRaw) {
+  const desiredRole = typeof desiredRoleRaw === 'string' ? desiredRoleRaw.trim().toUpperCase() : '';
 
-  if (!referralCode) {
+  if (desiredRole === 'TUTOR') {
     return { role: 'TUTOR', referredBy: null };
   }
 
-  const referrer = await pool.query(
-    'SELECT user_id FROM users WHERE referral_code = $1',
-    [referralCode]
-  );
+  if (desiredRole === 'STUDENT') {
+    const referralCode = typeof referralCodeRaw === 'string' ? referralCodeRaw.trim().toUpperCase() : '';
 
-  if (referrer.rows.length === 0) {
-    const err = new Error('Code de parrainage invalide');
-    err.statusCode = 400;
-    throw err;
+    if (!referralCode) {
+      const err = new Error('Un code de parrainage est requis pour créer un compte étudiant');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const referrer = await pool.query(
+      'SELECT user_id FROM users WHERE referral_code = $1',
+      [referralCode]
+    );
+
+    if (referrer.rows.length === 0) {
+      const err = new Error('Code de parrainage invalide');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    return { role: 'STUDENT', referredBy: referrer.rows[0].user_id };
   }
 
-  return { role: 'STUDENT', referredBy: referrer.rows[0].user_id };
+  const err = new Error('Choisissez si vous créez un compte étudiant ou tuteur');
+  err.statusCode = 400;
+  throw err;
+}
+
+// Ajoute le nouvel étudiant parrainé au carnet de bénéficiaires de son parrain
+// (pour que le tuteur puisse lui envoyer des CCT rapidement, ex. lors d'un test).
+async function addStudentAsBeneficiary(tutorUserId, studentUserId, studentLabel) {
+  try {
+    const walletResult = await pool.query(
+      `SELECT public_address FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+      [studentUserId]
+    );
+    if (walletResult.rows.length === 0) return;
+
+    const address = walletResult.rows[0].public_address;
+    await pool.query(
+      `INSERT INTO beneficiaries (owner_user_id, label, address) VALUES ($1, $2, $3)`,
+      [tutorUserId, studentLabel || 'Filleul(e)', address]
+    );
+  } catch (error) {
+    // Non bloquant : l'échec de cet ajout ne doit pas faire échouer l'inscription
+    console.error('Erreur ajout automatique du filleul en bénéficiaire:', error.message);
+  }
 }
 
 /* ========================================
@@ -525,6 +564,52 @@ const upload = multer({
 });
 
 /* ========================================
+   PHOTOS DE PROFIL
+   ======================================== */
+
+const AVATAR_MIME_TO_EXT = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
+const avatarsDir = join(__dirname, 'uploads', 'avatars');
+mkdirSync(avatarsDir, { recursive: true });
+
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, avatarsDir),
+  filename: (req, file, cb) => {
+    const ext = AVATAR_MIME_TO_EXT[file.mimetype] || '.jpg';
+    cb(null, `${req.session.userId}-${Date.now()}${ext}`);
+  },
+});
+
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
+  fileFilter: (req, file, cb) => {
+    if (AVATAR_MIME_TO_EXT[file.mimetype]) {
+      cb(null, true);
+    } else {
+      cb(new Error('Formats acceptés : JPG, PNG, WEBP'));
+    }
+  },
+});
+
+// Sert les avatars uploadés. Passe par /api/ (proxifié par Nginx vers ce serveur),
+// pas besoin de toucher à la config Nginx du frontend.
+app.use('/api/uploads', express.static(join(__dirname, 'uploads')));
+
+function deleteAvatarFile(avatarUrl) {
+  if (!avatarUrl || !avatarUrl.startsWith('/api/uploads/avatars/')) return;
+  try {
+    unlinkSync(join(avatarsDir, basename(avatarUrl)));
+  } catch (error) {
+    // Fichier déjà absent ou verrouillé : non bloquant
+  }
+}
+
+/* ========================================
    ROUTES API - AUTHENTIFICATION
    ======================================== */
 
@@ -589,16 +674,17 @@ app.get('/api/check-auth', async (req, res) => {
   if (isAuthenticated && req.session.userId) {
     try {
       const result = await pool.query(
-        'SELECT role, email FROM users WHERE user_id = $1',
+        'SELECT role, email, avatar_url FROM users WHERE user_id = $1',
         [req.session.userId]
       );
-      
+
       if (result.rows.length > 0) {
-        return res.json({ 
-          isAuthenticated, 
+        return res.json({
+          isAuthenticated,
           userId: req.session.userId,
           role: result.rows[0].role,
-          email: result.rows[0].email
+          email: result.rows[0].email,
+          avatarUrl: result.rows[0].avatar_url,
         });
       }
     } catch (error) {
@@ -685,6 +771,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
       password,
       first_name,
       last_name,
+      desired_role,
       referral_code,
       lesson_mode,
       visio_tool,
@@ -710,12 +797,13 @@ app.post('/api/register', authLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
 
-    // Système de parrainage : un code valide => compte étudiant, sinon => compte tuteur.
-    // Le rôle n'est jamais choisi librement par le client (ADMIN n'est jamais attribuable ici).
+    // Le rôle est choisi explicitement par le client (étudiant/tuteur), un code de
+    // parrainage valide est obligatoire pour un compte étudiant. Le rôle n'est jamais
+    // "ADMIN" via cette route.
     let normalizedRole;
     let referredBy;
     try {
-      ({ role: normalizedRole, referredBy } = await resolveRoleFromReferral(referral_code));
+      ({ role: normalizedRole, referredBy } = await resolveRoleFromReferral(desired_role, referral_code));
     } catch (roleErr) {
       return res.status(roleErr.statusCode || 400).json({ error: roleErr.message });
     }
@@ -758,6 +846,12 @@ app.post('/api/register', authLimiter, async (req, res) => {
       // Ne pas faire échouer l'inscription si l'assignation échoue
     }
 
+    // Si ce compte étudiant a été créé via un code de parrainage, on l'ajoute
+    // automatiquement au carnet de bénéficiaires du tuteur parrain.
+    if (referredBy) {
+      await addStudentAsBeneficiary(referredBy, newUser.user_id, `${newUser.first_name || ''} ${newUser.last_name || ''}`.trim());
+    }
+
     res.status(201).json({
       message: 'Utilisateur créé avec succès',
       user: newUser
@@ -769,12 +863,50 @@ app.post('/api/register', authLimiter, async (req, res) => {
   }
 });
 
-// LinkedIn OAuth - démarrage du flux d'autorisation
+// LinkedIn OAuth - démarrage du flux d'autorisation (connexion / inscription)
 app.get('/api/auth/linkedin', (req, res) => {
   /* #swagger.tags = ['Auth'] */
   const state = crypto.randomBytes(16).toString('hex');
   req.session.linkedinOAuthState = state;
+  delete req.session.linkedinLinkUserId;
+  delete req.session.linkedinReturnTo;
   res.redirect(getLinkedInAuthorizationUrl(state));
+});
+
+// Pages autorisées comme retour après une liaison LinkedIn (évite les redirections ouvertes)
+const LINKEDIN_LINK_RETURN_PATHS = ['/profile', '/create_request'];
+
+// LinkedIn OAuth - démarrage du flux de LIAISON à un compte déjà connecté
+// Réservé aux tuteurs : voir la vérification de rôle plus bas et dans le callback.
+app.get('/api/auth/linkedin/link', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    const userResult = await pool.query('SELECT role FROM users WHERE user_id = $1', [req.session.userId]);
+    if (userResult.rows.length === 0 || userResult.rows[0].role !== 'TUTOR') {
+      return res.status(403).json({ error: 'Seuls les comptes tuteur peuvent lier LinkedIn' });
+    }
+
+    const returnTo = LINKEDIN_LINK_RETURN_PATHS.includes(req.query.returnTo) ? req.query.returnTo : '/profile';
+
+    const state = crypto.randomBytes(16).toString('hex');
+    req.session.linkedinOAuthState = state;
+    req.session.linkedinLinkUserId = req.session.userId;
+    req.session.linkedinReturnTo = returnTo;
+    res.redirect(getLinkedInAuthorizationUrl(state));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Délier son compte LinkedIn
+app.delete('/api/auth/linkedin/link', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    await pool.query('UPDATE users SET linkedin_email = NULL WHERE user_id = $1', [req.session.userId]);
+    res.json({ success: true, message: 'Compte LinkedIn délié' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // LinkedIn OAuth - retour depuis LinkedIn
@@ -796,8 +928,28 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
       return res.redirect('/login?linkedin=error');
     }
 
+    // ── Liaison à un compte déjà connecté (tuteur) ──────────────────────
+    const linkUserId = req.session.linkedinLinkUserId;
+    if (linkUserId) {
+      const returnTo = req.session.linkedinReturnTo || '/profile';
+      delete req.session.linkedinLinkUserId;
+      delete req.session.linkedinReturnTo;
+
+      const conflict = await pool.query(
+        'SELECT user_id FROM users WHERE (email = $1 OR linkedin_email = $1) AND user_id != $2',
+        [profile.email, linkUserId]
+      );
+      if (conflict.rows.length > 0) {
+        return res.redirect(`${returnTo}?linkedin=conflict`);
+      }
+
+      await pool.query('UPDATE users SET linkedin_email = $1 WHERE user_id = $2', [profile.email, linkUserId]);
+      return res.redirect(`${returnTo}?linkedin=linked`);
+    }
+
+    // ── Connexion / inscription ──────────────────────────────────────────
     const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
+      'SELECT * FROM users WHERE email = $1 OR linkedin_email = $1',
       [profile.email]
     );
     const existingUser = result.rows[0];
@@ -836,13 +988,14 @@ app.post('/api/auth/linkedin/complete-profile', authLimiter, async (req, res) =>
       return res.status(400).json({ error: 'Aucune connexion LinkedIn en attente' });
     }
 
-    const { referral_code, lesson_mode, visio_tool, lesson_places } = req.body;
+    const { desired_role, referral_code, lesson_mode, visio_tool, lesson_places } = req.body;
 
-    // Système de parrainage : un code valide => compte étudiant, sinon => compte tuteur.
+    // Le rôle est choisi explicitement par le client (étudiant/tuteur), un code de
+    // parrainage valide est obligatoire pour un compte étudiant.
     let normalizedRole;
     let referredBy;
     try {
-      ({ role: normalizedRole, referredBy } = await resolveRoleFromReferral(referral_code));
+      ({ role: normalizedRole, referredBy } = await resolveRoleFromReferral(desired_role, referral_code));
     } catch (roleErr) {
       return res.status(roleErr.statusCode || 400).json({ error: roleErr.message });
     }
@@ -893,6 +1046,10 @@ app.post('/api/auth/linkedin/complete-profile', authLimiter, async (req, res) =>
       console.error('Erreur assignation wallet:', walletError);
     }
 
+    if (referredBy) {
+      await addStudentAsBeneficiary(referredBy, newUser.user_id, `${newUser.first_name || ''} ${newUser.last_name || ''}`.trim());
+    }
+
     delete req.session.pendingLinkedInProfile;
     req.session.userId = newUser.user_id;
 
@@ -914,7 +1071,7 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
     // Récupérer les infos utilisateur
     const userResult = await pool.query(
       `SELECT user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places,
-              is_verified, created_at, last_login, referral_code
+              is_verified, created_at, last_login, referral_code, linkedin_email, avatar_url
        FROM users WHERE user_id = $1`,
       [req.session.userId]
     );
@@ -973,6 +1130,78 @@ app.put('/api/profile/lesson-locations', authGuard({ mustBeLogged: true }), asyn
     );
 
     res.json({ success: true, ...result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST bascule permanente d'un compte étudiant vers un compte tuteur
+app.post('/api/profile/become-tutor', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    const userResult = await pool.query('SELECT role FROM users WHERE user_id = $1', [req.session.userId]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    if (userResult.rows[0].role !== 'STUDENT') {
+      return res.status(403).json({ error: 'Seul un compte étudiant peut basculer vers un compte tuteur' });
+    }
+
+    const { lesson_mode, visio_tool, lesson_places } = req.body;
+    const normalizedLessonMode = normalizeLessonMode(lesson_mode);
+    const normalizedVisioTool = normalizeVisioTool(visio_tool);
+    const normalizedLessonPlaces = normalizeTutorPlaces(lesson_places);
+
+    const result = await pool.query(
+      `UPDATE users
+       SET role = 'TUTOR', lesson_mode = $1, visio_tool = $2, lesson_places = $3
+       WHERE user_id = $4
+       RETURNING user_id, role, lesson_mode, visio_tool, lesson_places`,
+      [normalizedLessonMode, normalizedVisioTool, normalizedLessonPlaces, req.session.userId]
+    );
+
+    res.json({ success: true, ...result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST changer sa photo de profil
+app.post('/api/profile/avatar', authGuard({ mustBeLogged: true }), uploadAvatar.single('avatar'), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Aucune image fournie' });
+    }
+
+    const avatarUrl = `/api/uploads/avatars/${req.file.filename}`;
+
+    const oldResult = await pool.query('SELECT avatar_url FROM users WHERE user_id = $1', [req.session.userId]);
+    const oldAvatarUrl = oldResult.rows[0]?.avatar_url;
+
+    await pool.query('UPDATE users SET avatar_url = $1 WHERE user_id = $2', [avatarUrl, req.session.userId]);
+
+    deleteAvatarFile(oldAvatarUrl);
+
+    res.json({ success: true, avatar_url: avatarUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE retirer sa photo de profil
+app.delete('/api/profile/avatar', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    const oldResult = await pool.query('SELECT avatar_url FROM users WHERE user_id = $1', [req.session.userId]);
+    const oldAvatarUrl = oldResult.rows[0]?.avatar_url;
+
+    await pool.query('UPDATE users SET avatar_url = NULL WHERE user_id = $1', [req.session.userId]);
+
+    deleteAvatarFile(oldAvatarUrl);
+
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -2,12 +2,32 @@
   <div class="container">
     <!-- Profile Header -->
     <div class="profile-header">
-      <img src="@/assets/utilisateur.png" alt="Profil" class="profile-avatar" />
+      <div class="profile-avatar-wrapper">
+        <img :src="userInfo.avatar_url || defaultAvatar" alt="Profil" class="profile-avatar" />
+        <button
+          type="button"
+          class="avatar-edit-btn"
+          title="Changer ma photo de profil"
+          :disabled="isUploadingAvatar"
+          @click="avatarInput?.click()"
+        >📷</button>
+        <input
+          ref="avatarInput"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="avatar-input-hidden"
+          @change="handleAvatarChange"
+        />
+      </div>
       <div class="profile-info">
         <h1>{{ userInfo.first_name }} {{ userInfo.last_name }}</h1>
         <p class="email">{{ userInfo.email }}</p>
         <p class="status-text">Statut : <strong>{{ getRoleLabel(userInfo.role) }}</strong></p>
         <p class="join-date">Membre depuis {{ formatDate(userInfo.created_at) }}</p>
+        <p v-if="avatarError" class="error-message avatar-error">{{ avatarError }}</p>
+        <button v-if="userInfo.avatar_url" type="button" class="avatar-remove-link" @click="removeAvatar">
+          Retirer ma photo de profil
+        </button>
       </div>
     </div>
 
@@ -239,6 +259,70 @@
             </div>
           </div>
 
+          <!-- LinkedIn (tuteurs uniquement) -->
+          <div v-if="userInfo.role === 'TUTOR'" class="password-reset-card">
+            <h3 class="card-subtitle">Compte LinkedIn</h3>
+            <div class="password-form">
+              <div v-if="linkedinMessage" class="success-message">{{ linkedinMessage }}</div>
+              <div v-if="linkedinError" class="error-message">{{ linkedinError }}</div>
+
+              <p v-if="userInfo.linkedin_email" class="linkedin-status">
+                ✅ Lié à <strong>{{ userInfo.linkedin_email }}</strong>
+              </p>
+              <p v-else class="linkedin-status">Aucun compte LinkedIn lié pour le moment.</p>
+
+              <button v-if="!userInfo.linkedin_email" @click="linkLinkedIn" class="btn-update">
+                🔗 Lier mon compte LinkedIn
+              </button>
+              <button v-else @click="unlinkLinkedIn" class="btn-delete-account">
+                Délier mon compte LinkedIn
+              </button>
+            </div>
+          </div>
+
+          <!-- Devenir tuteur (étudiants uniquement) -->
+          <div v-if="userInfo.role === 'STUDENT'" class="password-reset-card">
+            <h3 class="card-subtitle">Devenir tuteur / tutrice</h3>
+            <div class="password-form">
+              <div v-if="becomeTutorError" class="error-message">{{ becomeTutorError }}</div>
+              <p class="linkedin-status">
+                Vous souhaitez donner des cours à votre tour ? Vous pouvez transformer votre
+                compte étudiant en compte tuteur. <strong>Cette action est définitive.</strong>
+              </p>
+
+              <div v-if="showBecomeTutorForm">
+                <div class="form-group">
+                  <label for="becomeTutorMode">Mode principal des cours</label>
+                  <select id="becomeTutorMode" v-model="becomeTutorForm.lesson_mode">
+                    <option value="Visio">Visio</option>
+                    <option value="Presentiel">Presentiel</option>
+                    <option value="Hybride">Hybride</option>
+                  </select>
+                </div>
+                <div class="form-group" v-if="becomeTutorForm.lesson_mode === 'Visio' || becomeTutorForm.lesson_mode === 'Hybride'">
+                  <label for="becomeTutorVisio">Outil visio</label>
+                  <select id="becomeTutorVisio" v-model="becomeTutorForm.visio_tool">
+                    <option value="Zoom">Zoom</option>
+                    <option value="Teams">Teams</option>
+                    <option value="Google Meet">Google Meet</option>
+                    <option value="Discord">Discord</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="becomeTutorPlaces">Lieux (separes par des virgules)</label>
+                  <input id="becomeTutorPlaces" v-model="becomeTutorForm.lesson_places_raw" type="text" placeholder="Visio, Bibliotheque, Domicile..." />
+                </div>
+                <button @click="confirmBecomeTutor" class="btn-delete-account" :disabled="isBecomingTutor">
+                  {{ isBecomingTutor ? 'Conversion en cours...' : '⚠️ Confirmer : devenir tuteur définitivement' }}
+                </button>
+              </div>
+              <button v-else @click="showBecomeTutorForm = true" class="btn-update">
+                Devenir tuteur / tutrice
+              </button>
+            </div>
+          </div>
+
           <!-- Logout Section -->
           <div class="logout-card">
             <div class="logout-content">
@@ -274,13 +358,15 @@
 
 <script>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import defaultAvatar from '@/assets/utilisateur.png'
 
 export default {
   name: 'Profile',
   setup() {
     const userId = localStorage.getItem('token')
     const router = useRouter()
+    const route = useRoute()
     const balance = ref(0)
     const blockchainAddress = ref(null)
     const stats = ref({
@@ -294,6 +380,8 @@ export default {
       email: '',
       role: '',
       referral_code: '',
+      linkedin_email: '',
+      avatar_url: '',
       created_at: new Date().toISOString(),
     })
     const isResettingPassword = ref(false)
@@ -314,6 +402,11 @@ export default {
       confirmPassword: '',
     })
 
+    // Photo de profil
+    const avatarInput = ref(null)
+    const isUploadingAvatar = ref(false)
+    const avatarError = ref('')
+
     // Bénéficiaires (carnet d'adresses pour les transactions blockchain)
     const beneficiaries = ref([])
     const newBeneficiary = ref({ label: '', address: '' })
@@ -322,6 +415,20 @@ export default {
     const beneficiarySuccess = ref('')
     const sendAmounts = ref({})
     const sendingTo = ref(null)
+
+    // LinkedIn (liaison, réservée aux tuteurs)
+    const linkedinMessage = ref('')
+    const linkedinError = ref('')
+
+    // Bascule permanente étudiant -> tuteur
+    const showBecomeTutorForm = ref(false)
+    const isBecomingTutor = ref(false)
+    const becomeTutorError = ref('')
+    const becomeTutorForm = ref({
+      lesson_mode: 'Visio',
+      visio_tool: 'Zoom',
+      lesson_places_raw: 'Visio',
+    })
 
     const getRoleLabel = (role) => {
       const roleLabels = {
@@ -354,6 +461,8 @@ export default {
             email: data.email || 'Email non disponible',
             role: data.role || '',
             referral_code: data.referral_code || '',
+            linkedin_email: data.linkedin_email || '',
+            avatar_url: data.avatar_url || '',
             created_at: data.created_at || new Date().toISOString(),
           }
           locationForm.value.lesson_mode = data.lesson_mode || 'Visio'
@@ -577,6 +686,116 @@ export default {
       }
     }
 
+    const handleAvatarChange = async (event) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      avatarError.value = ''
+      isUploadingAvatar.value = true
+
+      try {
+        const formData = new FormData()
+        formData.append('avatar', file)
+
+        const response = await fetch('/api/profile/avatar', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        })
+
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors de l\'envoi de la photo')
+        }
+
+        userInfo.value.avatar_url = data.avatar_url
+      } catch (error) {
+        avatarError.value = error.message
+      } finally {
+        isUploadingAvatar.value = false
+        if (avatarInput.value) avatarInput.value.value = ''
+      }
+    }
+
+    const removeAvatar = async () => {
+      avatarError.value = ''
+      try {
+        const response = await fetch('/api/profile/avatar', {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Erreur lors de la suppression de la photo')
+        }
+        userInfo.value.avatar_url = ''
+      } catch (error) {
+        avatarError.value = error.message
+      }
+    }
+
+    const linkLinkedIn = () => {
+      window.location.href = '/api/auth/linkedin/link?returnTo=/profile'
+    }
+
+    const unlinkLinkedIn = async () => {
+      linkedinError.value = ''
+      linkedinMessage.value = ''
+      try {
+        const response = await fetch('/api/auth/linkedin/link', {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors de la déliaison')
+        }
+        userInfo.value.linkedin_email = ''
+        linkedinMessage.value = 'Compte LinkedIn délié avec succès'
+      } catch (error) {
+        linkedinError.value = error.message
+      }
+    }
+
+    const confirmBecomeTutor = async () => {
+      becomeTutorError.value = ''
+
+      const confirmed = confirm(
+        '⚠️ ATTENTION ⚠️\n\n' +
+        'Vous êtes sur le point de transformer votre compte étudiant en compte tuteur.\n\n' +
+        'Cette action est DÉFINITIVE : vous ne pourrez plus redevenir étudiant(e) avec ce compte.\n\n' +
+        'Voulez-vous continuer ?'
+      )
+      if (!confirmed) return
+
+      isBecomingTutor.value = true
+      try {
+        const response = await fetch('/api/profile/become-tutor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            lesson_mode: becomeTutorForm.value.lesson_mode,
+            visio_tool: becomeTutorForm.value.visio_tool,
+            lesson_places: becomeTutorForm.value.lesson_places_raw
+              .split(',')
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0),
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors du changement de statut')
+        }
+        showBecomeTutorForm.value = false
+        await loadProfileData()
+      } catch (error) {
+        becomeTutorError.value = error.message
+      } finally {
+        isBecomingTutor.value = false
+      }
+    }
+
     const logout = async () => {
       try {
         await fetch('/api/logout', {
@@ -632,6 +851,17 @@ export default {
     onMounted(() => {
       loadProfileData()
       loadBeneficiaries()
+
+      // Retour depuis le flux de liaison LinkedIn (?linkedin=linked|conflict)
+      const linkedinStatus = route.query.linkedin
+      if (linkedinStatus === 'linked') {
+        linkedinMessage.value = 'Compte LinkedIn lié avec succès !'
+      } else if (linkedinStatus === 'conflict') {
+        linkedinError.value = 'Ce compte LinkedIn est déjà utilisé par un autre compte CryptoCampus'
+      }
+      if (linkedinStatus) {
+        router.replace({ query: {} })
+      }
     })
 
     return {
@@ -665,6 +895,21 @@ export default {
       addBeneficiary,
       removeBeneficiary,
       sendToBeneficiary,
+      linkedinMessage,
+      linkedinError,
+      linkLinkedIn,
+      unlinkLinkedIn,
+      showBecomeTutorForm,
+      isBecomingTutor,
+      becomeTutorError,
+      becomeTutorForm,
+      confirmBecomeTutor,
+      defaultAvatar,
+      avatarInput,
+      isUploadingAvatar,
+      avatarError,
+      handleAvatarChange,
+      removeAvatar,
     }
   }
 }
@@ -696,6 +941,60 @@ export default {
   object-fit: cover;
   border: 4px solid #667eea;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.profile-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  width: 120px;
+  height: 120px;
+}
+
+.avatar-edit-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: #667eea;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s;
+}
+
+.avatar-edit-btn:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.avatar-edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar-input-hidden {
+  display: none;
+}
+
+.avatar-remove-link {
+  border: none;
+  background: none;
+  color: #e74c3c;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.5rem;
+  text-decoration: underline;
+}
+
+.avatar-error {
+  margin-top: 0.5rem;
 }
 
 .profile-info h1 {
@@ -1254,5 +1553,11 @@ export default {
 .no-beneficiaries {
   color: #7f8c8d;
   margin-bottom: 1.5rem;
+}
+
+.linkedin-status {
+  color: #34495e;
+  margin-bottom: 1rem;
+  line-height: 1.5;
 }
 </style>

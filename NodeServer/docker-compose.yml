@@ -17,6 +17,7 @@ services:
       dockerfile: ./Dockerfile
     volumes:
       - /app/node_modules
+      - ./uploads:/app/uploads
     ports:
       - "81:3000"
     environment:

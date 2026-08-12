@@ -53,7 +53,7 @@
             >Créer une requête</router-link
           >
           <div v-if="isLogged" class="profile-button" @click="handleLoginClick">
-            <img src="@/assets/utilisateur.png" alt="Profil" class="profile-icon" />
+            <img :src="userAvatarUrl || defaultAvatar" alt="Profil" class="profile-icon" />
             <span class="profile-email">{{ userEmail }}</span>
           </div>
           <button
@@ -76,13 +76,14 @@
 import { computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
+import defaultAvatar from "@/assets/utilisateur.png";
 
 export default {
   name: "App",
   setup() {
     const router = useRouter();
     const route = useRoute();
-    const { isLogged, userEmail, isTutor, checkAuth } = useAuth();
+    const { isLogged, userEmail, userAvatarUrl, isTutor, checkAuth } = useAuth();
     const currentPage = computed(() => {
       const path = route.path;
       return path.replace("/", "");
@@ -111,6 +112,8 @@ export default {
     return {
       isLogged,
       userEmail,
+      userAvatarUrl,
+      defaultAvatar,
       isTutor,
       currentPage,
       handleLoginClick,
