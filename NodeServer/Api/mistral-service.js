@@ -1,7 +1,14 @@
 import { Mistral } from '@mistralai/mistralai';
 
-const apiKey = 'NF8sYhcEyrwcRzIwrHcqwfPzZmyWXsXh';
-const client = new Mistral({ apiKey });
+const apiKey = process.env.MISTRAL_API_KEY;
+const client = apiKey ? new Mistral({ apiKey }) : null;
+
+function ensureClient() {
+    if (!client) {
+        throw new Error('MISTRAL_API_KEY manquante : impossible de contacter Mistral AI');
+    }
+    return client;
+}
 
 // Analyser le CV avec Mistral AI
 export async function analyzeCVWithMistral(cvText) {
@@ -41,7 +48,7 @@ Règles importantes :
 - Le niveau doit correspondre aux capacités du tuteur
 - Ne génère QUE des cours que la personne est réellement capable d'enseigner selon son CV`;
 
-        const chatResponse = await client.chat.complete({
+        const chatResponse = await ensureClient().chat.complete({
             model: 'mistral-small-latest',
             messages: [
                 {
@@ -89,6 +96,57 @@ Règles importantes :
 
     } catch (error) {
         console.error('❌ Erreur Mistral AI:', error);
+        throw error;
+    }
+}
+
+// Corrige l'orthographe/grammaire du titre et de la description d'une annonce
+export async function correctListingText({ title, description }) {
+    try {
+        const prompt = `Tu es un correcteur orthographique et grammatical professionnel pour un site de cours particuliers.
+Corrige uniquement l'orthographe, la grammaire, la ponctuation et les évidentes fautes de frappe du titre et de la description ci-dessous.
+Ne change PAS le sens, le ton, la langue ni les informations (prix, niveau, matière...). Ne reformule pas ce qui est déjà correct.
+
+Titre :
+---
+${title || ''}
+---
+
+Description :
+---
+${description || ''}
+---
+
+Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans \`\`\`json) au format exact :
+{
+  "title": "titre corrigé",
+  "description": "description corrigée",
+  "hasChanges": true
+}
+"hasChanges" doit valoir false si aucune correction n'était nécessaire.`;
+
+        const chatResponse = await ensureClient().chat.complete({
+            model: 'mistral-small-latest',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.2,
+            maxTokens: 1000
+        });
+
+        const responseText = chatResponse.choices[0].message.content.trim();
+        let cleanJson = responseText;
+        if (cleanJson.includes('```')) {
+            cleanJson = cleanJson.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        }
+
+        const result = JSON.parse(cleanJson);
+        return {
+            success: true,
+            title: result.title ?? title,
+            description: result.description ?? description,
+            hasChanges: !!result.hasChanges,
+        };
+    } catch (error) {
+        console.error('❌ Erreur correction IA:', error);
         throw error;
     }
 }

@@ -1,7 +1,7 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 
 const client = new QdrantClient({
-  url: process.env.QDRANT_URL || 'http://qdrant-database:6333'
+  url: process.env.QDRANT_URL || 'http://qdrant:6333'
 });
 
 const COLLECTION_NAME = 'tutoring_listings';

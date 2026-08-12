@@ -44,6 +44,77 @@
             </div>
           </div>
 
+          <!-- Referral Code Card -->
+          <div class="blockchain-card">
+            <div class="blockchain-header">
+              <span class="blockchain-icon">🎁</span>
+              <span class="blockchain-label">Mon code de parrainage</span>
+            </div>
+            <div class="blockchain-address">
+              <code>{{ userInfo.referral_code || '...' }}</code>
+              <button type="button" class="btn-copy" @click="copyReferralCode">
+                {{ referralCopied ? 'Copié !' : 'Copier' }}
+              </button>
+            </div>
+            <p class="referral-hint">Partagez ce code : il permet à un(e) étudiant(e) de créer son compte.</p>
+          </div>
+
+          <!-- Beneficiaries Card -->
+          <div class="beneficiaries-section">
+            <h2 class="section-title">
+              <span class="title-icon">👥</span>
+              Bénéficiaires
+            </h2>
+
+            <div v-if="beneficiaryError" class="error-message">{{ beneficiaryError }}</div>
+            <div v-if="beneficiarySuccess" class="success-message">{{ beneficiarySuccess }}</div>
+
+            <ul class="beneficiary-list" v-if="beneficiaries.length > 0">
+              <li v-for="b in beneficiaries" :key="b.beneficiary_id" class="beneficiary-item">
+                <div class="beneficiary-info">
+                  <strong>{{ b.label }}</strong>
+                  <code>{{ b.address }}</code>
+                </div>
+                <div class="beneficiary-actions">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    v-model="sendAmounts[b.beneficiary_id]"
+                    placeholder="Montant CCT"
+                    class="beneficiary-amount"
+                  />
+                  <button
+                    type="button"
+                    class="btn-update"
+                    :disabled="sendingTo === b.beneficiary_id"
+                    @click="sendToBeneficiary(b)"
+                  >
+                    {{ sendingTo === b.beneficiary_id ? 'Envoi...' : 'Envoyer' }}
+                  </button>
+                  <button type="button" class="btn-delete-account" @click="removeBeneficiary(b.beneficiary_id)">
+                    Retirer
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="no-beneficiaries">Aucun bénéficiaire enregistré pour le moment.</p>
+
+            <div class="password-form">
+              <div class="form-group">
+                <label for="beneficiaryLabel">Nom du bénéficiaire</label>
+                <input id="beneficiaryLabel" v-model="newBeneficiary.label" type="text" placeholder="Ex : Marie Dupont" />
+              </div>
+              <div class="form-group">
+                <label for="beneficiaryAddress">Adresse blockchain</label>
+                <input id="beneficiaryAddress" v-model="newBeneficiary.address" type="text" placeholder="0x..." />
+              </div>
+              <button type="button" class="btn-update" :disabled="isAddingBeneficiary" @click="addBeneficiary">
+                {{ isAddingBeneficiary ? 'Ajout...' : '+ Ajouter un bénéficiaire' }}
+              </button>
+            </div>
+          </div>
+
           <!-- Stats Grid -->
           <div class="stats-grid">
             <div class="stat-card">
@@ -222,6 +293,7 @@ export default {
       last_name: '',
       email: '',
       role: '',
+      referral_code: '',
       created_at: new Date().toISOString(),
     })
     const isResettingPassword = ref(false)
@@ -230,6 +302,7 @@ export default {
     const isSavingLocations = ref(false)
     const locationError = ref('')
     const locationSuccess = ref('')
+    const referralCopied = ref(false)
     const locationForm = ref({
       lesson_mode: 'Visio',
       visio_tool: 'Zoom',
@@ -240,6 +313,15 @@ export default {
       newPassword: '',
       confirmPassword: '',
     })
+
+    // Bénéficiaires (carnet d'adresses pour les transactions blockchain)
+    const beneficiaries = ref([])
+    const newBeneficiary = ref({ label: '', address: '' })
+    const isAddingBeneficiary = ref(false)
+    const beneficiaryError = ref('')
+    const beneficiarySuccess = ref('')
+    const sendAmounts = ref({})
+    const sendingTo = ref(null)
 
     const getRoleLabel = (role) => {
       const roleLabels = {
@@ -271,6 +353,7 @@ export default {
             last_name: data.last_name || 'Inconnu',
             email: data.email || 'Email non disponible',
             role: data.role || '',
+            referral_code: data.referral_code || '',
             created_at: data.created_at || new Date().toISOString(),
           }
           locationForm.value.lesson_mode = data.lesson_mode || 'Visio'
@@ -342,8 +425,8 @@ export default {
         return
       }
 
-      if (passwordForm.value.newPassword.length < 6) {
-        passwordError.value = 'Le mot de passe doit contenir au moins 6 caractères'
+      if (passwordForm.value.newPassword.length < 8) {
+        passwordError.value = 'Le mot de passe doit contenir au moins 8 caractères'
         return
       }
 
@@ -377,13 +460,120 @@ export default {
           }
         } else {
           const data = await response.json()
-          passwordError.value = data.message || 'Erreur lors de la mise à jour du mot de passe'
+          passwordError.value = data.error || 'Erreur lors de la mise à jour du mot de passe'
         }
       } catch (error) {
         passwordError.value = 'Erreur lors de la mise à jour du mot de passe'
         console.error(error)
       } finally {
         isResettingPassword.value = false
+      }
+    }
+
+    const copyReferralCode = async () => {
+      if (!userInfo.value.referral_code) return
+      try {
+        await navigator.clipboard.writeText(userInfo.value.referral_code)
+        referralCopied.value = true
+        setTimeout(() => { referralCopied.value = false }, 2000)
+      } catch (error) {
+        console.error('Copie impossible:', error)
+      }
+    }
+
+    const loadBeneficiaries = async () => {
+      try {
+        const response = await fetch('/api/beneficiaries', { credentials: 'include' })
+        if (response.ok) {
+          const data = await response.json()
+          beneficiaries.value = data.beneficiaries || []
+        }
+      } catch (error) {
+        console.error('Failed to load beneficiaries:', error)
+      }
+    }
+
+    const addBeneficiary = async () => {
+      beneficiaryError.value = ''
+      beneficiarySuccess.value = ''
+
+      if (!newBeneficiary.value.label.trim() || !newBeneficiary.value.address.trim()) {
+        beneficiaryError.value = 'Nom et adresse sont requis'
+        return
+      }
+
+      isAddingBeneficiary.value = true
+      try {
+        const response = await fetch('/api/beneficiaries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(newBeneficiary.value),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors de l\'ajout du bénéficiaire')
+        }
+        beneficiaries.value.push(data.beneficiary)
+        newBeneficiary.value = { label: '', address: '' }
+        beneficiarySuccess.value = 'Bénéficiaire ajouté avec succès'
+      } catch (error) {
+        beneficiaryError.value = error.message
+      } finally {
+        isAddingBeneficiary.value = false
+      }
+    }
+
+    const removeBeneficiary = async (beneficiaryId) => {
+      beneficiaryError.value = ''
+      beneficiarySuccess.value = ''
+      try {
+        const response = await fetch(`/api/beneficiaries/${beneficiaryId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Erreur lors de la suppression')
+        }
+        beneficiaries.value = beneficiaries.value.filter((b) => b.beneficiary_id !== beneficiaryId)
+      } catch (error) {
+        beneficiaryError.value = error.message
+      }
+    }
+
+    const sendToBeneficiary = async (beneficiary) => {
+      beneficiaryError.value = ''
+      beneficiarySuccess.value = ''
+
+      const amount = parseFloat(sendAmounts.value[beneficiary.beneficiary_id])
+      if (!amount || amount <= 0) {
+        beneficiaryError.value = 'Indiquez un montant valide'
+        return
+      }
+
+      sendingTo.value = beneficiary.beneficiary_id
+      try {
+        const response = await fetch('/api/blockchain/transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            toAddress: beneficiary.address,
+            amount,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Transaction échouée')
+        }
+        beneficiarySuccess.value = `${amount} CCT envoyés à ${beneficiary.label}`
+        sendAmounts.value[beneficiary.beneficiary_id] = ''
+        await loadProfileData()
+      } catch (error) {
+        beneficiaryError.value = error.message
+      } finally {
+        sendingTo.value = null
       }
     }
 
@@ -441,6 +631,7 @@ export default {
 
     onMounted(() => {
       loadProfileData()
+      loadBeneficiaries()
     })
 
     return {
@@ -456,12 +647,24 @@ export default {
       passwordSuccess,
       locationError,
       locationSuccess,
+      referralCopied,
       formatDate,
       getRoleLabel,
       resetPassword,
       saveLessonLocations,
       logout,
       confirmDeleteAccount,
+      copyReferralCode,
+      beneficiaries,
+      newBeneficiary,
+      isAddingBeneficiary,
+      beneficiaryError,
+      beneficiarySuccess,
+      sendAmounts,
+      sendingTo,
+      addBeneficiary,
+      removeBeneficiary,
+      sendToBeneficiary,
     }
   }
 }
@@ -960,5 +1163,96 @@ export default {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Referral & Beneficiaries */
+.blockchain-address {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.blockchain-address code {
+  flex: 1;
+}
+
+.btn-copy {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-copy:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.referral-hint {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.beneficiaries-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-top: 2rem;
+}
+
+.beneficiary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+}
+
+.beneficiary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+}
+
+.beneficiary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.beneficiary-info code {
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  word-break: break-all;
+}
+
+.beneficiary-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.beneficiary-amount {
+  width: 110px;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.no-beneficiaries {
+  color: #7f8c8d;
+  margin-bottom: 1.5rem;
 }
 </style>

@@ -73,39 +73,20 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useAuth } from "@/composables/useAuth";
 
 export default {
   name: "App",
   setup() {
     const router = useRouter();
     const route = useRoute();
-    const isLogged = ref(null);
-    const userEmail = ref("");
-    const userRole = ref("");
+    const { isLogged, userEmail, isTutor, checkAuth } = useAuth();
     const currentPage = computed(() => {
       const path = route.path;
       return path.replace("/", "");
     });
-    const isTutor = computed(() => userRole.value === 'TUTOR');
-
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/check-auth");
-        const data = await response.json();
-        isLogged.value = data.isAuthenticated;
-        if (data.isAuthenticated && data.email) {
-          userEmail.value = data.email;
-        }
-        if (data.isAuthenticated && data.role) {
-          userRole.value = data.role;
-        }
-      } catch (error) {
-        console.error("Auth check failed:", error);
-        isLogged.value = false;
-      }
-    };
 
     const handleLoginClick = () => {
       if (isLogged.value) {
@@ -130,7 +111,6 @@ export default {
     return {
       isLogged,
       userEmail,
-      userRole,
       isTutor,
       currentPage,
       handleLoginClick,

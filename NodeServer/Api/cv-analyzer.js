@@ -20,9 +20,9 @@ export async function analyzeCVAndGenerateSuggestions(pdfBuffer) {
         
         // 1. Extraire le texte du PDF
         const text = await extractTextFromPDF(pdfBuffer);
-        
-        console.log('📝 Texte extrait (premiers 500 caractères):', text.substring(0, 500));
-        
+
+        console.log(`📝 Texte extrait du CV (${text.length} caractères)`);
+
         // 2. Analyser avec Mistral AI
         const result = await analyzeCVWithMistral(text);
         

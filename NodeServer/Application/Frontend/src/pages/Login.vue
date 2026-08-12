@@ -13,14 +13,23 @@
           </p>
 
           <div class="form-group">
-            <label for="linkedinRole">Je suis un(e) *</label>
-            <select v-model="linkedinForm.role" id="linkedinRole" required>
-              <option value="student">Étudiant(e)</option>
-              <option value="tutor">Tuteur/Tutrice</option>
-            </select>
+            <label for="linkedinReferralCode">Code de parrainage</label>
+            <input
+              v-model="linkedinForm.referral_code"
+              type="text"
+              id="linkedinReferralCode"
+              placeholder="Laissez vide si vous êtes tuteur/tutrice"
+              maxlength="20"
+              style="text-transform: uppercase;"
+            />
+            <small class="password-hint">
+              {{ willRegisterAsStudentLinkedIn
+                ? 'Avec un code : vous créez un compte étudiant(e), parrainé(e) par son propriétaire.'
+                : "Sans code : vous créez un compte tuteur/tutrice. Un(e) étudiant(e) doit obligatoirement avoir un code de parrainage." }}
+            </small>
           </div>
 
-          <div v-if="linkedinForm.role === 'tutor'" class="tutor-location-fields">
+          <div v-if="!willRegisterAsStudentLinkedIn" class="tutor-location-fields">
             <div class="form-group">
               <label for="linkedinLessonMode">Mode principal des cours *</label>
               <select v-model="linkedinForm.lesson_mode" id="linkedinLessonMode" required>
@@ -176,14 +185,23 @@
           </div>
           
           <div class="form-group">
-            <label for="registerRole">Je suis un(e) *</label>
-            <select v-model="registerForm.role" id="registerRole" required>
-              <option value="student">Étudiant(e)</option>
-              <option value="tutor">Tuteur/Tutrice</option>
-            </select>
+            <label for="registerReferralCode">Code de parrainage</label>
+            <input
+              v-model="registerForm.referral_code"
+              type="text"
+              id="registerReferralCode"
+              placeholder="Laissez vide si vous êtes tuteur/tutrice"
+              maxlength="20"
+              style="text-transform: uppercase;"
+            />
+            <small class="password-hint">
+              {{ willRegisterAsStudent
+                ? 'Avec un code : vous créez un compte étudiant(e), parrainé(e) par son propriétaire.'
+                : "Sans code : vous créez un compte tuteur/tutrice. Un(e) étudiant(e) doit obligatoirement avoir un code de parrainage." }}
+            </small>
           </div>
 
-          <div v-if="registerForm.role === 'tutor'" class="tutor-location-fields">
+          <div v-if="!willRegisterAsStudent" class="tutor-location-fields">
             <div class="form-group">
               <label for="registerLessonMode">Mode principal des cours *</label>
               <select v-model="registerForm.lesson_mode" id="registerLessonMode" required>
@@ -214,7 +232,7 @@
               />
             </div>
           </div>
-          
+
           <button type="submit" class="btn-primary" :disabled="isLoading">
             {{ isLoading ? 'Création en cours...' : 'Créer mon compte' }}
           </button>
@@ -226,7 +244,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 export default {
@@ -252,14 +270,19 @@ export default {
       last_name: '',
       email: '',
       password: '',
-      role: 'student',
+      referral_code: '',
       lesson_mode: 'Visio',
       visio_tool: 'Zoom',
       lesson_places_raw: 'Visio',
     })
 
+    // Système de parrainage : un code de parrainage renseigné => compte étudiant,
+    // sinon => compte tuteur. Le rôle est toujours re-vérifié côté serveur.
+    const willRegisterAsStudent = computed(() => registerForm.value.referral_code.trim().length > 0)
+    const willRegisterAsStudentLinkedIn = computed(() => linkedinForm.value.referral_code.trim().length > 0)
+
     const linkedinForm = ref({
-      role: 'student',
+      referral_code: '',
       lesson_mode: 'Visio',
       visio_tool: 'Zoom',
       lesson_places_raw: 'Visio',
@@ -281,7 +304,7 @@ export default {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            role: linkedinForm.value.role,
+            referral_code: linkedinForm.value.referral_code,
             lesson_mode: linkedinForm.value.lesson_mode,
             visio_tool: linkedinForm.value.visio_tool,
             lesson_places: linkedinForm.value.lesson_places_raw
@@ -377,7 +400,7 @@ export default {
             last_name: '',
             email: '',
             password: '',
-            role: 'student',
+            referral_code: '',
             lesson_mode: 'Visio',
             visio_tool: 'Zoom',
             lesson_places_raw: 'Visio',
@@ -429,6 +452,8 @@ export default {
       linkedinForm,
       continueWithLinkedIn,
       completeLinkedInProfile,
+      willRegisterAsStudent,
+      willRegisterAsStudentLinkedIn,
     }
   }
 }

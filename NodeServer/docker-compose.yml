@@ -27,6 +27,12 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_PORT: 5432
       BLOCKCHAIN_RPC: http://ganache:8545
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET}
+      LINKEDIN_REDIRECT_URI: ${LINKEDIN_REDIRECT_URI}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS}
+      QDRANT_URL: http://qdrant:6333
     depends_on:
       db:
         condition: service_healthy
@@ -58,8 +64,8 @@ services:
     image: dpage/pgadmin4
     container_name: pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: onlycode-admin@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: Zongo94
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
       - ./Docker/PgAdmin/servers.json:/pgadmin4/servers.json
     ports:

@@ -112,8 +112,9 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import logo from '@/assets/vrai_logo.png'
 
 const MIN_SPLASH_DURATION = 2000
@@ -122,30 +123,13 @@ export default {
   name: 'Home',
   setup() {
     const route = useRoute()
-    const isLogged = ref(null)
-    const userRole = ref('')
+    const { isLogged, isTutor, checkAuth } = useAuth()
     // La bannière de bienvenue ne s'affiche que lors d'une arrivée depuis
     // l'extérieur du site (URL tapée, lien externe, rafraîchissement) : voir
     // le flag `isFreshEntry` posé dans router.js. En navigation interne
     // (clic sur un lien depuis une autre page de la SPA), on charge la page
     // instantanément, sans écran de chargement.
     const isLoading = ref(route.meta.isFreshEntry === true)
-
-    const isTutor = computed(() => userRole.value === 'TUTOR')
-
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/check-auth')
-        const data = await response.json()
-        isLogged.value = data.isAuthenticated
-        if (data.isAuthenticated && data.role) {
-          userRole.value = data.role
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        isLogged.value = false
-      }
-    }
 
     onMounted(async () => {
       if (!isLoading.value) {

@@ -149,13 +149,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
 const loading = ref(true)
 const listings = ref([])
 const favoriteIds = ref([])
 const showModal = ref(false)
 const selectedListing = ref(null)
-const currentUserId = ref('')
+const { userId: currentUserId, checkAuth } = useAuth()
 const myInterestIds = ref([])
 const selectedListingInterestCount = ref(0)
 
@@ -243,11 +244,7 @@ const loadFavorites = async () => {
   loading.value = true
   try {
     // Get current user
-    const authRes = await fetch('/api/check-auth', { credentials: 'include' })
-    if (authRes.ok) {
-      const authData = await authRes.json()
-      currentUserId.value = authData.user_id || ''
-    }
+    await checkAuth()
 
     const [favoritesRes, listingsRes, interestsRes] = await Promise.all([
       fetch('/api/favorites', { credentials: 'include' }),

@@ -11,10 +11,13 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import cors from 'cors';
 import multer from 'multer';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import 'dotenv/config';
 import { createServer } from 'http';
@@ -25,6 +28,7 @@ import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } fr
 import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './Api/qdrant-service.js';
 import { analyzeCVAndGenerateSuggestions } from './Api/cv-analyzer.js';
 import { getLinkedInAuthorizationUrl, exchangeCodeForToken, fetchLinkedInProfile } from './Api/linkedin-auth.js';
+import { correctListingText } from './Api/mistral-service.js';
 
 /* ========================================
    CONFIGURATION DE BASE
@@ -53,11 +57,50 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 
 // Middlewares généraux
+app.use(helmet({
+  // Désactivé : ce serveur n'expose pas de pages HTML avec scripts/styles inline
+  // (le frontend est servi séparément par Nginx), sauf Swagger UI qui a besoin
+  // d'inline scripts/styles pour fonctionner.
+  contentSecurityPolicy: false,
+}));
 app.use(express.json());
+
+// CORS : seules les origines listées dans FRONTEND_ORIGINS peuvent appeler l'API avec
+// les cookies de session. "origin: '*' + credentials: true" (config précédente) est
+// invalide selon la spec CORS et est rejeté par les navigateurs pour les requêtes
+// authentifiées cross-origin.
+const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost,http://127.0.0.1')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: '*',
+  origin: (origin, callback) => {
+    // Pas d'en-tête Origin (clients non-navigateur : mobile, curl, server-to-server) => autorisé
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Origin non autorisée par CORS'));
+  },
   credentials: true,
 }));
+
+// Rate limiting global sur l'API (anti-abus)
+app.use('/api/', rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+// Rate limiting strict sur les routes sensibles (anti brute-force / anti-spam)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de tentatives, veuillez réessayer plus tard' },
+});
 
 /* ========================================
    CONNEXION BASE DE DONNÉES
@@ -84,9 +127,22 @@ pool.on('error', (err) => {
    GESTION DES SESSIONS
    ======================================== */
 
+if (!process.env.SESSION_SECRET) {
+  console.warn('⚠️  SESSION_SECRET non définie dans l\'environnement : générez-en une et placez-la dans .env (voir .env.example)');
+}
+
+const PgSession = connectPgSimple(session);
+
 app.use(session({
+  store: new PgSession({
+    pool,
+    tableName: 'user_sessions',
+    createTableIfMissing: true,
+  }),
   name: 'sessionId',
-  secret: process.env.SESSION_SECRET || 'ZONGOSECRETCODEULTRASUPERSECURETUCONNAISCLASECURITEQUOITIAKOLAREPONDSSTP',
+  // Un SESSION_SECRET est requis en production : ce repli local ne sert qu'à ne pas
+  // planter en dev si .env n'est pas encore configuré.
+  secret: process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex'),
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -117,6 +173,24 @@ function authGuard(options) {
   };
 }
 
+// Middleware: réservé aux comptes ADMIN (vérifie le rôle en base, pas seulement la session)
+function requireAdmin() {
+  return async (req, res, next) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    try {
+      const result = await pool.query('SELECT role FROM users WHERE user_id = $1', [req.session.userId]);
+      if (result.rows.length === 0 || result.rows[0].role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Réservé aux administrateurs' });
+      }
+      next();
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  };
+}
+
 function normalizeTutorPlaces(inputPlaces) {
   if (!Array.isArray(inputPlaces)) {
     return ['Visio'];
@@ -138,6 +212,22 @@ function normalizeLessonMode(mode) {
 function normalizeVisioTool(tool) {
   const normalized = typeof tool === 'string' ? tool.trim() : '';
   return normalized.length > 0 ? normalized : 'Zoom';
+}
+
+// Corrige l'orthographe/grammaire d'une annonce via l'IA, sans jamais faire échouer
+// la création/modification si Mistral est indisponible (clé manquante, quota, panne...).
+async function safeCorrectListingText(title, description) {
+  try {
+    const corrected = await correctListingText({ title, description });
+    return {
+      title: corrected.title || title,
+      description: corrected.description || description,
+      corrected: corrected.hasChanges,
+    };
+  } catch (error) {
+    console.warn('⚠️ Correction IA indisponible, texte original conservé:', error.message);
+    return { title, description, corrected: false };
+  }
 }
 
 async function ensureFeatureSchema() {
@@ -164,6 +254,19 @@ async function ensureFeatureSchema() {
      ON listing_interests (listing_id)`,
     `CREATE INDEX IF NOT EXISTS idx_listing_favorites_listing_id
      ON listing_favorites (listing_id)`,
+    `ALTER TABLE users
+     ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`,
+    `ALTER TABLE users
+     ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES users(user_id)`,
+    `CREATE TABLE IF NOT EXISTS beneficiaries (
+      beneficiary_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      owner_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      label VARCHAR(100) NOT NULL,
+      address VARCHAR(100) NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_beneficiaries_owner
+     ON beneficiaries (owner_user_id)`,
   ];
 
   for (const sql of statements) {
@@ -177,7 +280,63 @@ async function ensureFeatureSchema() {
         lesson_places = COALESCE(lesson_places, ARRAY['Visio']::TEXT[])
   `);
 
-  console.log('✅ Feature schema ensured (locations, favorites, interests)');
+  // Générer un code de parrainage pour les comptes existants qui n'en ont pas encore
+  const usersWithoutCode = await pool.query(
+    'SELECT user_id FROM users WHERE referral_code IS NULL'
+  );
+  for (const row of usersWithoutCode.rows) {
+    const code = await generateUniqueReferralCode();
+    await pool.query('UPDATE users SET referral_code = $1 WHERE user_id = $2', [code, row.user_id]);
+  }
+
+  console.log('✅ Feature schema ensured (locations, favorites, interests, referrals, beneficiaries)');
+}
+
+// Génère un code de parrainage lisible (8 caractères alphanumériques majuscules)
+function generateReferralCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans caractères ambigus (0/O, 1/I)
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return code;
+}
+
+// Génère un code de parrainage garanti unique en base
+async function generateUniqueReferralCode() {
+  for (let attempts = 0; attempts < 10; attempts++) {
+    const code = generateReferralCode();
+    const existing = await pool.query('SELECT 1 FROM users WHERE referral_code = $1', [code]);
+    if (existing.rows.length === 0) return code;
+  }
+  throw new Error('Impossible de générer un code de parrainage unique');
+}
+
+/* ========================================
+   PARRAINAGE : détermine le rôle à la création d'un compte
+   - Un code de parrainage valide => compte ÉTUDIANT (parrainé)
+   - Pas de code => compte TUTEUR
+   - ADMIN n'est jamais attribuable via ce mécanisme
+   ======================================== */
+async function resolveRoleFromReferral(referralCodeRaw) {
+  const referralCode = typeof referralCodeRaw === 'string' ? referralCodeRaw.trim().toUpperCase() : '';
+
+  if (!referralCode) {
+    return { role: 'TUTOR', referredBy: null };
+  }
+
+  const referrer = await pool.query(
+    'SELECT user_id FROM users WHERE referral_code = $1',
+    [referralCode]
+  );
+
+  if (referrer.rows.length === 0) {
+    const err = new Error('Code de parrainage invalide');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return { role: 'STUDENT', referredBy: referrer.rows[0].user_id };
 }
 
 /* ========================================
@@ -197,11 +356,14 @@ async function assignBlockchainAddress(userId) {
     }
 
     // Récupérer toutes les adresses Ganache disponibles
+    // (le compte d'index 0 est réservé à la trésorerie de la boutique, cf. getShopTreasuryAddress)
     const ganacheAccounts = await getAllAccounts();
-    
-    if (!ganacheAccounts || ganacheAccounts.length === 0) {
+
+    if (!ganacheAccounts || ganacheAccounts.length <= 1) {
       throw new Error('Aucun compte Ganache disponible');
     }
+
+    const assignableAccounts = ganacheAccounts.slice(1);
 
     // Récupérer les adresses déjà assignées
     const assignedAddresses = await pool.query(
@@ -213,7 +375,7 @@ async function assignBlockchainAddress(userId) {
 
     // Trouver la première adresse disponible
     let availableAddress = null;
-    for (const account of ganacheAccounts) {
+    for (const account of assignableAccounts) {
       if (!assignedSet.has(account.address.toLowerCase())) {
         availableAddress = account.address;
         break;
@@ -222,7 +384,10 @@ async function assignBlockchainAddress(userId) {
 
     if (!availableAddress) {
       // Si toutes les adresses sont prises, réutiliser la première
-      availableAddress = ganacheAccounts[0].address;
+      // ⚠️ Limitation connue : Ganache n'a qu'un nombre fixe de comptes, donc au-delà
+      // de ce nombre d'utilisateurs, plusieurs comptes finissent par partager le même
+      // wallet (et donc le même solde). Voir la synthèse fournie à l'utilisateur.
+      availableAddress = assignableAccounts[0].address;
     }
 
     // Créer le wallet dans la base de données
@@ -238,6 +403,109 @@ async function assignBlockchainAddress(userId) {
     throw error;
   }
 }
+
+// Adresse Ganache réservée pour recevoir les paiements de la boutique (index 0)
+async function getShopTreasuryAddress() {
+  const ganacheAccounts = await getAllAccounts();
+  if (!ganacheAccounts || ganacheAccounts.length === 0) {
+    throw new Error('Aucun compte Ganache disponible');
+  }
+  return ganacheAccounts[0].address;
+}
+
+// Calcule le solde réel (blockchain) et les statistiques d'un utilisateur.
+// Utilisé par /api/profile et /api/balance pour qu'ils affichent toujours la même chose.
+async function getWalletBalanceAndStats(userId) {
+  let balance = 0;
+  let blockchainAddress = null;
+
+  let walletResult = await pool.query(
+    `SELECT public_address FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+    [userId]
+  );
+
+  if (walletResult.rows.length === 0) {
+    try {
+      await assignBlockchainAddress(userId);
+      walletResult = await pool.query(
+        `SELECT public_address FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+        [userId]
+      );
+    } catch (assignError) {
+      console.error('Erreur création wallet:', assignError);
+    }
+  }
+
+  let walletId = null;
+  if (walletResult.rows.length > 0) {
+    blockchainAddress = walletResult.rows[0].public_address;
+    try {
+      const balanceData = await getBalance(blockchainAddress);
+      balance = parseFloat(balanceData.balanceEth);
+    } catch (balanceError) {
+      console.error('Erreur récupération solde Ganache:', balanceError);
+      balance = 0;
+    }
+
+    const walletIdResult = await pool.query(
+      `SELECT wallet_id FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+      [userId]
+    );
+    walletId = walletIdResult.rows[0]?.wallet_id || null;
+  }
+
+  const helpedCountResult = await pool.query(
+    `SELECT COUNT(DISTINCT sp.user_id) as count
+     FROM service_participations sp
+     JOIN services s ON sp.service_id = s.service_id
+     WHERE s.created_by = $1 AND sp.status = 'CONFIRMED'`,
+    [userId]
+  );
+  const helpedCount = parseInt(helpedCountResult.rows[0]?.count || 0);
+
+  let totalEarned = 0;
+  if (walletId) {
+    const earnedResult = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as total
+       FROM transactions
+       WHERE to_wallet = $1 AND status = 'CONFIRMED'`,
+      [walletId]
+    );
+    totalEarned = parseFloat(earnedResult.rows[0]?.total || 0);
+  }
+
+  const requestsCreatedResult = await pool.query(
+    `SELECT COUNT(*) as count FROM services WHERE created_by = $1`,
+    [userId]
+  );
+  const requestsCreated = parseInt(requestsCreatedResult.rows[0]?.count || 0);
+
+  return {
+    balance,
+    blockchainAddress,
+    stats: { helpedCount, totalEarned, requestsCreated },
+  };
+}
+
+// Catalogue de la boutique (source unique utilisée par /api/shop et /api/purchase)
+const SHOP_PRODUCTS = [
+  {
+    id: 1,
+    name: 'Amazon Voucher',
+    description: '$20 Amazon Gift Card',
+    price: 100,
+    category: 'giftcard',
+    emoji: '🎁',
+  },
+  {
+    id: 2,
+    name: 'Netflix Pass',
+    description: '1 Month Netflix Premium',
+    price: 80,
+    category: 'premium',
+    emoji: '📺',
+  },
+];
 
 /* ========================================
    CONFIGURATION MULTER (Upload de fichiers)
@@ -306,7 +574,7 @@ app.get('/api', (req, res) => {
         'DELETE /api/listings/:listing_id': 'Supprimer une annonce'
       },
       services: {
-        'POST /api/cv/analyze': 'Analyser un CV (PDF) et obtenir des suggestions'
+        'POST /api/analyze-cv': 'Analyser un CV (PDF) et obtenir des suggestions'
       }
     },
     documentation: 'https://github.com/ThomasLeBg94/SAE5A01'
@@ -345,7 +613,7 @@ app.get('/api/check-auth', async (req, res) => {
 });
 
 // Login
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
   /* #swagger.tags = ['Auth'] */
   try {
     const { email, password } = req.body;
@@ -409,7 +677,7 @@ app.post('/api/logout', (req, res) => {
 });
 
 // Register
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
   /* #swagger.tags = ['Auth'] */
   try {
     const {
@@ -417,7 +685,7 @@ app.post('/api/register', async (req, res) => {
       password,
       first_name,
       last_name,
-      role,
+      referral_code,
       lesson_mode,
       visio_tool,
       lesson_places,
@@ -442,27 +710,30 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
 
-    // Normaliser le rôle (convertir en majuscules)
-    const normalizedRole = (role || 'student').toUpperCase();
+    // Système de parrainage : un code valide => compte étudiant, sinon => compte tuteur.
+    // Le rôle n'est jamais choisi librement par le client (ADMIN n'est jamais attribuable ici).
+    let normalizedRole;
+    let referredBy;
+    try {
+      ({ role: normalizedRole, referredBy } = await resolveRoleFromReferral(referral_code));
+    } catch (roleErr) {
+      return res.status(roleErr.statusCode || 400).json({ error: roleErr.message });
+    }
+
     const normalizedLessonMode = normalizeLessonMode(lesson_mode);
     const normalizedVisioTool = normalizeVisioTool(visio_tool);
     const normalizedLessonPlaces = normalizeTutorPlaces(lesson_places);
-    
-    // Valider le rôle
-    const validRoles = ['STUDENT', 'TUTOR', 'ADMIN'];
-    if (!validRoles.includes(normalizedRole)) {
-      return res.status(400).json({ error: 'Rôle invalide' });
-    }
+    const newReferralCode = await generateUniqueReferralCode();
 
     // Hasher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Créer l'utilisateur
     const result = await pool.query(
-      `INSERT INTO users 
-      (email, password_hash, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, is_verified, created_at)
-      VALUES ($1, $2, $3, $4, $5::user_role, $6, $7, $8, false, NOW())
-      RETURNING user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, created_at`,
+      `INSERT INTO users
+      (email, password_hash, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, is_verified, created_at, referral_code, referred_by)
+      VALUES ($1, $2, $3, $4, $5::user_role, $6, $7, $8, false, NOW(), $9, $10)
+      RETURNING user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, created_at, referral_code`,
       [
         email,
         hashedPassword,
@@ -472,6 +743,8 @@ app.post('/api/register', async (req, res) => {
         normalizedLessonMode,
         normalizedVisioTool,
         normalizedLessonPlaces,
+        newReferralCode,
+        referredBy,
       ]
     );
 
@@ -554,7 +827,7 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
 });
 
 // LinkedIn OAuth - finalisation de la création de compte (rôle choisi par l'utilisateur)
-app.post('/api/auth/linkedin/complete-profile', async (req, res) => {
+app.post('/api/auth/linkedin/complete-profile', authLimiter, async (req, res) => {
   /* #swagger.tags = ['Auth'] */
   try {
     const pendingProfile = req.session.pendingLinkedInProfile;
@@ -563,17 +836,21 @@ app.post('/api/auth/linkedin/complete-profile', async (req, res) => {
       return res.status(400).json({ error: 'Aucune connexion LinkedIn en attente' });
     }
 
-    const { role, lesson_mode, visio_tool, lesson_places } = req.body;
+    const { referral_code, lesson_mode, visio_tool, lesson_places } = req.body;
 
-    const normalizedRole = (role || 'student').toUpperCase();
-    const validRoles = ['STUDENT', 'TUTOR', 'ADMIN'];
-    if (!validRoles.includes(normalizedRole)) {
-      return res.status(400).json({ error: 'Rôle invalide' });
+    // Système de parrainage : un code valide => compte étudiant, sinon => compte tuteur.
+    let normalizedRole;
+    let referredBy;
+    try {
+      ({ role: normalizedRole, referredBy } = await resolveRoleFromReferral(referral_code));
+    } catch (roleErr) {
+      return res.status(roleErr.statusCode || 400).json({ error: roleErr.message });
     }
 
     const normalizedLessonMode = normalizeLessonMode(lesson_mode);
     const normalizedVisioTool = normalizeVisioTool(visio_tool);
     const normalizedLessonPlaces = normalizeTutorPlaces(lesson_places);
+    const newReferralCode = await generateUniqueReferralCode();
 
     // Vérifier qu'un compte n'a pas été créé entre-temps avec cet email
     const existing = await pool.query(
@@ -590,9 +867,9 @@ app.post('/api/auth/linkedin/complete-profile', async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO users
-      (email, password_hash, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, is_verified, created_at)
-      VALUES ($1, $2, $3, $4, $5::user_role, $6, $7, $8, $9, NOW())
-      RETURNING user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, created_at`,
+      (email, password_hash, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, is_verified, created_at, referral_code, referred_by)
+      VALUES ($1, $2, $3, $4, $5::user_role, $6, $7, $8, $9, NOW(), $10, $11)
+      RETURNING user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places, created_at, referral_code`,
       [
         pendingProfile.email,
         hashedPassword,
@@ -603,6 +880,8 @@ app.post('/api/auth/linkedin/complete-profile', async (req, res) => {
         normalizedVisioTool,
         normalizedLessonPlaces,
         pendingProfile.emailVerified,
+        newReferralCode,
+        referredBy,
       ]
     );
 
@@ -635,7 +914,7 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
     // Récupérer les infos utilisateur
     const userResult = await pool.query(
       `SELECT user_id, email, first_name, last_name, role, lesson_mode, visio_tool, lesson_places,
-              is_verified, created_at, last_login
+              is_verified, created_at, last_login, referral_code
        FROM users WHERE user_id = $1`,
       [req.session.userId]
     );
@@ -645,84 +924,7 @@ app.get('/api/profile', authGuard({ mustBeLogged: true }), async (req, res) => {
     }
 
     const user = userResult.rows[0];
-    let balance = 0;
-    let blockchainAddress = null;
-
-    // Récupérer l'adresse blockchain de l'utilisateur depuis la table wallets
-    let walletResult = await pool.query(
-      `SELECT public_address, blockchain FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
-      [req.session.userId]
-    );
-
-    // Si l'utilisateur n'a pas de wallet, lui en assigner un
-    if (walletResult.rows.length === 0) {
-      try {
-        await assignBlockchainAddress(req.session.userId);
-        // Récupérer à nouveau le wallet créé
-        walletResult = await pool.query(
-          `SELECT public_address, blockchain FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
-          [req.session.userId]
-        );
-      } catch (assignError) {
-        console.error('Erreur création wallet:', assignError);
-      }
-    }
-
-    if (walletResult.rows.length > 0) {
-      blockchainAddress = walletResult.rows[0].public_address;
-      
-      // Récupérer le solde réel depuis Ganache
-      try {
-        const balanceData = await getBalance(blockchainAddress);
-        balance = parseFloat(balanceData.balanceEth);
-      } catch (balanceError) {
-        console.error('Erreur récupération solde Ganache:', balanceError);
-        balance = 0;
-      }
-    }
-
-    // Calculer les statistiques dynamiquement depuis la base de données
-    
-    // 1. Nombre d'étudiants aidés (participations confirmées où l'utilisateur est le créateur du service)
-    const helpedCountResult = await pool.query(
-      `SELECT COUNT(DISTINCT sp.user_id) as count
-       FROM service_participations sp
-       JOIN services s ON sp.service_id = s.service_id
-       WHERE s.created_by = $1 AND sp.status = 'CONFIRMED'`,
-      [req.session.userId]
-    );
-    const helpedCount = parseInt(helpedCountResult.rows[0]?.count || 0);
-
-    // 2. Total des coins gagnés (transactions confirmées reçues)
-    const walletIdResult = await pool.query(
-      `SELECT wallet_id FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
-      [req.session.userId]
-    );
-    
-    let totalEarned = 0;
-    if (walletIdResult.rows.length > 0) {
-      const walletId = walletIdResult.rows[0].wallet_id;
-      const earnedResult = await pool.query(
-        `SELECT COALESCE(SUM(amount), 0) as total
-         FROM transactions
-         WHERE to_wallet = $1 AND status = 'CONFIRMED'`,
-        [walletId]
-      );
-      totalEarned = parseFloat(earnedResult.rows[0]?.total || 0);
-    }
-
-    // 3. Nombre de services/requêtes créés
-    const requestsCreatedResult = await pool.query(
-      `SELECT COUNT(*) as count FROM services WHERE created_by = $1`,
-      [req.session.userId]
-    );
-    const requestsCreated = parseInt(requestsCreatedResult.rows[0]?.count || 0);
-
-    const stats = {
-      helpedCount,
-      totalEarned,
-      requestsCreated
-    };
+    const { balance, blockchainAddress, stats } = await getWalletBalanceAndStats(req.session.userId);
 
     res.json({
       ...user,
@@ -771,6 +973,46 @@ app.put('/api/profile/lesson-locations', authGuard({ mustBeLogged: true }), asyn
     );
 
     res.json({ success: true, ...result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST changement de mot de passe
+app.post('/api/reset-password', authLimiter, authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Auth'] */
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Mot de passe actuel et nouveau mot de passe requis' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 8 caractères' });
+    }
+
+    const userResult = await pool.query(
+      'SELECT password_hash FROM users WHERE user_id = $1',
+      [req.session.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const validPassword = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE user_id = $2',
+      [hashedPassword, req.session.userId]
+    );
+
+    res.json({ success: true, message: 'Mot de passe mis à jour avec succès' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -940,12 +1182,12 @@ app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) =
    ROUTES API - USERS (CRUD)
    ======================================== */
 
-// GET tous les utilisateurs
-app.get('/api/users', async (req, res) => {
+// GET tous les utilisateurs (réservé aux administrateurs)
+app.get('/api/users', requireAdmin(), async (req, res) => {
   /* #swagger.tags = ['Users'] */
   try {
     const result = await pool.query(
-      `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login 
+      `SELECT user_id, email, first_name, last_name, role, is_verified, created_at, last_login
        FROM users ORDER BY created_at DESC`
     );
     res.json(result.rows);
@@ -954,8 +1196,8 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// GET un utilisateur par ID
-app.get('/api/users/:user_id', async (req, res) => {
+// GET un utilisateur par ID (réservé aux administrateurs)
+app.get('/api/users/:user_id', requireAdmin(), async (req, res) => {
   /* #swagger.tags = ['Users'] */
   try {
     const result = await pool.query(
@@ -974,11 +1216,16 @@ app.get('/api/users/:user_id', async (req, res) => {
   }
 });
 
-// UPDATE utilisateur
-app.put('/api/users/:user_id', async (req, res) => {
+// UPDATE utilisateur (réservé aux administrateurs — les utilisateurs modifient leur propre
+// profil via PUT /api/profile/lesson-locations, qui ne permet pas de changer le rôle)
+app.put('/api/users/:user_id', requireAdmin(), async (req, res) => {
   /* #swagger.tags = ['Users'] */
   try {
     const { first_name, last_name, role } = req.body;
+
+    if (role !== undefined && !['STUDENT', 'TUTOR', 'ADMIN'].includes(String(role).toUpperCase())) {
+      return res.status(400).json({ error: 'Rôle invalide' });
+    }
 
     const result = await pool.query(
       `UPDATE users
@@ -987,7 +1234,7 @@ app.put('/api/users/:user_id', async (req, res) => {
            role = COALESCE($3, role)
        WHERE user_id = $4
        RETURNING user_id, email, first_name, last_name, role, is_verified`,
-      [first_name, last_name, role, req.params.user_id]
+      [first_name, last_name, role ? String(role).toUpperCase() : null, req.params.user_id]
     );
 
     if (result.rows.length === 0) {
@@ -1000,8 +1247,9 @@ app.put('/api/users/:user_id', async (req, res) => {
   }
 });
 
-// DELETE utilisateur
-app.delete('/api/users/:user_id', async (req, res) => {
+// DELETE utilisateur (réservé aux administrateurs — un utilisateur supprime son propre
+// compte via DELETE /api/account)
+app.delete('/api/users/:user_id', requireAdmin(), async (req, res) => {
   /* #swagger.tags = ['Users'] */
   try {
     const result = await pool.query(
@@ -1243,71 +1491,89 @@ app.delete('/api/availability/:slot_id', authGuard({ mustBeLogged: true }), asyn
    ROUTES API - BOOKINGS (RÉSERVATIONS)
    ======================================== */
 
-// GET toutes les réservations (avec filtre optionnel par user)
-app.get('/api/bookings', async (req, res) => {
+// Charge une réservation et vérifie que l'appelant est soit l'étudiant qui a réservé,
+// soit le tuteur du créneau concerné. Lève une erreur avec statusCode sinon.
+async function assertBookingAccess(bookingId, sessionUserId) {
+  const result = await pool.query(
+    `SELECT b.*, ta.tutor_user_id
+     FROM bookings b
+     LEFT JOIN tutor_availability ta ON b.slot_id = ta.slot_id
+     WHERE b.booking_id = $1`,
+    [bookingId]
+  );
+
+  if (result.rows.length === 0) {
+    const err = new Error('Réservation non trouvée');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const booking = result.rows[0];
+  const isOwner = booking.user_id === sessionUserId;
+  const isTutor = booking.tutor_user_id === sessionUserId;
+
+  if (!isOwner && !isTutor) {
+    const err = new Error('Non autorisé');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  return booking;
+}
+
+// Libère le créneau associé à une réservation (utilisé à l'annulation/suppression)
+async function releaseBookingSlot(booking, client = pool) {
+  if (booking.slot_id) {
+    await client.query('UPDATE tutor_availability SET is_booked = FALSE WHERE slot_id = $1', [booking.slot_id]);
+  }
+}
+
+// GET les réservations de l'utilisateur connecté (élève et/ou tuteur)
+app.get('/api/bookings', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
   try {
-    const { user_id } = req.query;
-    
-    let query = `
-      SELECT b.booking_id, b.user_id, b.listing_id, b.title, b.description, b.subject,      
+    // Le filtre est toujours celui de l'utilisateur connecté : impossible de consulter
+    // les réservations d'un autre utilisateur en changeant le paramètre user_id.
+    const userId = req.session.userId;
+
+    const query = `
+      SELECT b.booking_id, b.user_id, b.listing_id, b.title, b.description, b.subject,
              b.start_time, b.end_time, b.status, b.tutor_name, b.price, b.notes,
              b.created_at, b.updated_at
       FROM bookings b
       LEFT JOIN tutor_availability ta ON b.slot_id = ta.slot_id
+      WHERE b.user_id = $1 OR ta.tutor_user_id = $1
+      ORDER BY b.start_time ASC
     `;
-
-    const params = [];
-    if (user_id) {
-      query += ' WHERE b.user_id = $1 OR ta.tutor_user_id = $1';
-      params.push(user_id);
-    }
-
-    query += ' ORDER BY b.start_time ASC';
-    const result = await pool.query(query, params);
+    const result = await pool.query(query, [userId]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET notifications pour le tuteur
-app.get('/api/tutor/notifications', async (req, res) => {
+// GET notifications pour le tuteur connecté
+app.get('/api/tutor/notifications', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
   try {
-    const { tutor_email, user_id } = req.query;
-    if (!tutor_email && !user_id) {
-      return res.status(400).json({ error: 'tutor_email ou user_id requis' });
-    }
+    const userId = req.session.userId;
 
-    let query = `
-      SELECT b.* 
-      FROM bookings b
-      LEFT JOIN tutor_availability ta ON b.slot_id = ta.slot_id
-      WHERE b.is_notified_tutor = FALSE
-    `;
-    const params = [];
-
-    if (user_id && tutor_email) {
-      query += ` AND (ta.tutor_user_id = $1 OR b.tutor_email = $2)`;
-      params.push(user_id, tutor_email);
-    } else if (user_id) {
-      query += ` AND ta.tutor_user_id = $1`;
-      params.push(user_id);
-    } else {
-      query += ` AND b.tutor_email = $1`;
-      params.push(tutor_email);
-    }
-
-    const result = await pool.query(query, params);
+    const result = await pool.query(
+      `SELECT b.*
+       FROM bookings b
+       LEFT JOIN tutor_availability ta ON b.slot_id = ta.slot_id
+       WHERE b.is_notified_tutor = FALSE
+         AND (ta.tutor_user_id = $1 OR b.tutor_email = (SELECT email FROM users WHERE user_id = $1))`,
+      [userId]
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// MARQUER notifications comme lues
-app.put('/api/tutor/notifications/mark-read', async (req, res) => {
+// MARQUER notifications comme lues (uniquement les réservations dont on est le tuteur)
+app.put('/api/tutor/notifications/mark-read', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
   try {
     const { booking_ids } = req.body;
@@ -1315,36 +1581,31 @@ app.put('/api/tutor/notifications/mark-read', async (req, res) => {
       return res.status(400).json({ error: 'Tableau booking_ids requis' });
     }
 
-    const placeholders = booking_ids.map((_, i) => `$${i + 1}`).join(',');
-    const query = `
-      UPDATE bookings 
-      SET is_notified_tutor = TRUE 
-      WHERE booking_id IN (${placeholders})
-    `;
-    await pool.query(query, booking_ids);
-    
+    const userId = req.session.userId;
+    await pool.query(
+      `UPDATE bookings b
+       SET is_notified_tutor = TRUE
+       FROM tutor_availability ta
+       WHERE b.slot_id = ta.slot_id
+         AND b.booking_id = ANY($1::uuid[])
+         AND ta.tutor_user_id = $2`,
+      [booking_ids, userId]
+    );
+
     res.json({ message: 'Notifications marquées comme lues' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET une réservation par ID
-app.get('/api/bookings/:booking_id', async (req, res) => {
+// GET une réservation par ID (élève ou tuteur concerné uniquement)
+app.get('/api/bookings/:booking_id', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
   try {
-    const result = await pool.query(
-      'SELECT * FROM bookings WHERE booking_id = $1',
-      [req.params.booking_id]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Réservation non trouvée' });
-    }
-    
-    res.json(result.rows[0]);
+    const booking = await assertBookingAccess(req.params.booking_id, req.session.userId);
+    res.json(booking);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -1441,15 +1702,21 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
-// UPDATE réservation
-app.put('/api/bookings/:booking_id', async (req, res) => {
+// UPDATE réservation (élève ou tuteur concerné uniquement)
+app.put('/api/bookings/:booking_id', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
   try {
+    const existing = await assertBookingAccess(req.params.booking_id, req.session.userId);
+
     const {
       title, description, subject, start_time, end_time,
       status, tutor_name, price, notes
     } = req.body;
-    
+
+    if (status && !['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Statut invalide' });
+    }
+
     const result = await pool.query(
       `UPDATE bookings
        SET title = COALESCE($1, title),
@@ -1464,64 +1731,72 @@ app.put('/api/bookings/:booking_id', async (req, res) => {
            updated_at = NOW()
        WHERE booking_id = $10
        RETURNING *`,
-      [title, description, subject, start_time, end_time, status, 
+      [title, description, subject, start_time, end_time, status,
        tutor_name, price, notes, req.params.booking_id]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Réservation non trouvée' });
+
+    const updated = result.rows[0];
+
+    // Si la réservation vient d'être annulée, on libère le créneau associé
+    if (status === 'cancelled' && existing.status !== 'cancelled') {
+      await releaseBookingSlot(updated);
     }
-    
-    res.json(result.rows[0]);
+
+    res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
-// UPDATE statut réservation
-app.patch('/api/bookings/:booking_id/status', async (req, res) => {
+// UPDATE statut réservation (élève ou tuteur concerné uniquement)
+app.patch('/api/bookings/:booking_id/status', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
   try {
     const { status } = req.body;
-    
+
     if (!['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
       return res.status(400).json({ error: 'Statut invalide' });
     }
-    
+
+    const existing = await assertBookingAccess(req.params.booking_id, req.session.userId);
+
     const result = await pool.query(
-      `UPDATE bookings 
+      `UPDATE bookings
        SET status = $1, updated_at = NOW()
        WHERE booking_id = $2
        RETURNING *`,
       [status, req.params.booking_id]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Réservation non trouvée' });
+
+    const updated = result.rows[0];
+
+    // Bug connu corrigé : un créneau annulé restait marqué "réservé" et bloquait
+    // ce horaire pour toujours. On le libère dès que le statut passe à "cancelled".
+    if (status === 'cancelled' && existing.status !== 'cancelled') {
+      await releaseBookingSlot(updated);
     }
-    
-    res.json(result.rows[0]);
+
+    res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
-// DELETE réservation
-app.delete('/api/bookings/:booking_id', async (req, res) => {
+// DELETE réservation (élève ou tuteur concerné uniquement)
+app.delete('/api/bookings/:booking_id', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Bookings'] */
   try {
-    const result = await pool.query(
-      'DELETE FROM bookings WHERE booking_id = $1 RETURNING booking_id',
-      [req.params.booking_id]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Réservation non trouvée' });
-    }
-    
+    const existing = await assertBookingAccess(req.params.booking_id, req.session.userId);
+
+    // On libère systématiquement le créneau : une réservation supprimée ne doit
+    // jamais laisser le créneau bloqué comme "réservé".
+    await releaseBookingSlot(existing);
+
+    await pool.query('DELETE FROM bookings WHERE booking_id = $1', [req.params.booking_id]);
+
     res.json({ message: 'Réservation supprimée avec succès' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -1529,8 +1804,8 @@ app.delete('/api/bookings/:booking_id', async (req, res) => {
    ROUTES API - BLOCKCHAIN
    ======================================== */
 
-// GET tous les comptes blockchain
-app.get('/api/blockchain/accounts', async (req, res) => {
+// GET tous les comptes blockchain (réservé aux administrateurs : expose toutes les adresses/soldes)
+app.get('/api/blockchain/accounts', requireAdmin(), async (req, res) => {
   /* #swagger.tags = ['Blockchain'] */
   try {
     const accounts = await getAllAccounts();
@@ -1541,7 +1816,7 @@ app.get('/api/blockchain/accounts', async (req, res) => {
 });
 
 // GET balance d'un compte
-app.get('/api/blockchain/balance/:address', async (req, res) => {
+app.get('/api/blockchain/balance/:address', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Blockchain'] */
   try {
     const balance = await getBalance(req.params.address);
@@ -1551,18 +1826,111 @@ app.get('/api/blockchain/balance/:address', async (req, res) => {
   }
 });
 
-// POST transaction blockchain
-app.post('/api/blockchain/transaction', async (req, res) => {
+// GET détails d'une transaction
+app.get('/api/blockchain/transaction/:txHash', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Blockchain'] */
   try {
-    const { fromAddress, toAddress, amount } = req.body;
-    
-    if (!fromAddress || !toAddress || !amount) {
-      return res.status(400).json({ error: 'Paramètres manquants' });
+    const details = await getTransactionDetails(req.params.txHash);
+    res.json({ success: true, ...details });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST transaction blockchain — envoie des CCT DEPUIS le wallet de l'utilisateur connecté.
+// L'adresse source n'est JAMAIS fournie par le client : elle est toujours résolue depuis
+// la session, pour empêcher quiconque de vider le wallet d'un autre utilisateur.
+app.post('/api/blockchain/transaction', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
+  try {
+    const { toAddress, amount } = req.body;
+
+    if (!toAddress || !amount || Number(amount) <= 0) {
+      return res.status(400).json({ error: 'Adresse destinataire et montant (positif) requis' });
     }
-    
+
+    const walletResult = await pool.query(
+      `SELECT public_address FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+      [req.session.userId]
+    );
+
+    if (walletResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Aucun wallet associé à ce compte' });
+    }
+
+    const fromAddress = walletResult.rows[0].public_address;
+
+    if (fromAddress.toLowerCase() === String(toAddress).toLowerCase()) {
+      return res.status(400).json({ error: 'Impossible de vous envoyer des CCT à vous-même' });
+    }
+
     const result = await sendTransaction(fromAddress, toAddress, amount);
     res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ========================================
+   ROUTES API - BÉNÉFICIAIRES (carnet d'adresses pour les transferts)
+   ======================================== */
+
+// GET mes bénéficiaires
+app.get('/api/beneficiaries', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
+  try {
+    const result = await pool.query(
+      `SELECT beneficiary_id, label, address, created_at
+       FROM beneficiaries WHERE owner_user_id = $1 ORDER BY created_at DESC`,
+      [req.session.userId]
+    );
+    res.json({ success: true, beneficiaries: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST ajouter un bénéficiaire
+app.post('/api/beneficiaries', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
+  try {
+    const { label, address } = req.body;
+
+    if (!label || !address || !label.trim() || !address.trim()) {
+      return res.status(400).json({ error: 'Nom et adresse requis' });
+    }
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address.trim())) {
+      return res.status(400).json({ error: 'Adresse blockchain invalide (format 0x...)' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO beneficiaries (owner_user_id, label, address)
+       VALUES ($1, $2, $3)
+       RETURNING beneficiary_id, label, address, created_at`,
+      [req.session.userId, label.trim(), address.trim()]
+    );
+
+    res.status(201).json({ success: true, beneficiary: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE un bénéficiaire (propriétaire uniquement)
+app.delete('/api/beneficiaries/:id', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Blockchain'] */
+  try {
+    const result = await pool.query(
+      'DELETE FROM beneficiaries WHERE beneficiary_id = $1 AND owner_user_id = $2 RETURNING beneficiary_id',
+      [req.params.id, req.session.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bénéficiaire non trouvé' });
+    }
+
+    res.json({ success: true, message: 'Bénéficiaire supprimé' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1623,6 +1991,11 @@ app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) =>
       return res.status(400).json({ error: 'Titre et description requis' });
     }
 
+    // Correction orthographique/grammaticale automatique par IA du titre et de la description
+    const corrected = await safeCorrectListingText(title, description);
+    const correctedTitle = corrected.title;
+    const correctedDescription = corrected.description;
+
     let tutor_user_id = req.session.userId;
     let tutor_email = null;
     let final_tutor_name = tutor_name || 'Anonymous';
@@ -1649,8 +2022,8 @@ app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) =>
 
     const listing = {
       id: Date.now(),
-      title,
-      description,
+      title: correctedTitle,
+      description: correctedDescription,
       subject: subject || 'other',
       level: level || 'intermediate',
       price: parseFloat(price) || 0,
@@ -1664,7 +2037,7 @@ app.post('/api/listings', authGuard({ mustBeLogged: true }), async (req, res) =>
 
     await indexListing(listing);
 
-    res.status(201).json({ success: true, listing });
+    res.status(201).json({ success: true, listing, textCorrected: corrected.corrected });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1694,11 +2067,17 @@ app.put('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, res)
       price,
     } = req.body;
 
+    // Correction orthographique/grammaticale automatique par IA du titre et de la description
+    const corrected = await safeCorrectListingText(
+      title ?? existing.title,
+      description ?? existing.description
+    );
+
     const updatedListing = {
       ...existing,
       id: existing.id,
-      title: title ?? existing.title,
-      description: description ?? existing.description,
+      title: corrected.title,
+      description: corrected.description,
       subject: subject ?? existing.subject,
       level: level ?? existing.level,
       price: price != null ? parseFloat(price) : existing.price,
@@ -1709,7 +2088,7 @@ app.put('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, res)
     };
 
     await indexListing(updatedListing);
-    res.json({ success: true, listing: updatedListing });
+    res.json({ success: true, listing: updatedListing, textCorrected: corrected.corrected });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1727,7 +2106,10 @@ app.delete('/api/listings/:id', authGuard({ mustBeLogged: true }), async (req, r
     if (!listing) return res.status(404).json({ error: 'Annonce non trouvée' });
     if (listing.tutor_user_id !== req.session.userId) return res.status(403).json({ error: 'Non autorisé' });
 
-    await deleteListing(listId); 
+    // Bug corrigé : req.params.id est toujours une chaîne, alors que Qdrant attend le
+    // même type que l'ID utilisé à l'indexation (entier). Sans ce cast, la suppression
+    // échouait systématiquement avec une erreur "Bad Request" côté Qdrant.
+    await deleteListing(listing.id);
     res.json({ success: true, message: 'Annonce supprimée' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1998,7 +2380,7 @@ app.get('/api/interests', authGuard({ mustBeLogged: true }), async (req, res) =>
    ROUTES API - ANALYSE CV (IA)
    ======================================== */
 
-app.post('/api/analyze-cv', upload.single('cv'), async (req, res) => {
+app.post('/api/analyze-cv', authLimiter, upload.single('cv'), async (req, res) => {
   /* #swagger.tags = ['CV'] */
   try {
     if (!req.file) {
@@ -2029,70 +2411,60 @@ app.get('/api/requests', async (req, res) => {
   }
 });
 
-// GET balance utilisateur (mock)
+// GET balance utilisateur — reflète le vrai solde blockchain (même calcul que /api/profile)
 app.get('/api/balance', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Blockchain'] */
   try {
-    // TODO: Intégrer avec la blockchain
-    res.json({
-      balance: 150,
-      stats: {
-        helpedCount: 5,
-        totalEarned: 250,
-        requestsCreated: 3,
-      },
-      transactions: []
-    });
+    const { balance, stats } = await getWalletBalanceAndStats(req.session.userId);
+    res.json({ balance, stats, transactions: [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET shop (mock)
+// GET shop
 app.get('/api/shop', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['General'] */
   try {
-    res.json({
-      balance: 150,
-      products: [
-        {
-          id: 1,
-          name: 'Amazon Voucher',
-          description: '$20 Amazon Gift Card',
-          price: 100,
-          category: 'giftcard',
-          emoji: '🎁',
-        },
-        {
-          id: 2,
-          name: 'Netflix Pass',
-          description: '1 Month Netflix Premium',
-          price: 80,
-          category: 'premium',
-          emoji: '📺',
-        },
-      ]
-    });
+    const { balance } = await getWalletBalanceAndStats(req.session.userId);
+    res.json({ balance, products: SHOP_PRODUCTS });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-/* ========================================
-   ROUTES PAGES DE DÉMO (HTML statiques)
-   ======================================== */
+// POST achat boutique — paie en CCT réels depuis le wallet de l'utilisateur vers la
+// trésorerie de la boutique.
+app.post('/api/purchase', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['General'] */
+  try {
+    const { productId } = req.body;
+    const product = SHOP_PRODUCTS.find((p) => p.id === Number(productId));
+    if (!product) {
+      return res.status(404).json({ error: 'Produit introuvable' });
+    }
 
-// Pages de démonstration des services
-app.get('/listings-demo', (req, res) => {
-  res.sendFile(join(__dirname, 'Application/Front/pages/listings-demo.html'));
-});
+    const walletResult = await pool.query(
+      `SELECT public_address FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+      [req.session.userId]
+    );
+    if (walletResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Aucun wallet associé à ce compte' });
+    }
+    const fromAddress = walletResult.rows[0].public_address;
 
-app.get('/blockchain-demo', (req, res) => {
-  res.sendFile(join(__dirname, 'Application/Front/pages/blockchain-demo.html'));
-});
+    const { balance } = await getWalletBalanceAndStats(req.session.userId);
+    if (balance < product.price) {
+      return res.status(400).json({ error: 'Solde insuffisant' });
+    }
 
-app.get('/create-listing-cv', (req, res) => {
-  res.sendFile(join(__dirname, 'Application/Front/pages/create-listing-cv.html'));
+    const shopAddress = await getShopTreasuryAddress();
+    const result = await sendTransaction(fromAddress, shopAddress, product.price);
+
+    res.json({ success: true, product, transactionHash: result.transactionHash });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /* ========================================
@@ -2110,7 +2482,10 @@ if (existsSync(swaggerPath)) {
    DÉMARRAGE DU SERVEUR
    ======================================== */
 
-app.listen(PORT, async () => {
+// httpServer (et non app.listen) : c'est lui qui porte le serveur Socket.io.
+// Utiliser app.listen() ici démarrerait un second serveur HTTP indépendant et
+// Socket.io ne recevrait jamais aucune connexion.
+httpServer.listen(PORT, async () => {
   console.log('========================================');
   console.log(`🚀 CryptoCampus Server`);
   console.log(`📡 Listening on http://localhost:${PORT}`);

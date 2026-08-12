@@ -227,8 +227,17 @@
               </div>
             </div>
 
+            <!-- Connexion requise pour réserver -->
+            <div v-if="!bookingSuccess && !currentUserId" class="booking-form">
+              <h3>📅 Réserver ce cours</h3>
+              <div class="slots-empty">
+                <p>🔒 Vous devez être connecté(e) pour réserver ce cours.</p>
+                <router-link to="/login" class="btn btn-primary" @click="closeModal">Se connecter</router-link>
+              </div>
+            </div>
+
             <!-- Formulaire de réservation -->
-            <div v-if="!bookingSuccess" class="booking-form">
+            <div v-if="!bookingSuccess && currentUserId" class="booking-form">
               <h3>📅 Réserver ce cours</h3>
               <div v-if="bookingError" class="error-message">{{ bookingError }}</div>
 
@@ -289,8 +298,9 @@
 
           <div v-if="!bookingSuccess" class="modal-footer">
             <button @click="closeModal" class="btn btn-secondary">Annuler</button>
-            <button 
-              @click="createBooking" 
+            <button
+              v-if="currentUserId"
+              @click="createBooking"
               class="btn btn-primary"
               :disabled="isBooking || selectedSlotIds.length === 0 || availableSlots.length === 0"
             >
@@ -305,6 +315,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
 // State
 const searchQuery = ref('')
@@ -317,8 +328,7 @@ const showFilters = ref(false)
 const subjectFilter = ref('')
 const levelFilter = ref('')
 const sortBy = ref('')
-const userRole = ref('')
-const currentUserId = ref('')
+const { userRole, userId: currentUserId, checkAuth } = useAuth()
 
 // Modal & Booking state
 const showModal = ref(false)
@@ -463,15 +473,7 @@ const isFavorite = (listingId) => {
 }
 
 const loadAuthData = async () => {
-  try {
-    const response = await fetch('/api/check-auth', { credentials: 'include' })
-    if (!response.ok) return
-    const data = await response.json()
-    userRole.value = data.role || ''
-    currentUserId.value = data.userId || ''
-  } catch (error) {
-    console.error('Erreur auth:', error)
-  }
+  await checkAuth()
 }
 
 const loadEngagement = async () => {
@@ -683,6 +685,11 @@ const toggleSlot = (slotId) => {
 }
 
 const createBooking = async () => {
+  if (!currentUserId.value) {
+    bookingError.value = 'Vous devez être connecté(e) pour réserver un cours'
+    return
+  }
+
   if (selectedSlotIds.value.length === 0) {
     bookingError.value = 'Veuillez sélectionner au moins un créneau'
     return
