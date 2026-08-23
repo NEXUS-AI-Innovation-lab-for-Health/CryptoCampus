@@ -26,7 +26,7 @@ class Transaction {
   final double amount;
   final String? transactionHash;
   final int? blockNumber;
-  final int? gasUsed;
+  final String? gasUsed;
 
   Transaction({
     required this.from,
@@ -37,14 +37,25 @@ class Transaction {
     this.gasUsed,
   });
 
+  // POST /api/blockchain/transaction renvoie `from`/`to` comme des objets
+  // {address, balanceBefore, balanceAfter} (pas de simples chaînes), et
+  // GET /api/blockchain/transaction/:hash renvoie des chaînes plates — on gère les deux.
+  static String _extractAddress(dynamic value, String fallback) {
+    if (value is Map) return value['address']?.toString() ?? fallback;
+    if (value is String) return value;
+    return fallback;
+  }
+
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
-      from: json['from'] ?? json['fromAddress'] ?? '',
-      to: json['to'] ?? json['toAddress'] ?? '',
-      amount: double.parse(json['value']?.toString() ?? json['amount']?.toString() ?? '0'),
+      from: _extractAddress(json['from'], json['fromAddress']?.toString() ?? ''),
+      to: _extractAddress(json['to'], json['toAddress']?.toString() ?? ''),
+      amount: double.tryParse(json['value']?.toString() ?? json['amount']?.toString() ?? '0') ?? 0,
       transactionHash: json['transactionHash'] ?? json['hash'],
-      blockNumber: json['blockNumber'],
-      gasUsed: json['gasUsed'],
+      blockNumber: json['blockNumber'] is int
+          ? json['blockNumber']
+          : int.tryParse(json['blockNumber']?.toString() ?? ''),
+      gasUsed: json['gasUsed']?.toString(),
     );
   }
 }

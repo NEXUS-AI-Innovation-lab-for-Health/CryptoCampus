@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../../providers/listings_provider.dart';
 import '../../models/listing_model.dart';
 
+// Import direct pour le provider ChangeNotifier ListingEngagementProvider, défini dans
+// le même fichier que ListingsProvider (favoris/intérêts, voir listings_provider.dart).
+
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
 
@@ -17,8 +20,8 @@ class _ShopScreenState extends State<ShopScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final listingsProvider = Provider.of<ListingsProvider>(context, listen: false);
-      listingsProvider.loadListings();
+      Provider.of<ListingsProvider>(context, listen: false).loadListings();
+      Provider.of<ListingEngagementProvider>(context, listen: false).ensureLoaded();
     });
   }
 
@@ -228,6 +231,18 @@ class _ListingCard extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
+                  ),
+                  Consumer<ListingEngagementProvider>(
+                    builder: (context, engagement, _) {
+                      final isFavorite = engagement.isFavorite(listing.listingId);
+                      return IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_outline,
+                          color: isFavorite ? Colors.pink : Colors.grey,
+                        ),
+                        onPressed: () => engagement.toggleFavorite(listing.listingId),
+                      );
+                    },
                   ),
                 ],
               ),

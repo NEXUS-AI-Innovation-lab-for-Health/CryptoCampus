@@ -13,15 +13,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToHome();
+    _checkSessionAndNavigate();
   }
 
-  Future<void> _navigateToHome() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    
+  Future<void> _checkSessionAndNavigate() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
+    // Vérification de session réelle côté serveur (cookie sessionId), équivalent de
+    // useAuth.js côté web — au lieu de se fier uniquement à un état local.
+    final minDelay = Future.delayed(const Duration(seconds: 2));
+    await Future.wait([authProvider.checkSession(), minDelay]);
+
+    if (!mounted) return;
+
     if (authProvider.isAuthenticated) {
       Navigator.of(context).pushReplacementNamed('/home');
     } else {

@@ -1,10 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
-import '../../config/api_config.dart';
 import '../../models/listing_model.dart';
-import '../../providers/blockchain_provider.dart';
+import '../../services/api_service.dart';
 
 class ListingDetailScreen extends StatelessWidget {
   const ListingDetailScreen({super.key});
@@ -188,11 +184,12 @@ class _BookingSlotDialog extends StatefulWidget {
 }
 
 class _BookingSlotDialogState extends State<_BookingSlotDialog> {
+  final ApiService _apiService = ApiService();
   bool _loadingSlots = true;
   String? _errorMessage;
   List<Map<String, dynamic>> _slots = [];
   final Set<String> _selectedSlotIds = {};
-  bool _paying = false;
+  bool _booking = false;
 
   @override
   void initState() {
@@ -202,22 +199,15 @@ class _BookingSlotDialogState extends State<_BookingSlotDialog> {
 
   Future<void> _fetchSlots() async {
     try {
-      final uri = Uri.parse(
-        ApiConfig.availabilityUrl(listingId: widget.listing.listingId.toString()),
-      );
-      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        setState(() {
-          _slots = data.cast<Map<String, dynamic>>();
-          _loadingSlots = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Impossible de charger les créneaux (${response.statusCode})';
-          _loadingSlots = false;
-        });
-      }
+      // Les créneaux ne sont jamais rattachés à une annonce précise (listing_id reste
+      // NULL côté DB : le formulaire de création de créneau, web comme mobile, n'envoie
+      // que start_time/end_time). Il faut filtrer par tuteur, comme le fait RequestsList.vue
+      // côté web — filtrer par listing_id ne retournait jamais aucun résultat.
+      final slots = await _apiService.getAvailability(tutorUserId: widget.listing.tutorUserId);
+      setState(() {
+        _slots = slots;
+        _loadingSlots = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = 'Erreur réseau: $e';
@@ -247,57 +237,41 @@ class _BookingSlotDialogState extends State<_BookingSlotDialog> {
     return '$day  $startT – $endT';
   }
 
+  // Réservation simple, exactement comme le modal de RequestsList.vue côté web : aucun
+  // virement blockchain n'est déclenché à la réservation (le web ne le fait pas non plus),
+  // juste POST /api/bookings avec les créneaux choisis.
   Future<void> _confirm() async {
     if (_selectedSlotIds.isEmpty) return;
 
-    setState(() => _paying = true);
+    setState(() => _booking = true);
 
-    final blockchainProvider = Provider.of<BlockchainProvider>(context, listen: false);
+    try {
+      await _apiService.createBooking(
+        slotIds: _selectedSlotIds.toList(),
+        listingId: widget.listing.listingId,
+        title: widget.listing.title,
+        description: widget.listing.description,
+        subject: widget.listing.subject,
+        tutorName: widget.listing.tutorName,
+        price: widget.listing.pricePerHour,
+      );
 
-    // Blockchain payment
-    // TODO: replace with real tutor wallet address fetched from API
-    const tutorAddress = '0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0';
-    final success = await blockchainProvider.sendTransaction(
-      toAddress: tutorAddress,
-      amount: _totalPrice,
-    );
-
-    if (!mounted) return;
-
-    if (success) {
-      // Attempt to create bookings server-side (best-effort; requires session cookie)
-      try {
-        await http.post(
-          Uri.parse(ApiConfig.bookingsUrl),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'slot_ids': _selectedSlotIds.toList(),
-            'listing_id': widget.listing.listingId,
-            'title': widget.listing.title,
-            'description': widget.listing.description,
-            'subject': widget.listing.subject,
-            'tutor_name': widget.listing.tutorName,
-            'price': widget.listing.pricePerHour,
-          }),
-        );
-      } catch (_) {
-        // Silent fail – blockchain payment already succeeded
-      }
-
+      if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Paiement effectué ! ${_selectedSlotIds.length} créneau(x) réservé(s) · ${_totalPrice.toStringAsFixed(4)} CCT',
+            '${_selectedSlotIds.length} créneau(x) réservé(s) · ${_totalPrice.toStringAsFixed(2)} CCT',
           ),
           backgroundColor: Colors.green,
         ),
       );
-    } else {
-      setState(() => _paying = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _booking = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erreur lors du paiement'),
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: Colors.red,
         ),
       );
@@ -375,19 +349,19 @@ class _BookingSlotDialogState extends State<_BookingSlotDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _paying ? null : () => Navigator.of(context).pop(),
+          onPressed: _booking ? null : () => Navigator.of(context).pop(),
           child: const Text('Annuler'),
         ),
         if (!_loadingSlots && _errorMessage == null && _slots.isNotEmpty)
           ElevatedButton(
-            onPressed: (_paying || _selectedSlotIds.isEmpty) ? null : _confirm,
-            child: _paying
+            onPressed: (_booking || _selectedSlotIds.isEmpty) ? null : _confirm,
+            child: _booking
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Payer'),
+                : const Text('Réserver'),
           ),
       ],
     );

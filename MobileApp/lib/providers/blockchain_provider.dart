@@ -1,94 +1,90 @@
 import 'package:flutter/material.dart';
-import '../models/blockchain_account_model.dart';
+import '../models/wallet_profile_model.dart';
+import '../models/beneficiary_model.dart';
 import '../services/api_service.dart';
 
 class BlockchainProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
-  List<BlockchainAccount> _accounts = [];
-  BlockchainAccount? _selectedAccount;
+
+  WalletProfile? _wallet;
+  List<BeneficiaryModel> _beneficiaries = [];
   bool _isLoading = false;
   String? _error;
 
-  List<BlockchainAccount> get accounts => _accounts;
-  BlockchainAccount? get selectedAccount => _selectedAccount;
+  WalletProfile? get wallet => _wallet;
+  List<BeneficiaryModel> get beneficiaries => _beneficiaries;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> loadAccounts() async {
+  /// Charge le solde réel de l'utilisateur connecté (avec historique des transactions)
+  /// et son carnet de bénéficiaires. Source : GET /api/balance + GET /api/beneficiaries
+  /// (jamais GET /api/blockchain/accounts, qui est réservé aux admins).
+  Future<void> load() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _accounts = await _apiService.getBlockchainAccounts();
-      if (_accounts.isNotEmpty && _selectedAccount == null) {
-        _selectedAccount = _accounts.first;
-      }
+      final results = await Future.wait([
+        _apiService.getBalance(),
+        _apiService.getBeneficiaries(),
+      ]);
+      _wallet = results[0] as WalletProfile;
+      _beneficiaries = results[1] as List<BeneficiaryModel>;
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
     }
   }
 
   Future<void> refreshBalance() async {
-    if (_selectedAccount == null) return;
-
     try {
-      final balance = await _apiService.getBalance(_selectedAccount!.address);
-      _selectedAccount = BlockchainAccount(
-        address: _selectedAccount!.address,
-        balance: balance,
-      );
-      
-      // Update in the list
-      final index = _accounts.indexWhere((a) => a.address == _selectedAccount!.address);
-      if (index != -1) {
-        _accounts[index] = _selectedAccount!;
-      }
-      
+      _wallet = await _apiService.getBalance();
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
     }
   }
 
-  void selectAccount(BlockchainAccount account) {
-    _selectedAccount = account;
-    notifyListeners();
-  }
-
-  Future<bool> sendTransaction({
-    required String toAddress,
-    required double amount,
-  }) async {
-    if (_selectedAccount == null) return false;
-
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
+  Future<bool> addBeneficiary(String label, String address) async {
     try {
-      await _apiService.sendTransaction(
-        fromAddress: _selectedAccount!.address,
-        toAddress: toAddress,
-        amount: amount,
-      );
-      
-      // Refresh balance after transaction
-      await refreshBalance();
-      
-      _isLoading = false;
+      final beneficiary = await _apiService.addBeneficiary(label, address);
+      _beneficiaries = [beneficiary, ..._beneficiaries];
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
+      _error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<bool> removeBeneficiary(String beneficiaryId) async {
+    try {
+      await _apiService.removeBeneficiary(beneficiaryId);
+      _beneficiaries = _beneficiaries.where((b) => b.beneficiaryId != beneficiaryId).toList();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Envoie des CCT vers une adresse (bénéficiaire ou adresse libre) puis recharge le
+  /// solde. Renvoie un message d'erreur (ou `null` si succès), pour affichage direct.
+  Future<String?> sendTransaction({required String toAddress, required double amount}) async {
+    try {
+      await _apiService.sendTransaction(toAddress: toAddress, amount: amount);
+      await refreshBalance();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
     }
   }
 }

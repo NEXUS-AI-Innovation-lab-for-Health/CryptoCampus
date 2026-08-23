@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../providers/blockchain_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/blockchain_provider.dart';
+import '../../models/beneficiary_model.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({super.key});
@@ -12,149 +14,193 @@ class BalanceScreen extends StatefulWidget {
 }
 
 class _BalanceScreenState extends State<BalanceScreen> {
+  final Map<String, TextEditingController> _sendAmountControllers = {};
+  final Set<String> _sendingTo = {};
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final blockchainProvider = Provider.of<BlockchainProvider>(context, listen: false);
-      blockchainProvider.loadAccounts();
+      Provider.of<BlockchainProvider>(context, listen: false).load();
     });
   }
 
-  void _showSendDialog() {
-    final _toAddressController = TextEditingController();
-    final _amountController = TextEditingController();
-    final _formKey = GlobalKey<FormState>();
+  @override
+  void dispose() {
+    for (final c in _sendAmountControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  TextEditingController _controllerFor(String beneficiaryId) {
+    return _sendAmountControllers.putIfAbsent(beneficiaryId, () => TextEditingController());
+  }
+
+  void _copy(String value, String message) {
+    Clipboard.setData(ClipboardData(text: value));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _sendToBeneficiary(BeneficiaryModel beneficiary) async {
+    final controller = _controllerFor(beneficiary.beneficiaryId);
+    final amount = double.tryParse(controller.text.trim());
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Indiquez un montant valide'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _sendingTo.add(beneficiary.beneficiaryId));
+    final provider = Provider.of<BlockchainProvider>(context, listen: false);
+    final error = await provider.sendTransaction(toAddress: beneficiary.address, amount: amount);
+    if (!mounted) return;
+    setState(() => _sendingTo.remove(beneficiary.beneficiaryId));
+
+    if (error == null) {
+      controller.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${amount.toStringAsFixed(2)} CCT envoyés à ${beneficiary.label}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _removeBeneficiary(BeneficiaryModel beneficiary) async {
+    final provider = Provider.of<BlockchainProvider>(context, listen: false);
+    await provider.removeBeneficiary(beneficiary.beneficiaryId);
+  }
+
+  void _showAddBeneficiaryDialog() {
+    final labelController = TextEditingController();
+    final addressController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool submitting = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Envoyer CCT'),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _toAddressController,
-                decoration: const InputDecoration(
-                  labelText: 'Adresse destinataire',
-                  hintText: '0x...',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Ajouter un bénéficiaire'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: labelController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nom du bénéficiaire',
+                    hintText: 'Ex : Marie Dupont',
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Adresse requise';
-                  }
-                  if (!value.startsWith('0x')) {
-                    return 'Adresse invalide';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Montant (CCT)',
-                  hintText: '0.0',
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Adresse blockchain',
+                    hintText: '0x...',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Adresse requise';
+                    if (!RegExp(r'^0x[a-fA-F0-9]{40}$').hasMatch(v.trim())) {
+                      return 'Adresse invalide (format 0x...)';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Montant requis';
-                  }
-                  final amount = double.tryParse(value);
-                  if (amount == null || amount <= 0) {
-                    return 'Montant invalide';
-                  }
-                  return null;
-                },
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: submitting ? null : () => Navigator.of(dialogContext).pop(),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => submitting = true);
+                      final provider = Provider.of<BlockchainProvider>(context, listen: false);
+                      final success = await provider.addBeneficiary(
+                        labelController.text.trim(),
+                        addressController.text.trim(),
+                      );
+                      if (!dialogContext.mounted) return;
+                      Navigator.of(dialogContext).pop();
+                      if (!success && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(provider.error ?? 'Échec de l\'ajout'), backgroundColor: Colors.red),
+                        );
+                      }
+                    },
+              child: submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Ajouter'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                Navigator.of(context).pop();
-                
-                final blockchainProvider = Provider.of<BlockchainProvider>(context, listen: false);
-                final success = await blockchainProvider.sendTransaction(
-                  toAddress: _toAddressController.text.trim(),
-                  amount: double.parse(_amountController.text),
-                );
-
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(success 
-                        ? 'Transaction envoyée avec succès!'
-                        : 'Erreur lors de l\'envoi'),
-                      backgroundColor: success ? Colors.green : Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Envoyer'),
-          ),
-        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final referralCode = Provider.of<AuthProvider>(context).currentUser?.referralCode;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mon Wallet'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              final blockchainProvider = Provider.of<BlockchainProvider>(context, listen: false);
-              blockchainProvider.refreshBalance();
-            },
+            onPressed: () => Provider.of<BlockchainProvider>(context, listen: false).load(),
           ),
         ],
       ),
       body: Consumer<BlockchainProvider>(
-        builder: (context, blockchainProvider, child) {
-          if (blockchainProvider.isLoading && blockchainProvider.accounts.isEmpty) {
+        builder: (context, provider, child) {
+          if (provider.isLoading && provider.wallet == null) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (blockchainProvider.error != null) {
+          if (provider.error != null && provider.wallet == null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('Erreur: ${blockchainProvider.error}'),
+                  Text('Erreur: ${provider.error}'),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => blockchainProvider.loadAccounts(),
-                    child: const Text('Réessayer'),
-                  ),
+                  ElevatedButton(onPressed: () => provider.load(), child: const Text('Réessayer')),
                 ],
               ),
             );
           }
 
-          final selectedAccount = blockchainProvider.selectedAccount;
+          final wallet = provider.wallet!;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          return RefreshIndicator(
+            onRefresh: () => provider.load(),
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
               children: [
-                // Balance Card
+                // Carte solde
                 Card(
                   color: Theme.of(context).colorScheme.primary,
                   child: Padding(
@@ -162,124 +208,230 @@ class _BalanceScreenState extends State<BalanceScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Balance',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
-                          ),
-                        ),
+                        const Text('Solde', style: TextStyle(color: Colors.white70, fontSize: 16)),
                         const SizedBox(height: 8),
                         Text(
-                          '${selectedAccount?.balance.toStringAsFixed(4) ?? '0.0000'} CCT',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          '${wallet.balance.toStringAsFixed(4)} CCT',
+                          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Adresse',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                selectedAccount?.address ?? 'N/A',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontFamily: 'monospace',
+                        if (wallet.blockchainAddress != null) ...[
+                          const SizedBox(height: 16),
+                          const Text('Adresse blockchain', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  wallet.blockchainAddress!,
+                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.copy, color: Colors.white70, size: 20),
-                              onPressed: () {
-                                if (selectedAccount != null) {
-                                  Clipboard.setData(ClipboardData(text: selectedAccount.address));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Adresse copiée')),
-                                  );
-                                }
-                              },
-                            ),
-                          ],
-                        ),
+                              IconButton(
+                                icon: const Icon(Icons.copy, color: Colors.white70, size: 20),
+                                onPressed: () => _copy(wallet.blockchainAddress!, 'Adresse copiée'),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                
-                // Actions
+                const SizedBox(height: 16),
+
+                // Carte code de parrainage
+                if (referralCode != null)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Mon code de parrainage',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Partagez ce code : il permet à un(e) étudiant(e) de créer son compte.',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    referralCode,
+                                    style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () => _copy(referralCode, 'Code copié !'),
+                                icon: const Icon(Icons.copy, size: 16),
+                                label: const Text('Copier'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                // Stats
                 Row(
                   children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _showSendDialog,
-                        icon: const Icon(Icons.send),
-                        label: const Text('Envoyer'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
+                    Expanded(child: _StatCard(label: 'Étudiants aidés', value: '${wallet.stats.helpedCount}')),
+                    const SizedBox(width: 8),
+                    Expanded(child: _StatCard(label: 'CCT gagnés', value: wallet.stats.totalEarned.toStringAsFixed(0))),
+                    const SizedBox(width: 8),
+                    Expanded(child: _StatCard(label: 'Requêtes créées', value: '${wallet.stats.requestsCreated}')),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Bénéficiaires
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Bénéficiaires',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    TextButton.icon(
+                      onPressed: _showAddBeneficiaryDialog,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Ajouter'),
                     ),
                   ],
                 ),
-                
-                const SizedBox(height: 24),
-                Text(
-                  'Mes bénéficiaires',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Account List
-                if (blockchainProvider.accounts.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: Text('Aucun compte disponible'),
-                    ),
+                const SizedBox(height: 8),
+                if (provider.beneficiaries.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text('Aucun bénéficiaire enregistré pour le moment.'),
                   )
                 else
-                  ...blockchainProvider.accounts.map((account) {
-                    final isSelected = selectedAccount?.address == account.address;
+                  ...provider.beneficiaries.map((b) {
+                    final controller = _controllerFor(b.beneficiaryId);
+                    final sending = _sendingTo.contains(b.beneficiaryId);
                     return Card(
-                      color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : null,
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          child: const Icon(Icons.account_balance_wallet, color: Colors.white),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(b.label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      Text(b.shortAddress,
+                                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.grey)),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  onPressed: () => _removeBeneficiary(b),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: controller,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      labelText: 'Montant CCT',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: sending ? null : () => _sendToBeneficiary(b),
+                                  child: sending
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        )
+                                      : const Text('Envoyer'),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        title: Text(
-                          account.shortAddress,
-                          style: const TextStyle(fontFamily: 'monospace'),
-                        ),
-                        subtitle: Text('${account.balance.toStringAsFixed(4)} CCT'),
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle, color: Colors.green)
-                            : null,
-                        onTap: () {
-                          blockchainProvider.selectAccount(account);
-                        },
                       ),
                     );
-                  }).toList(),
+                  }),
+
+                const SizedBox(height: 24),
+
+                // Historique des transactions
+                Text('Historique des transactions',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (wallet.transactions.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text('Aucune transaction pour le moment'),
+                  )
+                else
+                  ...wallet.transactions.map((t) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text(t.description),
+                          subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(t.date.toLocal())),
+                          trailing: Text(
+                            '${t.isPositive ? '+' : ''}${t.amount.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: t.isPositive ? Colors.green : Colors.red,
+                            ),
+                          ),
+                        ),
+                      )),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _StatCard({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        child: Column(
+          children: [
+            Text(value,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+            const SizedBox(height: 4),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
+        ),
       ),
     );
   }

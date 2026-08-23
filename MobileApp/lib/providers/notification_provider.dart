@@ -32,8 +32,11 @@ class NotificationProvider extends ChangeNotifier {
     if (_userId == null || _userEmail == null) return;
 
     try {
-      final notifications = await _apiService.checkTutorNotifications(_userId!, _userEmail!);
-      
+      // Le backend résout toujours le tuteur via la session connectée (aucun paramètre
+      // à fournir) ; _userId/_userEmail ne servent plus qu'à savoir si le polling doit
+      // tourner (voir startPolling ci-dessus).
+      final notifications = await _apiService.checkTutorNotifications();
+
       if (notifications.isNotEmpty) {
         // We have new notifications!
         List<String> bookingIds = [];

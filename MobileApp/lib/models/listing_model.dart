@@ -33,7 +33,11 @@ class Listing {
       level: json['level'],
       pricePerHour: (json['price_per_hour'] ?? json['price'] ?? 0).toDouble(),
       isActive: json['is_active'] ?? true,
-      createdAt: DateTime.parse(json['created_at']),
+      // POST /api/listings renvoie l'annonce fraîchement créée SANS created_at (ce champ
+      // n'est ajouté qu'à l'indexation Qdrant, invisible dans la réponse de création) —
+      // DateTime.parse(null) plantait ici et faisait échouer silencieusement toute
+      // publication malgré un enregistrement réussi côté serveur.
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) ?? DateTime.now() : DateTime.now(),
       tutorName: json['tutor_name'],
     );
   }
