@@ -24,11 +24,12 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 // Services métier
-import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails } from './Api/blockchain.js';
+import { getAllAccounts, sendTransaction, getBalance, getTransactionDetails, createAccount } from './Api/blockchain.js';
 import { initQdrantCollection, indexListing, searchListings, getAllListings, deleteListing } from './Api/qdrant-service.js';
 import { analyzeCVAndGenerateSuggestions } from './Api/cv-analyzer.js';
 import { getLinkedInAuthorizationUrl, exchangeCodeForToken, fetchLinkedInProfile } from './Api/linkedin-auth.js';
 import { correctListingText, translateListingText } from './Api/mistral-service.js';
+import { encryptPrivateKey, decryptPrivateKey } from './Api/wallet-crypto.js';
 
 /* ========================================
    CONFIGURATION DE BASE
@@ -286,6 +287,8 @@ async function ensureFeatureSchema() {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_beneficiaries_owner
      ON beneficiaries (owner_user_id)`,
+    `ALTER TABLE wallets
+     ADD COLUMN IF NOT EXISTS private_key_encrypted TEXT`,
   ];
 
   for (const sql of statements) {
@@ -409,53 +412,72 @@ async function assignBlockchainAddress(userId) {
       return; // L'utilisateur a déjà un wallet
     }
 
-    // Récupérer toutes les adresses Ganache disponibles
-    // (le compte d'index 0 est réservé à la trésorerie de la boutique, cf. getShopTreasuryAddress)
-    const ganacheAccounts = await getAllAccounts();
+    const userResult = await pool.query('SELECT role FROM users WHERE user_id = $1', [userId]);
+    const role = userResult.rows[0]?.role;
 
-    if (!ganacheAccounts || ganacheAccounts.length <= 1) {
-      throw new Error('Aucun compte Ganache disponible');
-    }
+    // Chaque utilisateur reçoit sa propre adresse générée (plutôt qu'une des 10 adresses
+    // de développement de Ganache) : plus de limite sur le nombre de comptes, plus de
+    // wallet partagé entre plusieurs utilisateurs.
+    const account = createAccount();
+    const encryptedKey = encryptPrivateKey(account.privateKey);
 
-    const assignableAccounts = ganacheAccounts.slice(1);
-
-    // Récupérer les adresses déjà assignées
-    const assignedAddresses = await pool.query(
-      'SELECT public_address FROM wallets WHERE blockchain = $1',
-      ['ethereum']
+    const walletInsert = await pool.query(
+      `INSERT INTO wallets (user_id, public_address, blockchain, private_key_encrypted, created_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING wallet_id`,
+      [userId, account.address, 'ethereum', encryptedKey]
     );
 
-    const assignedSet = new Set(assignedAddresses.rows.map(row => row.public_address.toLowerCase()));
+    console.log(`✅ Wallet créé: ${account.address} -> User ${userId} (${role})`);
 
-    // Trouver la première adresse disponible
-    let availableAddress = null;
-    for (const account of assignableAccounts) {
-      if (!assignedSet.has(account.address.toLowerCase())) {
-        availableAddress = account.address;
-        break;
-      }
+    // Un tuteur démarre avec 1000 CCT (financés par la trésorerie) ; un étudiant parrainé
+    // démarre à 0 (adresse neuve jamais financée).
+    if (role === 'TUTOR') {
+      const treasuryAddress = await getShopTreasuryAddress();
+      const fundResult = await sendTransaction(treasuryAddress, account.address, 1000);
+
+      await pool.query(
+        `INSERT INTO transactions (tx_hash, from_wallet, to_wallet, amount, status, type)
+         VALUES ($1, NULL, $2, $3, 'CONFIRMED', 'MINT')`,
+        [fundResult.transactionHash, walletInsert.rows[0].wallet_id, 1000]
+      );
+
+      console.log(`💰 1000 CCT crédités au tuteur ${userId}`);
     }
-
-    if (!availableAddress) {
-      // Si toutes les adresses sont prises, réutiliser la première
-      // ⚠️ Limitation connue : Ganache n'a qu'un nombre fixe de comptes, donc au-delà
-      // de ce nombre d'utilisateurs, plusieurs comptes finissent par partager le même
-      // wallet (et donc le même solde). Voir la synthèse fournie à l'utilisateur.
-      availableAddress = assignableAccounts[0].address;
-    }
-
-    // Créer le wallet dans la base de données
-    await pool.query(
-      `INSERT INTO wallets (user_id, public_address, blockchain, created_at)
-       VALUES ($1, $2, $3, NOW())`,
-      [userId, availableAddress, 'ethereum']
-    );
-
-    console.log(`✅ Adresse blockchain assignée: ${availableAddress} -> User ${userId}`);
   } catch (error) {
     console.error('Erreur lors de l\'assignation d\'adresse blockchain:', error);
     throw error;
   }
+}
+
+// Récupère l'adresse et la clé privée déchiffrée du wallet d'un utilisateur, pour signer
+// une transaction en son nom. `privateKey` est `null` pour un ancien wallet partagé
+// (géré/déverrouillé directement par le nœud Ganache, aucune clé stockée).
+async function getSenderWallet(userId) {
+  const result = await pool.query(
+    `SELECT wallet_id, public_address, private_key_encrypted
+     FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
+    [userId]
+  );
+
+  if (result.rows.length === 0) return null;
+
+  const row = result.rows[0];
+  return {
+    walletId: row.wallet_id,
+    address: row.public_address,
+    privateKey: row.private_key_encrypted ? decryptPrivateKey(row.private_key_encrypted) : null,
+  };
+}
+
+// Résout le wallet_id correspondant à une adresse publique, si elle appartient à un
+// utilisateur de la plateforme (sinon null : l'adresse est un bénéficiaire externe).
+async function findWalletIdByAddress(address) {
+  const result = await pool.query(
+    `SELECT wallet_id FROM wallets WHERE LOWER(public_address) = LOWER($1) LIMIT 1`,
+    [address]
+  );
+  return result.rows[0]?.wallet_id || null;
 }
 
 // Adresse Ganache réservée pour recevoir les paiements de la boutique (index 0)
@@ -539,6 +561,53 @@ async function getWalletBalanceAndStats(userId) {
     blockchainAddress,
     stats: { helpedCount, totalEarned, requestsCreated },
   };
+}
+
+// Historique des transactions d'un utilisateur (crédits, envois/réceptions de CCT, achats),
+// dans le format déjà consommé par la page Solde du frontend.
+async function getTransactionHistory(userId) {
+  const result = await pool.query(
+    `SELECT t.transaction_id, t.amount, t.type, t.status, t.created_at,
+            fu.user_id AS from_user_id, fu.first_name AS from_first_name, fu.last_name AS from_last_name,
+            tu.user_id AS to_user_id, tu.first_name AS to_first_name, tu.last_name AS to_last_name
+     FROM transactions t
+     LEFT JOIN wallets fw ON t.from_wallet = fw.wallet_id
+     LEFT JOIN users fu ON fw.user_id = fu.user_id
+     LEFT JOIN wallets tw ON t.to_wallet = tw.wallet_id
+     LEFT JOIN users tu ON tw.user_id = tu.user_id
+     WHERE (fu.user_id = $1 OR tu.user_id = $1) AND t.status != 'FAILED'
+     ORDER BY t.created_at DESC
+     LIMIT 50`,
+    [userId]
+  );
+
+  const counterpartyName = (firstName, lastName, fallback) => {
+    const name = `${firstName || ''} ${lastName || ''}`.trim();
+    return name || fallback;
+  };
+
+  return result.rows.map((row) => {
+    const isIncoming = row.to_user_id === userId;
+    const amount = isIncoming ? parseFloat(row.amount) : -parseFloat(row.amount);
+
+    let description;
+    if (row.type === 'MINT') {
+      description = 'Crédit de bienvenue (1000 CCT)';
+    } else if (row.type === 'BURN') {
+      description = 'Achat boutique';
+    } else if (isIncoming) {
+      description = `Reçu de ${counterpartyName(row.from_first_name, row.from_last_name, 'un autre utilisateur')}`;
+    } else {
+      description = `Envoyé à ${counterpartyName(row.to_first_name, row.to_last_name, 'une adresse externe')}`;
+    }
+
+    return {
+      id: row.transaction_id,
+      description,
+      date: row.created_at,
+      amount,
+    };
+  });
 }
 
 // Catalogue de la boutique (source unique utilisée par /api/shop et /api/purchase)
@@ -1287,6 +1356,13 @@ app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) =
 
     const userEmail = userResult.rows[0].email;
 
+    // Détacher les comptes que cet utilisateur a parrainés : on efface juste la référence
+    // (referred_by), on ne supprime surtout pas ces comptes en cascade.
+    await client.query(
+      'UPDATE users SET referred_by = NULL WHERE referred_by = $1',
+      [userId]
+    );
+
     // 2. Supprimer les données Qdrant associées à l'utilisateur
     try {
       // Rechercher tous les points Qdrant créés par cet utilisateur
@@ -1327,7 +1403,16 @@ app.delete('/api/account', authGuard({ mustBeLogged: true }), async (req, res) =
     }
 
     // 3. Supprimer les données PostgreSQL dans l'ordre (respect des foreign keys)
-    
+
+    // Supprimer les réservations faites par l'utilisateur (en tant qu'étudiant).
+    // Pas de ON DELETE CASCADE sur bookings.user_id : sans cette étape, la suppression
+    // d'un compte étudiant ayant déjà réservé un cours échoue (violation de contrainte).
+    await client.query(
+      'DELETE FROM bookings WHERE user_id = $1',
+      [userId]
+    );
+    console.log('✅ Réservations supprimées');
+
     // Récupérer les wallet_id de l'utilisateur
     const walletResult = await client.query(
       'SELECT wallet_id FROM wallets WHERE user_id = $1',
@@ -2093,23 +2178,43 @@ app.post('/api/blockchain/transaction', authGuard({ mustBeLogged: true }), async
       return res.status(400).json({ error: 'Adresse destinataire et montant (positif) requis' });
     }
 
-    const walletResult = await pool.query(
-      `SELECT public_address FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
-      [req.session.userId]
-    );
+    const senderWallet = await getSenderWallet(req.session.userId);
 
-    if (walletResult.rows.length === 0) {
+    if (!senderWallet) {
       return res.status(400).json({ error: 'Aucun wallet associé à ce compte' });
     }
 
-    const fromAddress = walletResult.rows[0].public_address;
+    const { walletId: fromWalletId, address: fromAddress, privateKey } = senderWallet;
 
     if (fromAddress.toLowerCase() === String(toAddress).toLowerCase()) {
       return res.status(400).json({ error: 'Impossible de vous envoyer des CCT à vous-même' });
     }
 
-    const result = await sendTransaction(fromAddress, toAddress, amount);
-    res.json({ success: true, ...result });
+    const currentBalance = await getBalance(fromAddress);
+    if (parseFloat(currentBalance.balanceEth) < Number(amount)) {
+      return res.status(400).json({ error: 'Solde insuffisant' });
+    }
+
+    const toWalletId = await findWalletIdByAddress(toAddress);
+
+    try {
+      const result = await sendTransaction(fromAddress, toAddress, amount, privateKey);
+
+      await pool.query(
+        `INSERT INTO transactions (tx_hash, from_wallet, to_wallet, amount, status, type)
+         VALUES ($1, $2, $3, $4, 'CONFIRMED', 'TRANSFER')`,
+        [result.transactionHash, fromWalletId, toWalletId, amount]
+      );
+
+      res.json({ success: true, ...result });
+    } catch (txError) {
+      await pool.query(
+        `INSERT INTO transactions (tx_hash, from_wallet, to_wallet, amount, status, type)
+         VALUES (NULL, $1, $2, $3, 'FAILED', 'TRANSFER')`,
+        [fromWalletId, toWalletId, amount]
+      );
+      throw txError;
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2668,7 +2773,8 @@ app.get('/api/balance', authGuard({ mustBeLogged: true }), async (req, res) => {
   /* #swagger.tags = ['Blockchain'] */
   try {
     const { balance, stats } = await getWalletBalanceAndStats(req.session.userId);
-    res.json({ balance, stats, transactions: [] });
+    const transactions = await getTransactionHistory(req.session.userId);
+    res.json({ balance, stats, transactions });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2696,14 +2802,11 @@ app.post('/api/purchase', authGuard({ mustBeLogged: true }), async (req, res) =>
       return res.status(404).json({ error: 'Produit introuvable' });
     }
 
-    const walletResult = await pool.query(
-      `SELECT public_address FROM wallets WHERE user_id = $1 AND blockchain = 'ethereum' LIMIT 1`,
-      [req.session.userId]
-    );
-    if (walletResult.rows.length === 0) {
+    const senderWallet = await getSenderWallet(req.session.userId);
+    if (!senderWallet) {
       return res.status(400).json({ error: 'Aucun wallet associé à ce compte' });
     }
-    const fromAddress = walletResult.rows[0].public_address;
+    const { walletId: fromWalletId, address: fromAddress, privateKey } = senderWallet;
 
     const { balance } = await getWalletBalanceAndStats(req.session.userId);
     if (balance < product.price) {
@@ -2711,7 +2814,13 @@ app.post('/api/purchase', authGuard({ mustBeLogged: true }), async (req, res) =>
     }
 
     const shopAddress = await getShopTreasuryAddress();
-    const result = await sendTransaction(fromAddress, shopAddress, product.price);
+    const result = await sendTransaction(fromAddress, shopAddress, product.price, privateKey);
+
+    await pool.query(
+      `INSERT INTO transactions (tx_hash, from_wallet, to_wallet, amount, status, type)
+       VALUES ($1, $2, NULL, $3, 'CONFIRMED', 'BURN')`,
+      [result.transactionHash, fromWalletId, product.price]
+    );
 
     res.json({ success: true, product, transactionHash: result.transactionHash });
   } catch (err) {

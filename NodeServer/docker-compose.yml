@@ -34,6 +34,7 @@ services:
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS}
       QDRANT_URL: http://qdrant:6333
+      WALLET_ENCRYPTION_KEY: ${WALLET_ENCRYPTION_KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -93,7 +94,10 @@ services:
     command:
       - --deterministic
       - --accounts=10
-      - --defaultBalanceEther=1000
+      # Le compte d'indice 0 sert de trésorerie : il finance chaque nouveau tuteur (1000
+      # CCT) et reçoit les achats boutique. Un solde de départ élevé lui évite de manquer
+      # de fonds au fil des inscriptions (aucun impact réel, chaîne de dev locale).
+      - --defaultBalanceEther=1000000
       - --networkId=1337
       - --host=0.0.0.0
     restart: unless-stopped

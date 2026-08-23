@@ -34,13 +34,30 @@ export async function getAllAccounts() {
 }
 
 /**
+ * Génère une nouvelle adresse Ethereum (compte non géré par le nœud Ganache).
+ * Utilisé pour créer une adresse propre par utilisateur au lieu de recycler
+ * les 10 comptes de développement de Ganache.
+ */
+export function createAccount() {
+  return web3.eth.accounts.create();
+}
+
+/**
  * Envoie de l'Ether d'un compte à un autre
  * @param {string} fromAddress - Adresse de l'expéditeur
  * @param {string} toAddress - Adresse du destinataire
  * @param {number} amountEth - Montant en ETH à envoyer
+ * @param {string|null} privateKey - Clé privée de l'expéditeur, requise si ce n'est pas
+ *   un compte géré/déverrouillé par le nœud Ganache (ex. un wallet généré côté app).
+ *   Si fournie, le compte est ajouté au wallet local de web3 pour que la transaction
+ *   soit signée localement de façon transparente.
  */
-export async function sendTransaction(fromAddress, toAddress, amountEth) {
+export async function sendTransaction(fromAddress, toAddress, amountEth, privateKey = null) {
   try {
+    if (privateKey && !web3.eth.accounts.wallet.get(fromAddress)) {
+      web3.eth.accounts.wallet.add(privateKey);
+    }
+
     const amountWei = web3.utils.toWei(amountEth.toString(), 'ether');
     
     // Récupération du solde avant la transaction

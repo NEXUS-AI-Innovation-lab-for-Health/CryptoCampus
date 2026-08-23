@@ -87,6 +87,7 @@ CREATE TABLE wallets (
     user_id UUID NOT NULL REFERENCES users(user_id),
     public_address VARCHAR NOT NULL,
     blockchain VARCHAR NOT NULL,
+    private_key_encrypted TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
