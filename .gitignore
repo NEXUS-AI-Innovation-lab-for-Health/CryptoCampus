@@ -5,6 +5,3 @@ NodeServer/qdrant_data/
 NodeServer/uploads/
 NodeServer/Docker/PgAdmin/Logs/
 postgres_data/
-.env
-*.env
-!.env.example
