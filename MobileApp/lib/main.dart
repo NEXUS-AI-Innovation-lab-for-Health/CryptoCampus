@@ -9,6 +9,7 @@ import 'providers/auth_provider.dart';
 import 'providers/blockchain_provider.dart';
 import 'providers/listings_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/messaging_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
@@ -22,6 +23,7 @@ import 'screens/bookings/bookings_screen.dart';
 import 'screens/availability/availability_screen.dart';
 import 'screens/favorites/favorites_screen.dart';
 import 'screens/my_listings/my_listings_screen.dart';
+import 'screens/messages/conversations_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -56,6 +58,19 @@ class MyApp extends StatelessWidget {
             return notificationProvider;
           },
         ),
+        ChangeNotifierProxyProvider<AuthProvider, MessagingProvider>(
+          create: (_) => MessagingProvider(),
+          update: (_, auth, messaging) {
+            final messagingProvider = messaging ?? MessagingProvider();
+            if (auth.isAuthenticated) {
+              messagingProvider.connect();
+              messagingProvider.loadConversations();
+            } else {
+              messagingProvider.disconnect();
+            }
+            return messagingProvider;
+          },
+        ),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -85,6 +100,7 @@ class MyApp extends StatelessWidget {
           '/availability': (context) => const AvailabilityScreen(),
           '/favorites': (context) => const FavoritesScreen(),
           '/my-listings': (context) => const MyListingsScreen(),
+          '/messages': (context) => const ConversationsScreen(),
         },
       ),
     );

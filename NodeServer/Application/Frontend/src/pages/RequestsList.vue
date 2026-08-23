@@ -182,6 +182,13 @@
                 <strong>{{ t('requestsList.modal.tool') }}:</strong> {{ selectedListing.tutor_visio_tool || 'Zoom' }}
               </p>
               <p class="tutor-email"><strong>{{ t('requestsList.modal.places') }}:</strong> {{ formatPlaces(selectedListing.tutor_places) }}</p>
+              <button
+                v-if="currentUserId && selectedListing.tutor_user_id !== currentUserId"
+                class="btn btn-interest"
+                @click="contactTutor(selectedListing)"
+              >
+                💬 Contacter le tuteur
+              </button>
             </div>
 
             <div class="course-details" style="margin-top: 1rem;">
@@ -315,10 +322,25 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuth } from '@/composables/useAuth'
+import { useMessaging } from '@/composables/useMessaging'
 
 const { t, locale } = useI18n()
+const router = useRouter()
+const { startConversation } = useMessaging()
+
+// Démarre (ou récupère) la conversation avec le tuteur de cette annonce, puis ouvre la
+// messagerie directement sur ce fil.
+const contactTutor = async (listing) => {
+  try {
+    await startConversation(listing.tutor_user_id)
+    router.push({ path: '/messages', query: { with: listing.tutor_user_id } })
+  } catch (error) {
+    console.error('Impossible de contacter le tuteur:', error)
+  }
+}
 
 // Les annonces sont traduites automatiquement à la création/modification (voir
 // server.js). On affiche la version dans la langue active du site, avec repli sur

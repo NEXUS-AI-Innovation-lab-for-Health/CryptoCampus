@@ -15,6 +15,8 @@ import '../models/blockchain_account_model.dart';
 import '../models/beneficiary_model.dart';
 import '../models/wallet_profile_model.dart';
 import '../models/booking_model.dart';
+import '../models/conversation_model.dart';
+import '../models/message_model.dart';
 
 class ApiService {
   static final Dio _dio = _buildDio();
@@ -491,6 +493,57 @@ class ApiService {
     });
     if (response.statusCode != 200) {
       throw _errorFrom(response, 'Échec du marquage des notifications');
+    }
+  }
+
+  // ==================== MESSAGERIE ENDPOINTS ====================
+
+  Future<List<ConversationModel>> getConversations() async {
+    final response = await _dio.get(ApiConfig.conversationsUrl);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = response.data['conversations'];
+      return data.map((json) => ConversationModel.fromJson(json)).toList();
+    }
+    throw _errorFrom(response, 'Impossible de charger les conversations');
+  }
+
+  /// Récupère (ou crée) la conversation avec cet utilisateur, renvoie son id.
+  Future<int> startConversation(String otherUserId) async {
+    final response = await _dio.post(ApiConfig.conversationsUrl, data: {
+      'other_user_id': otherUserId,
+    });
+    if (response.statusCode == 201) {
+      return response.data['conversationId'] as int;
+    }
+    throw _errorFrom(response, 'Impossible de démarrer la conversation');
+  }
+
+  Future<List<MessageModel>> getMessages(int conversationId, {int? before}) async {
+    final response = await _dio.get(
+      ApiConfig.conversationMessagesUrl(conversationId),
+      queryParameters: before != null ? {'before': before} : null,
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = response.data['messages'];
+      return data.map((json) => MessageModel.fromJson(json)).toList();
+    }
+    throw _errorFrom(response, 'Impossible de charger les messages');
+  }
+
+  Future<MessageModel> sendMessage(int conversationId, String content) async {
+    final response = await _dio.post(ApiConfig.conversationMessagesUrl(conversationId), data: {
+      'content': content,
+    });
+    if (response.statusCode == 201) {
+      return MessageModel.fromJson(response.data['message']);
+    }
+    throw _errorFrom(response, 'Échec de l\'envoi du message');
+  }
+
+  Future<void> markConversationRead(int conversationId) async {
+    final response = await _dio.put(ApiConfig.conversationReadUrl(conversationId));
+    if (response.statusCode != 200) {
+      throw _errorFrom(response, 'Échec du marquage comme lu');
     }
   }
 }

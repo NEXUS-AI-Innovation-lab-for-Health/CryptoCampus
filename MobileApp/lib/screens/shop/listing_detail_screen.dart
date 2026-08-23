@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/listing_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/messaging_provider.dart';
 import '../../services/api_service.dart';
 
 class ListingDetailScreen extends StatelessWidget {
@@ -19,6 +22,19 @@ class ListingDetailScreen extends StatelessWidget {
       context: context,
       builder: (context) => _BookingSlotDialog(listing: listing),
     );
+  }
+
+  Future<void> _contactTutor(BuildContext context, Listing listing) async {
+    final messaging = Provider.of<MessagingProvider>(context, listen: false);
+    await messaging.startAndOpenConversation(listing.tutorUserId);
+    if (!context.mounted) return;
+    if (messaging.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(messaging.error!), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    Navigator.of(context).pushNamed('/messages');
   }
 
   @override
@@ -153,18 +169,39 @@ class ListingDetailScreen extends StatelessWidget {
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton.icon(
-          onPressed: listing.isActive
-              ? () => _showBookingDialog(context, listing)
-              : null,
-          icon: const Icon(Icons.event_available),
-          label: const Text('Voir les disponibilités'),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        child: Row(
+          children: [
+            if (Provider.of<AuthProvider>(context).currentUser?.userId != listing.tutorUserId) ...[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _contactTutor(context, listing),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Contacter'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              flex: 2,
+              child: ElevatedButton.icon(
+                onPressed: listing.isActive
+                    ? () => _showBookingDialog(context, listing)
+                    : null,
+                icon: const Icon(Icons.event_available),
+                label: const Text('Voir les disponibilités'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

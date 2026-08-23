@@ -60,4 +60,13 @@ class ApiConfig {
   static String bookingStatusUrl(String bookingId) => "$baseUrl/api/bookings/$bookingId/status";
   static String get tutorNotificationsUrl => "$baseUrl/api/tutor/notifications";
   static String get markNotificationsReadUrl => "$baseUrl/api/tutor/notifications/mark-read";
+
+  // Messaging endpoints
+  static String get conversationsUrl => "$baseUrl/api/conversations";
+  static String conversationMessagesUrl(int conversationId) => "$baseUrl/api/conversations/$conversationId/messages";
+  static String conversationReadUrl(int conversationId) => "$baseUrl/api/conversations/$conversationId/read";
+  // path: '/api/socket.io' — reste sous le même préfixe que le reste de l'API (voir
+  // server.js, nginx.conf) ; le socket se connecte au host de l'API (baseUrl), pas à
+  // celui de l'app elle-même.
+  static const String socketPath = '/api/socket.io';
 }

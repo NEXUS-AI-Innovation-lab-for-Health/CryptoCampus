@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/listing_model.dart';
+import '../../providers/messaging_provider.dart';
 import '../../services/api_service.dart';
 
 class MyListingsScreen extends StatefulWidget {
@@ -91,6 +93,19 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       leading: const Icon(Icons.person_outline),
                       title: Text(p['fullName'] ?? '—'),
                       subtitle: Text(p['email'] ?? ''),
+                      trailing: p['userId'] != null
+                          ? IconButton(
+                              icon: const Icon(Icons.chat_bubble_outline),
+                              tooltip: 'Contacter',
+                              onPressed: () async {
+                                final messaging = Provider.of<MessagingProvider>(context, listen: false);
+                                await messaging.startAndOpenConversation(p['userId'].toString());
+                                if (!mounted) return;
+                                Navigator.of(context).pop(); // ferme le bottom sheet
+                                Navigator.of(context).pushNamed('/messages');
+                              },
+                            )
+                          : null,
                     ))
               else if (count == 0)
                 const Text('Personne pour le moment.')

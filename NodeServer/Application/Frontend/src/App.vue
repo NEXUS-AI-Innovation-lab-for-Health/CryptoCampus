@@ -32,6 +32,13 @@
             >{{ t('nav.favorites') }}</router-link
           >
           <router-link
+            to="/messages"
+            class="nav-link nav-link-messages"
+            :class="{ active: currentPage === 'messages' }"
+            v-if="isLogged == true"
+            >Messagerie<span v-if="unreadTotal > 0" class="nav-unread-badge">{{ unreadTotal }}</span></router-link
+          >
+          <router-link
             to="/mes-cours"
             class="nav-link"
             :class="{ active: currentPage === 'mes-cours' }"
@@ -71,6 +78,7 @@ import { computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "@/composables/useAuth";
+import { useMessaging } from "@/composables/useMessaging";
 import defaultAvatar from "@/assets/utilisateur.png";
 import LanguageSwitcher from "@/components/LanguageSwitcher.vue";
 
@@ -82,6 +90,7 @@ export default {
     const route = useRoute();
     const { t } = useI18n();
     const { isLogged, userEmail, userAvatarUrl, isTutor, checkAuth } = useAuth();
+    const { unreadTotal } = useMessaging();
     const currentPage = computed(() => {
       const path = route.path;
       return path.replace("/", "");
@@ -116,6 +125,7 @@ export default {
       isTutor,
       currentPage,
       handleLoginClick,
+      unreadTotal,
     };
   },
 };
@@ -182,6 +192,21 @@ body {
 .nav-link.active {
   color: #3498db;
   background-color: rgba(52, 152, 219, 0.1);
+}
+
+.nav-link-messages {
+  position: relative;
+}
+
+.nav-unread-badge {
+  display: inline-block;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  margin-left: 0.35rem;
 }
 
 .btn-create {

@@ -9,6 +9,7 @@ class BookingModel {
   final DateTime endTime;
   final String status; // pending | confirmed | completed | cancelled
   final String? tutorName;
+  final String? studentName;
   final double? price;
   final String? notes;
 
@@ -23,6 +24,7 @@ class BookingModel {
     required this.endTime,
     required this.status,
     this.tutorName,
+    this.studentName,
     this.price,
     this.notes,
   });
@@ -39,6 +41,7 @@ class BookingModel {
       endTime: DateTime.parse(json['end_time']),
       status: json['status'] ?? 'pending',
       tutorName: json['tutor_name'],
+      studentName: json['student_name'],
       price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
       notes: json['notes'],
     );

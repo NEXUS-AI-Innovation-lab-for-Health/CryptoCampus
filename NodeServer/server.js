@@ -40,19 +40,30 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
-});
 
-io.on('connection', (socket) => {
-  console.log(`🔌 Nouveau client Socket.io connecté: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`🔌 Client déconnecté: ${socket.id}`);
-  });
+// Mêmes origines autorisées que le middleware CORS Express plus bas (FRONTEND_ORIGINS) :
+// une connexion Socket.io authentifiée par cookie doit passer les mêmes règles CORS que
+// le reste de l'API ("origin: '*' + credentials" est invalide et rejeté par les
+// navigateurs pour les échanges authentifiés cross-origin, voir plus bas).
+const socketAllowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost,http://127.0.0.1')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+// path: '/api/socket.io' pour rester sous le préfixe déjà proxifié par Nginx (voir
+// Application/Frontend/nginx.conf) au lieu du défaut '/socket.io/', qui ne serait routé
+// vers ce serveur ni en prod ni en dev.
+const io = new Server(httpServer, {
+  path: '/api/socket.io',
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin || socketAllowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error('Origin non autorisée par CORS'));
+    },
+    credentials: true,
+  },
 });
 
 const PORT = process.env.PORT || 3000;
@@ -138,7 +149,10 @@ if (!process.env.SESSION_SECRET) {
 
 const PgSession = connectPgSimple(session);
 
-app.use(session({
+// Nommé (plutôt qu'inline dans app.use) pour pouvoir être réutilisé tel quel par
+// Socket.io (voir plus bas, io.engine.use) : la messagerie temps réel s'appuie sur la
+// même session que le reste de l'API, pas un mécanisme d'auth séparé.
+const sessionMiddleware = session({
   store: new PgSession({
     pool,
     tableName: 'user_sessions',
@@ -156,7 +170,35 @@ app.use(session({
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60, // 1 heure
   },
-}));
+});
+
+app.use(sessionMiddleware);
+
+// Socket.io partage la même session Express (même cookie sessionId) : pas de mécanisme
+// d'auth séparé pour la messagerie temps réel. io.engine.use applique le middleware à la
+// poignée de main WebSocket exactement comme app.use le fait pour les requêtes HTTP.
+io.engine.use(sessionMiddleware);
+
+io.use((socket, next) => {
+  const userId = socket.request.session?.userId;
+  if (!userId) {
+    return next(new Error('unauthorized'));
+  }
+  socket.userId = userId;
+  next();
+});
+
+io.on('connection', (socket) => {
+  // Chaque utilisateur rejoint une "room" personnelle (son propre user_id) : le serveur
+  // peut ainsi notifier quelqu'un (io.to(userId).emit(...)) sans jamais avoir à suivre
+  // quel(s) socket.id lui appartien(nen)t (multi-onglets, reconnexions...).
+  socket.join(socket.userId);
+  console.log(`🔌 Socket connecté : utilisateur ${socket.userId}`);
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 Socket déconnecté : utilisateur ${socket.userId}`);
+  });
+});
 
 /* ========================================
    MIDDLEWARE D'AUTHENTIFICATION
@@ -1868,9 +1910,11 @@ app.get('/api/bookings', authGuard({ mustBeLogged: true }), async (req, res) => 
     const query = `
       SELECT b.booking_id, b.user_id, b.listing_id, b.title, b.description, b.subject,
              b.start_time, b.end_time, b.status, b.tutor_name, b.price, b.notes,
-             b.created_at, b.updated_at
+             b.created_at, b.updated_at,
+             CONCAT(u.first_name, ' ', u.last_name) AS student_name
       FROM bookings b
       LEFT JOIN tutor_availability ta ON b.slot_id = ta.slot_id
+      LEFT JOIN users u ON u.user_id = b.user_id
       WHERE b.user_id = $1 OR ta.tutor_user_id = $1
       ORDER BY b.start_time ASC
     `;
@@ -2286,6 +2330,210 @@ app.delete('/api/beneficiaries/:id', authGuard({ mustBeLogged: true }), async (r
 });
 
 /* ========================================
+   ROUTES API - MESSAGERIE (conversations privées 1-à-1)
+   ======================================== */
+
+// Vérifie que l'utilisateur connecté fait bien partie de la conversation, et renvoie
+// l'id de l'autre participant. Lève une erreur avec statusCode sinon (404/403).
+async function assertConversationAccess(conversationId, sessionUserId) {
+  const result = await pool.query(
+    'SELECT conversation_id, user1_id, user2_id FROM conversations WHERE conversation_id = $1',
+    [conversationId]
+  );
+  if (result.rows.length === 0) {
+    const err = new Error('Conversation non trouvée');
+    err.statusCode = 404;
+    throw err;
+  }
+  const conversation = result.rows[0];
+  if (conversation.user1_id !== sessionUserId && conversation.user2_id !== sessionUserId) {
+    const err = new Error('Non autorisé');
+    err.statusCode = 403;
+    throw err;
+  }
+  const otherUserId = conversation.user1_id === sessionUserId ? conversation.user2_id : conversation.user1_id;
+  return { conversation, otherUserId };
+}
+
+// GET mes conversations, triées par dernier message décroissant, avec pour chacune
+// l'autre participant, un aperçu du dernier message et le nombre de non-lus.
+app.get('/api/conversations', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Messages'] */
+  try {
+    const userId = req.session.userId;
+
+    const result = await pool.query(
+      `SELECT
+         c.conversation_id,
+         ou.user_id AS other_user_id,
+         ou.first_name AS other_first_name,
+         ou.last_name AS other_last_name,
+         ou.avatar_url AS other_avatar_url,
+         ou.role AS other_role,
+         lm.content AS last_message_content,
+         lm.created_at AS last_message_at,
+         lm.sender_id AS last_message_sender_id,
+         COALESCE(unread.count, 0)::int AS unread_count
+       FROM conversations c
+       JOIN users ou ON ou.user_id = (CASE WHEN c.user1_id = $1 THEN c.user2_id ELSE c.user1_id END)
+       LEFT JOIN LATERAL (
+         SELECT content, created_at, sender_id
+         FROM messages m
+         WHERE m.conversation_id = c.conversation_id
+         ORDER BY m.created_at DESC
+         LIMIT 1
+       ) lm ON true
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*)::int AS count
+         FROM messages m
+         WHERE m.conversation_id = c.conversation_id AND m.receiver_id = $1 AND m.is_read = FALSE
+       ) unread ON true
+       WHERE c.user1_id = $1 OR c.user2_id = $1
+       ORDER BY COALESCE(lm.created_at, c.created_at) DESC`,
+      [userId]
+    );
+
+    const conversations = result.rows.map((row) => ({
+      conversationId: row.conversation_id,
+      otherUser: {
+        userId: row.other_user_id,
+        firstName: row.other_first_name,
+        lastName: row.other_last_name,
+        avatarUrl: row.other_avatar_url,
+        role: row.other_role,
+      },
+      lastMessage: row.last_message_content
+        ? { content: row.last_message_content, createdAt: row.last_message_at, senderId: row.last_message_sender_id }
+        : null,
+      unreadCount: row.unread_count,
+    }));
+
+    res.json({ success: true, conversations });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST récupère la conversation existante avec cette personne, ou la crée.
+app.post('/api/conversations', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Messages'] */
+  try {
+    const userId = req.session.userId;
+    const { other_user_id } = req.body;
+
+    if (!other_user_id) {
+      return res.status(400).json({ error: 'other_user_id requis' });
+    }
+    if (other_user_id === userId) {
+      return res.status(400).json({ error: 'Impossible de démarrer une conversation avec vous-même' });
+    }
+
+    const otherUser = await pool.query('SELECT user_id FROM users WHERE user_id = $1', [other_user_id]);
+    if (otherUser.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    // Ordre canonique (le plus petit UUID en user1_id) : la contrainte unique_dm(user1_id,
+    // user2_id) ne protège pas contre deux lignes pour la même paire selon qui initie la
+    // conversation en premier, sans cette normalisation.
+    const [user1Id, user2Id] = [userId, other_user_id].sort();
+
+    const existing = await pool.query(
+      'SELECT conversation_id FROM conversations WHERE user1_id = $1 AND user2_id = $2',
+      [user1Id, user2Id]
+    );
+
+    let conversationId;
+    if (existing.rows.length > 0) {
+      conversationId = existing.rows[0].conversation_id;
+    } else {
+      const created = await pool.query(
+        'INSERT INTO conversations (user1_id, user2_id) VALUES ($1, $2) RETURNING conversation_id',
+        [user1Id, user2Id]
+      );
+      conversationId = created.rows[0].conversation_id;
+    }
+
+    res.status(201).json({ success: true, conversationId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET historique des messages d'une conversation (paginé, plus récents en dernier).
+app.get('/api/conversations/:id/messages', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Messages'] */
+  try {
+    await assertConversationAccess(req.params.id, req.session.userId);
+
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+    const before = req.query.before ? Number(req.query.before) : null;
+
+    const params = [req.params.id];
+    let query = 'SELECT message_id, sender_id, receiver_id, content, is_read, created_at FROM messages WHERE conversation_id = $1';
+    if (before) {
+      params.push(before);
+      query += ` AND message_id < $${params.length}`;
+    }
+    params.push(limit);
+    query += ` ORDER BY message_id DESC LIMIT $${params.length}`;
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, messages: result.rows.reverse() });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
+
+// POST envoie un message dans une conversation, et le pousse en temps réel au
+// destinataire s'il est connecté (Socket.io, room = son user_id).
+app.post('/api/conversations/:id/messages', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Messages'] */
+  try {
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Message vide' });
+    }
+
+    const { otherUserId } = await assertConversationAccess(req.params.id, req.session.userId);
+
+    const result = await pool.query(
+      `INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
+       VALUES ($1, $2, $3, $4)
+       RETURNING message_id, sender_id, receiver_id, content, is_read, created_at`,
+      [req.params.id, req.session.userId, otherUserId, content.trim()]
+    );
+
+    const message = result.rows[0];
+    io.to(otherUserId).emit('message:new', { conversationId: Number(req.params.id), message });
+
+    res.status(201).json({ success: true, message });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
+
+// PUT marque comme lus tous les messages reçus dans cette conversation.
+app.put('/api/conversations/:id/read', authGuard({ mustBeLogged: true }), async (req, res) => {
+  /* #swagger.tags = ['Messages'] */
+  try {
+    const { otherUserId } = await assertConversationAccess(req.params.id, req.session.userId);
+
+    await pool.query(
+      `UPDATE messages SET is_read = TRUE
+       WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE`,
+      [req.params.id, req.session.userId]
+    );
+
+    io.to(otherUserId).emit('message:read', { conversationId: Number(req.params.id), readBy: req.session.userId });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
+
+/* ========================================
    ROUTES API - LISTINGS (QDRANT)
    ======================================== */
 
@@ -2628,7 +2876,7 @@ app.get('/api/listings/:id/interests', authGuard({ mustBeLogged: true }), async 
 
     if (listing.tutor_user_id === req.session.userId) {
       const peopleResult = await pool.query(
-        `SELECT u.first_name, u.last_name, u.email
+        `SELECT u.user_id, u.first_name, u.last_name, u.email
          FROM listing_interests li
          JOIN users u ON u.user_id = li.student_user_id
          WHERE li.listing_id = $1
@@ -2636,9 +2884,10 @@ app.get('/api/listings/:id/interests', authGuard({ mustBeLogged: true }), async 
         [listingId]
       );
 
-      return res.json({ 
-        count, 
+      return res.json({
+        count,
         people: peopleResult.rows.map((row) => ({
+          userId: row.user_id,
           firstName: row.first_name || '',
           lastName: row.last_name || '',
           email: row.email,

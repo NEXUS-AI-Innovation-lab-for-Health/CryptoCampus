@@ -14,6 +14,7 @@ export default defineConfig({
       '/api': {
         target: 'http://api_crypto:3000',
         changeOrigin: true,
+        ws: true, // requis pour l'upgrade WebSocket de Socket.io (/api/socket.io)
       }
     }
   },

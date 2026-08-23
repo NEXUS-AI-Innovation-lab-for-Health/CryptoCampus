@@ -137,8 +137,16 @@
                   <div class="person-name">👤 {{ person.fullName }}</div>
                   <a :href="'mailto:' + person.email" class="person-email">{{ person.email }}</a>
                 </div>
-                <button 
-                  class="btn-copy" 
+                <button
+                  v-if="person.userId"
+                  class="btn-copy"
+                  @click="contactPerson(person)"
+                  title="Contacter"
+                >
+                  💬
+                </button>
+                <button
+                  class="btn-copy"
                   @click="copyToClipboard(person.email)"
                   title="Copier l'email"
                 >
@@ -162,6 +170,20 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useMessaging } from '@/composables/useMessaging'
+
+const router = useRouter()
+const { startConversation } = useMessaging()
+
+const contactPerson = async (person) => {
+  try {
+    await startConversation(person.userId)
+    router.push({ path: '/messages', query: { with: person.userId } })
+  } catch (error) {
+    console.error('Impossible de contacter cet étudiant:', error)
+  }
+}
 
 const myListings = ref([])
 const isLoading = ref(true)

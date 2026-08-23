@@ -192,7 +192,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         if (booking.subject != null) Text('Sujet : ${booking.subject}'),
-                                        if (booking.tutorName != null) Text('Tuteur : ${booking.tutorName}'),
+                                        // Le tuteur voit le nom de l'étudiant qui a réservé ;
+                                        // l'étudiant voit le nom du tuteur — jamais les deux.
+                                        if (!isStudent && booking.studentName != null)
+                                          Text('Étudiant : ${booking.studentName}'),
+                                        if (isStudent && booking.tutorName != null)
+                                          Text('Tuteur : ${booking.tutorName}'),
                                         Text('Début : ${_formatDate(booking.startTime)}'),
                                         if (booking.price != null) Text('Prix : ${booking.price!.toStringAsFixed(2)} CCT'),
                                         if (_actionsFor(booking, isStudent).isNotEmpty) ...[

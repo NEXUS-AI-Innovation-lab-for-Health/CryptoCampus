@@ -10,6 +10,7 @@ import Logout from './pages/Logout.vue'
 import Agenda from './pages/Agenda.vue'
 import Reservations from './pages/Reservations.vue'
 import MyCourses from './pages/MyCourses.vue'
+import Messages from './pages/Messages.vue'
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -25,6 +26,7 @@ const routes = [
   { path: '/agenda', component: Agenda },
   { path: '/reservations', component: Reservations },
   { path: '/mes-cours', component: MyCourses },
+  { path: '/messages', component: Messages },
 ]
 
 const router = createRouter({
